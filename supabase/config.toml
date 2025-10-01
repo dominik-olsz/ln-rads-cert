@@ -1,1 +1,7 @@
 project_id = "kkbgxovmdpdjnblliqka"
+
+[functions.generate-certificate]
+verify_jwt = true
+
+[functions.send-certificate]
+verify_jwt = true
