@@ -1,72 +1,72 @@
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import CourseCard from "@/components/CourseCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Course {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  duration: string;
+  level: string;
+  hero_image?: string;
+  total_lessons: number;
+}
 
 const Courses = () => {
-  const courses = [
-    {
-      id: "1",
-      title: "Chest X-Ray Interpretation Fundamentals",
-      description: "Master the basics of chest radiography interpretation with comprehensive video lessons and practice cases.",
-      price: 299,
-      duration: "12 hours",
-      students: 1240,
-      level: "Beginner",
-      imageUrl: "/placeholder.svg"
-    },
-    {
-      id: "2",
-      title: "Advanced CT Scan Analysis",
-      description: "Deep dive into CT imaging techniques, protocols, and interpretation with real clinical cases.",
-      price: 499,
-      duration: "20 hours",
-      students: 856,
-      level: "Advanced",
-      imageUrl: "/placeholder.svg"
-    },
-    {
-      id: "3",
-      title: "MRI Basics and Applications",
-      description: "Comprehensive introduction to MRI physics, sequences, and diagnostic applications.",
-      price: 399,
-      duration: "15 hours",
-      students: 1024,
-      level: "Intermediate",
-      imageUrl: "/placeholder.svg"
-    },
-    {
-      id: "4",
-      title: "Ultrasound Imaging Techniques",
-      description: "Learn ultrasound physics, scanning techniques, and diagnostic applications across various body systems.",
-      price: 349,
-      duration: "14 hours",
-      students: 892,
-      level: "Intermediate",
-      imageUrl: "/placeholder.svg"
-    },
-    {
-      id: "5",
-      title: "Pediatric Radiology Essentials",
-      description: "Specialized training in pediatric imaging techniques and interpretation of common pediatric conditions.",
-      price: 449,
-      duration: "18 hours",
-      students: 567,
-      level: "Advanced",
-      imageUrl: "/placeholder.svg"
-    },
-    {
-      id: "6",
-      title: "Emergency Radiology",
-      description: "Fast-paced course covering critical findings and rapid interpretation in emergency settings.",
-      price: 399,
-      duration: "16 hours",
-      students: 734,
-      level: "Advanced",
-      imageUrl: "/placeholder.svg"
-    },
-  ];
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [levelFilter, setLevelFilter] = useState("all");
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const fetchCourses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setCourses(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to load courses",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         course.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesLevel = levelFilter === "all" || course.level.toLowerCase() === levelFilter.toLowerCase();
+    return matchesSearch && matchesLevel;
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -85,9 +85,11 @@ const Courses = () => {
               <Input
                 placeholder="Search courses..."
                 className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Select>
+            <Select value={levelFilter} onValueChange={setLevelFilter}>
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Level" />
               </SelectTrigger>
@@ -104,11 +106,27 @@ const Courses = () => {
       
       <section className="py-12">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course) => (
-              <CourseCard key={course.id} {...course} />
-            ))}
-          </div>
+          {filteredCourses.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No courses found. Check back soon!</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCourses.map((course) => (
+                <CourseCard 
+                  key={course.id} 
+                  id={course.id}
+                  title={course.title}
+                  description={course.description}
+                  price={course.price}
+                  duration={course.duration}
+                  students={0}
+                  level={course.level}
+                  imageUrl={course.hero_image || "/placeholder.svg"}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </div>

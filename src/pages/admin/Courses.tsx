@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2 } from 'lucide-react';
-import CourseDialog from '@/components/admin/CourseDialog';
 
 interface Course {
   id: string;
@@ -19,9 +18,8 @@ interface Course {
 const AdminCourses = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const fetchCourses = async () => {
     try {
@@ -92,10 +90,7 @@ const AdminCourses = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">Course Management</h1>
-          <Button onClick={() => {
-            setSelectedCourse(null);
-            setDialogOpen(true);
-          }}>
+          <Button onClick={() => navigate('/admin/courses/new')}>
             <Plus className="h-4 w-4 mr-2" />
             Create Course
           </Button>
@@ -116,20 +111,14 @@ const AdminCourses = () => {
                   <span>{course.total_lessons} lessons</span>
                 </div>
                 <div className="flex gap-2">
-                  <Link to={`/admin/courses/${course.id}/content`} className="flex-1">
-                    <Button variant="default" size="sm" className="w-full">
-                      Manage Content
-                    </Button>
-                  </Link>
                   <Button 
-                    variant="outline" 
+                    variant="default" 
                     size="sm"
-                    onClick={() => {
-                      setSelectedCourse(course);
-                      setDialogOpen(true);
-                    }}
+                    className="flex-1"
+                    onClick={() => navigate(`/admin/courses/${course.id}`)}
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Course
                   </Button>
                   <Button
                     variant="destructive"
@@ -143,13 +132,6 @@ const AdminCourses = () => {
             </Card>
           ))}
         </div>
-
-        <CourseDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          course={selectedCourse}
-          onSuccess={fetchCourses}
-        />
       </main>
     </div>
   );

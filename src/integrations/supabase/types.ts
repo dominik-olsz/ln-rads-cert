@@ -90,6 +90,7 @@ export type Database = {
         Row: {
           course_id: string
           created_at: string | null
+          explanation: string | null
           file_size: number | null
           file_type: string
           file_url: string
@@ -100,6 +101,7 @@ export type Database = {
         Insert: {
           course_id: string
           created_at?: string | null
+          explanation?: string | null
           file_size?: number | null
           file_type: string
           file_url: string
@@ -110,6 +112,7 @@ export type Database = {
         Update: {
           course_id?: string
           created_at?: string | null
+          explanation?: string | null
           file_size?: number | null
           file_type?: string
           file_url?: string
@@ -139,7 +142,10 @@ export type Database = {
           created_at: string | null
           description: string
           duration: string
+          hero_image: string | null
           id: string
+          level: string | null
+          price: number | null
           title: string
           total_lessons: number
           updated_at: string | null
@@ -148,7 +154,10 @@ export type Database = {
           created_at?: string | null
           description: string
           duration: string
+          hero_image?: string | null
           id?: string
+          level?: string | null
+          price?: number | null
           title: string
           total_lessons?: number
           updated_at?: string | null
@@ -157,7 +166,10 @@ export type Database = {
           created_at?: string | null
           description?: string
           duration?: string
+          hero_image?: string | null
           id?: string
+          level?: string | null
+          price?: number | null
           title?: string
           total_lessons?: number
           updated_at?: string | null

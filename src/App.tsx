@@ -17,7 +17,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminUsers from "./pages/admin/Users";
 import AdminCourses from "./pages/admin/Courses";
 import AdminTests from "./pages/admin/Tests";
-import CourseContent from "./pages/admin/CourseContent";
+import CourseBuilder from "./pages/admin/CourseBuilder";
 
 
 
@@ -37,7 +37,7 @@ const App = () => (
         <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         <Route path="/admin/courses" element={<AdminRoute><AdminCourses /></AdminRoute>} />
-        <Route path="/admin/courses/:courseId/content" element={<AdminRoute><CourseContent /></AdminRoute>} />
+        <Route path="/admin/courses/:courseId" element={<AdminRoute><CourseBuilder /></AdminRoute>} />
         <Route path="/admin/tests" element={<AdminRoute><AdminTests /></AdminRoute>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
