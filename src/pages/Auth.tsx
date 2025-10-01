@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap } from "lucide-react";
+import lnradsLogo from "@/assets/lnrads-logo.jpg";
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,11 +21,11 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <Link to="/" className="inline-flex items-center gap-2 text-2xl font-bold text-primary mb-2">
-            <GraduationCap className="h-8 w-8" />
-            RadiologyMaster
+          <Link to="/" className="inline-flex flex-col items-center gap-3 mb-2">
+            <img src={lnradsLogo} alt="LN-RADS" className="h-16 w-auto" />
+            <span className="text-2xl font-bold">LN-RADS Certification</span>
           </Link>
-          <p className="text-muted-foreground">Welcome back to your learning journey</p>
+          <p className="text-muted-foreground">Welcome to your certification journey</p>
         </div>
 
         <Tabs defaultValue="signin" className="w-full">
