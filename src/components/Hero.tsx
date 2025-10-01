@@ -6,7 +6,7 @@ import lnradsLogo from "@/assets/lnrads-logo.jpg";
 const Hero = () => {
   return (
     <section className="relative py-20 md:py-32 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-background to-background" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-background to-background pointer-events-none" />
       
       <div className="container mx-auto px-4 relative">
         <div className="max-w-5xl mx-auto text-center space-y-8">
