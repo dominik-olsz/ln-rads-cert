@@ -162,12 +162,12 @@ const CourseMaterialDialog = ({ open, onOpenChange, material, courseId, lessons,
 
           <div>
             <Label htmlFor="lesson">Link to Lesson (optional)</Label>
-            <Select value={lessonId} onValueChange={setLessonId}>
+            <Select value={lessonId || 'none'} onValueChange={(val) => setLessonId(val === 'none' ? '' : val)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a lesson" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {lessons.map((lesson) => (
                   <SelectItem key={lesson.id} value={lesson.id}>
                     {lesson.title}
