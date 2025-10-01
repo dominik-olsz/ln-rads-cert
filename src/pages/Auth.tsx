@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import lnradsLogo from "@/assets/lnrads-logo.jpg";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield } from "lucide-react";
+
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,7 +18,6 @@ const Auth = () => {
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
   const [signUpName, setSignUpName] = useState("");
-  const [creatingAdmin, setCreatingAdmin] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -70,27 +69,6 @@ const Auth = () => {
     }
   };
 
-  const handleCreateAdmin = async () => {
-    setCreatingAdmin(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-admin');
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Success",
-        description: "Admin user created successfully! Use admin@lnrads.com / AdminLNRADS2024!",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create admin user",
-        variant: "destructive"
-      });
-    } finally {
-      setCreatingAdmin(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -199,27 +177,6 @@ const Auth = () => {
           </TabsContent>
         </Tabs>
 
-        <Card className="border-dashed">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-sm font-medium">Admin Setup</p>
-                  <p className="text-xs text-muted-foreground">Create admin account (one-time)</p>
-                </div>
-              </div>
-              <Button 
-                onClick={handleCreateAdmin} 
-                disabled={creatingAdmin}
-                variant="outline"
-                size="sm"
-              >
-                {creatingAdmin ? "Creating..." : "Create Admin"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         <div className="text-center">
           <Link to="/" className="text-sm text-primary hover:underline">
