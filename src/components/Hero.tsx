@@ -50,7 +50,7 @@ const Hero = () => {
               <Microscope className="h-8 w-8 text-primary" />
               <div className="text-center">
                 <div className="font-bold text-2xl">100</div>
-                <div className="text-sm text-muted-foreground">Practice Questions</div>
+                <div className="text-sm text-muted-foreground">Certification Questions</div>
               </div>
             </div>
             <div className="flex flex-col items-center gap-3 p-6 rounded-lg bg-card border">

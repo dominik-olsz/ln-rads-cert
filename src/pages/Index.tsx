@@ -102,11 +102,11 @@ const Index = () => {
               <Card>
                 <CardHeader>
                   <FileQuestion className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle>Practice Questions</CardTitle>
+                  <CardTitle>Certification Test</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    100 comprehensive test questions to prepare you for certification
+                    Complete a 100-question certification exam to earn your official LN-RADS certificate
                   </p>
                 </CardContent>
               </Card>
@@ -206,7 +206,7 @@ const Index = () => {
                     </div>
                     <div className="flex items-center justify-center gap-2">
                       <FileQuestion className="h-4 w-4 text-primary" />
-                      <span>100 practice questions</span>
+                      <span>100-question certification test</span>
                     </div>
                     <div className="flex items-center justify-center gap-2">
                       <Award className="h-4 w-4 text-primary" />
