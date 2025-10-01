@@ -116,17 +116,20 @@ const AdminCourses = () => {
                   <span>{course.total_lessons} lessons</span>
                 </div>
                 <div className="flex gap-2">
+                  <Link to={`/admin/courses/${course.id}/content`} className="flex-1">
+                    <Button variant="default" size="sm" className="w-full">
+                      Manage Content
+                    </Button>
+                  </Link>
                   <Button 
                     variant="outline" 
-                    size="sm" 
-                    className="flex-1"
+                    size="sm"
                     onClick={() => {
                       setSelectedCourse(course);
                       setDialogOpen(true);
                     }}
                   >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
+                    <Edit className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="destructive"
