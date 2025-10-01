@@ -1,14 +1,14 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { GraduationCap } from "lucide-react";
+import lnradsLogo from "@/assets/lnrads-logo.jpg";
 
 const Navbar = () => {
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 font-bold text-xl text-primary">
-          <GraduationCap className="h-6 w-6" />
-          RadiologyMaster
+        <Link to="/" className="flex items-center gap-3">
+          <img src={lnradsLogo} alt="LN-RADS" className="h-10 w-auto" />
+          <span className="font-bold text-xl">LN-RADS Certification</span>
         </Link>
         
         <div className="hidden md:flex items-center gap-6">

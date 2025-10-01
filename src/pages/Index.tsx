@@ -1,106 +1,228 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
-import CourseCard from "@/components/CourseCard";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle, Clock, Users, BookOpen, Award, Video, Image as ImageIcon, FileQuestion } from "lucide-react";
 
 const Index = () => {
-  const featuredCourses = [
-    {
-      id: "1",
-      title: "Chest X-Ray Interpretation Fundamentals",
-      description: "Master the basics of chest radiography interpretation with comprehensive video lessons and practice cases.",
-      price: 299,
-      duration: "12 hours",
-      students: 1240,
-      level: "Beginner",
-      imageUrl: "/placeholder.svg"
-    },
-    {
-      id: "2",
-      title: "Advanced CT Scan Analysis",
-      description: "Deep dive into CT imaging techniques, protocols, and interpretation with real clinical cases.",
-      price: 499,
-      duration: "20 hours",
-      students: 856,
-      level: "Advanced",
-      imageUrl: "/placeholder.svg"
-    },
-    {
-      id: "3",
-      title: "MRI Basics and Applications",
-      description: "Comprehensive introduction to MRI physics, sequences, and diagnostic applications.",
-      price: 399,
-      duration: "15 hours",
-      students: 1024,
-      level: "Intermediate",
-      imageUrl: "/placeholder.svg"
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <Hero />
       
-      <section className="py-16 md:py-24">
+      <section id="course-details" className="py-16 md:py-24 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Featured Courses</h2>
-            <p className="text-muted-foreground">
-              Start your radiology journey with our most popular courses, designed by expert radiologists.
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredCourses.map((course) => (
-              <CourseCard key={course.id} {...course} />
-            ))}
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Course Overview</h2>
+              <p className="text-lg text-muted-foreground">
+                Complete LN-RADS certification program with comprehensive training materials
+              </p>
+            </div>
+
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="text-2xl">What You'll Learn</CardTitle>
+                <CardDescription>Master the LN-RADS classification system for lymph node assessment</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="flex gap-3">
+                    <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-semibold">LN-RADS 1: Normal Lymph Nodes</div>
+                      <div className="text-sm text-muted-foreground">No enlargement, oval shape, regular cortex ≤3mm</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-semibold">LN-RADS 2: Steatotic LN</div>
+                      <div className="text-sm text-muted-foreground">Enlarged with hyperechoic hilum, no architectural changes</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-semibold">LN-RADS 3: Reactive LN</div>
+                      <div className="text-sm text-muted-foreground">Thickened cortex &gt;3mm, preserved oval shape and medulla</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-semibold">LN-RADS 4: Suspicious LN</div>
+                      <div className="text-sm text-muted-foreground">4a (low) and 4b (high) suspicion categories</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-semibold">LN-RADS 5: Malignant LN</div>
+                      <div className="text-sm text-muted-foreground">Evident features of malignancy with FCT, necrosis</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-semibold">AI-Supported Diagnosis</div>
+                      <div className="text-sm text-muted-foreground">Enhanced consistency with histopathological findings</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid md:grid-cols-3 gap-6 mb-12">
+              <Card>
+                <CardHeader>
+                  <Video className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle>Video Lessons</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Expert-led video tutorials explaining each LN-RADS category with real clinical examples
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <ImageIcon className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle>Radiological Images</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Detailed US, CT, MR, and PET images with annotations and diagnostic explanations
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <FileQuestion className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle>Practice Questions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    100 comprehensive test questions to prepare you for certification
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </section>
       
-      <section className="py-16 md:py-24 bg-muted/30">
+      <section className="py-16 md:py-24">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center space-y-6">
-            <h2 className="text-3xl md:text-4xl font-bold">
-              Why Choose RadiologyMaster?
-            </h2>
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                Why LN-RADS?
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Revolutionary approach to lymph node diagnosis with proven clinical benefits
+              </p>
+            </div>
             
-            <div className="grid md:grid-cols-3 gap-8 pt-8">
-              <div className="space-y-3">
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
-                  <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <h3 className="font-semibold text-lg">Expert Content</h3>
-                <p className="text-sm text-muted-foreground">
-                  Created by certified radiologists with years of clinical experience
-                </p>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
-                  <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="font-semibold text-lg">Official Certificates</h3>
-                <p className="text-sm text-muted-foreground">
-                  Earn recognized certificates upon course completion
-                </p>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
-                  <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h3 className="font-semibold text-lg">Interactive Learning</h3>
-                <p className="text-sm text-muted-foreground">
-                  Videos, images, practice questions, and comprehensive tests
-                </p>
-              </div>
+            <div className="grid md:grid-cols-2 gap-8">
+              <Card>
+                <CardHeader>
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                    <CheckCircle className="w-6 h-6 text-primary" />
+                  </div>
+                  <CardTitle>Superior Detection Rate</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Find over 20% more metastatic lymph nodes compared to traditional 10mm SAD size criteria. 
+                    Detect macrometastases as small as 2-3mm using multiparametric morphological criteria.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                    <Clock className="w-6 h-6 text-primary" />
+                  </div>
+                  <CardTitle>Quick Evaluations</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Heuristic assessment model ensures rapid evaluation without compromising accuracy. 
+                    Streamline your workflow while maintaining diagnostic excellence.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                    <Users className="w-6 h-6 text-primary" />
+                  </div>
+                  <CardTitle>Better Communication</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Simple, standardized system improves communication between radiologists and clinicians. 
+                    Clear categorization facilitates better patient management decisions.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                    <BookOpen className="w-6 h-6 text-primary" />
+                  </div>
+                  <CardTitle>Universal Application</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Apply LN-RADS across all imaging modalities: Ultrasound, CT, MR, and PET. 
+                    One system for all your lymph node assessment needs.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="mt-12 text-center">
+              <Card className="bg-primary/5 border-primary/20">
+                <CardHeader>
+                  <Award className="h-12 w-12 text-primary mx-auto mb-4" />
+                  <CardTitle className="text-2xl">Get Certified Today</CardTitle>
+                  <CardDescription className="text-base">
+                    Join radiologists and oncologists worldwide who are mastering the LN-RADS system
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid md:grid-cols-3 gap-4 text-sm">
+                    <div className="flex items-center justify-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      <span>Self-paced learning</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <FileQuestion className="h-4 w-4 text-primary" />
+                      <span>100 practice questions</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <Award className="h-4 w-4 text-primary" />
+                      <span>Official certificate</span>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="justify-center">
+                  <Link to="/auth">
+                    <Button size="lg" className="gap-2">
+                      Enroll Now
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </CardFooter>
+              </Card>
             </div>
           </div>
         </div>
