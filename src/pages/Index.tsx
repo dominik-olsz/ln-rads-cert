@@ -54,8 +54,8 @@ const Index = () => {
                       <div className="text-sm text-muted-foreground">4a (low) and 4b (high) suspicion categories</div>
                     </div>
                   </div>
-                  <div className="flex gap-3 items-center">
-                    <CheckCircle className="h-5 w-5 text-accent shrink-0" />
+                  <div className="flex gap-3">
+                    <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
                     <div>
                       <div className="font-semibold">LN-RADS 5: Malignant LN</div>
                       <div className="text-sm text-muted-foreground">Evident features of malignancy with FCT, necrosis</div>
