@@ -2,9 +2,32 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import lnradsLogo from "@/assets/lnrads-logo.jpg";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      setIsAdmin(!!data);
+    };
+
+    checkAdminRole();
+  }, [user]);
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -18,6 +41,11 @@ const Navbar = () => {
           <Link to="/courses" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
             Courses
           </Link>
+          {isAdmin && (
+            <Link to="/admin/dashboard" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
+              Admin
+            </Link>
+          )}
           <Link to="/about" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
             About
           </Link>
