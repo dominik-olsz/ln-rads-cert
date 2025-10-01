@@ -6,13 +6,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import TestQuestionDialog from '@/components/admin/TestQuestionDialog';
 
 interface TestQuestion {
   id: string;
   course_id: string;
   question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
   correct_answer: string;
   difficulty: string;
+  explanation?: string;
   courses: {
     title: string;
   };
@@ -21,6 +27,8 @@ interface TestQuestion {
 const AdminTests = () => {
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<TestQuestion | null>(null);
   const { toast } = useToast();
 
   const fetchQuestions = async () => {
@@ -92,7 +100,10 @@ const AdminTests = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">Test Management</h1>
-          <Button>
+          <Button onClick={() => {
+            setSelectedQuestion(null);
+            setDialogOpen(true);
+          }}>
             <Plus className="h-4 w-4 mr-2" />
             Add Question
           </Button>
@@ -124,7 +135,14 @@ const AdminTests = () => {
                     <TableCell>{question.correct_answer}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedQuestion(question);
+                            setDialogOpen(true);
+                          }}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
@@ -142,6 +160,13 @@ const AdminTests = () => {
             </Table>
           </CardContent>
         </Card>
+
+        <TestQuestionDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          question={selectedQuestion}
+          onSuccess={fetchQuestions}
+        />
       </main>
     </div>
   );

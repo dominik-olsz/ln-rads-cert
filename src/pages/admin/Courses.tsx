@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import CourseDialog from '@/components/admin/CourseDialog';
 
 interface Course {
   id: string;
@@ -18,6 +19,8 @@ interface Course {
 const AdminCourses = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const { toast } = useToast();
 
   const fetchCourses = async () => {
@@ -89,7 +92,10 @@ const AdminCourses = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">Course Management</h1>
-          <Button>
+          <Button onClick={() => {
+            setSelectedCourse(null);
+            setDialogOpen(true);
+          }}>
             <Plus className="h-4 w-4 mr-2" />
             Create Course
           </Button>
@@ -110,7 +116,15 @@ const AdminCourses = () => {
                   <span>{course.total_lessons} lessons</span>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => {
+                      setSelectedCourse(course);
+                      setDialogOpen(true);
+                    }}
+                  >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </Button>
@@ -126,6 +140,13 @@ const AdminCourses = () => {
             </Card>
           ))}
         </div>
+
+        <CourseDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          course={selectedCourse}
+          onSuccess={fetchCourses}
+        />
       </main>
     </div>
   );
