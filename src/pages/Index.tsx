@@ -4,10 +4,8 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Clock, Users, BookOpen, Award, Video, Image as ImageIcon, FileQuestion } from "lucide-react";
-
 const Index = () => {
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <Navbar />
       <Hero />
       
@@ -63,13 +61,7 @@ const Index = () => {
                       <div className="text-sm text-muted-foreground">Evident features of malignancy with FCT, necrosis</div>
                     </div>
                   </div>
-                  <div className="flex gap-3">
-                    <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-semibold">AI-Supported Diagnosis</div>
-                      <div className="text-sm text-muted-foreground">Enhanced consistency with histopathological findings</div>
-                    </div>
-                  </div>
+                  
                 </div>
               </CardContent>
             </Card>
@@ -227,8 +219,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
