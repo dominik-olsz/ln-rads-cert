@@ -88,7 +88,15 @@ const AdminTestAttempts = () => {
     }
 
     try {
-      // Delete all certification test attempts for this user
+      // Delete certification test progress first (due to foreign key constraint)
+      const { error: progressError } = await supabase
+        .from('certification_test_progress')
+        .delete()
+        .eq('user_id', userId);
+
+      if (progressError) throw progressError;
+
+      // Then delete all certification test attempts for this user
       const { error: attemptsError } = await supabase
         .from('test_attempts')
         .delete()
@@ -96,14 +104,6 @@ const AdminTestAttempts = () => {
         .eq('is_certification_test', true);
 
       if (attemptsError) throw attemptsError;
-
-      // Delete certification test progress
-      const { error: progressError } = await supabase
-        .from('certification_test_progress')
-        .delete()
-        .eq('user_id', userId);
-
-      if (progressError) throw progressError;
 
       toast({
         title: 'Success',
