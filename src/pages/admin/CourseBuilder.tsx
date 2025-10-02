@@ -324,7 +324,8 @@ const CourseBuilder = () => {
           option_d: q.option_d,
           correct_answer: q.correct_answer,
           explanation: q.explanation || null,
-          image_url: q.image_url || null
+          image_url: q.image_url || null,
+          test_type: 'course'
         }));
 
         const { error: questionsError } = await supabase
