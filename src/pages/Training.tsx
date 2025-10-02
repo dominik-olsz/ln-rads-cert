@@ -105,28 +105,9 @@ const Training = () => {
         });
         setMaterials(groupedMaterials);
 
-        // Fetch all test questions via backend function (avoid RLS restrictions)
-        const { data: { session } } = await supabase.auth.getSession();
-        const { data: fnRes, error: fnError } = await supabase.functions.invoke('get-test-questions', {
-          body: { courseId },
-          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
-        });
-
-        if (fnError) throw fnError;
-
-        const questionsData = (fnRes as any)?.questions || [];
-
-        // Group questions by lesson_id
-        const groupedQuestions: { [lessonId: string]: TestQuestion[] } = {};
-        questionsData.forEach((question: any) => {
-          if (question.lesson_id) {
-            if (!groupedQuestions[question.lesson_id]) {
-              groupedQuestions[question.lesson_id] = [];
-            }
-            groupedQuestions[question.lesson_id].push(question as TestQuestion);
-          }
-        });
-        setQuestions(groupedQuestions);
+        // Note: Test questions are now course-level only, not lesson-specific
+        // They won't be displayed in the training view anymore
+        setQuestions({});
 
         // Fetch user progress
         const { data: progressData } = await supabase
@@ -340,43 +321,6 @@ const Training = () => {
                               </a>
                             )}
                           </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Display test questions for this lesson */}
-                {lessonQuestions.length > 0 && (
-                  <div className="space-y-4 mt-6">
-                    <h3 className="font-semibold text-lg">Practice Questions</h3>
-                    {lessonQuestions.map((question, index) => (
-                      <div key={question.id} className="border rounded-lg p-4">
-                        <div className="space-y-3">
-                          <h4 className="font-medium">Question {index + 1}: {question.question_text}</h4>
-                          {question.image_url && (
-                            <img 
-                              src={question.image_url} 
-                              alt="Question"
-                              className="w-full max-h-[300px] object-contain rounded-lg"
-                            />
-                          )}
-                          <div className="space-y-2">
-                            <div className="p-2 rounded bg-muted/50">A. {question.option_a}</div>
-                            <div className="p-2 rounded bg-muted/50">B. {question.option_b}</div>
-                            <div className="p-2 rounded bg-muted/50">C. {question.option_c}</div>
-                            <div className="p-2 rounded bg-muted/50">D. {question.option_d}</div>
-                          </div>
-                          {question.explanation && (
-                            <div className="pt-3 border-t">
-                              <p className="text-sm text-muted-foreground">
-                                <strong>Correct Answer:</strong> {question.correct_answer}
-                              </p>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                <strong>Explanation:</strong> {question.explanation}
-                              </p>
-                            </div>
-                          )}
                         </div>
                       </div>
                     ))}
