@@ -62,22 +62,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     try {
-      // Clear local state first
-      setUser(null);
-      setSession(null);
-      
-      // Then sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      
+      // Try to sign out locally (do not rely on server session)
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
       if (error) {
         console.error('Sign out error:', error);
       }
-      
-      // Force redirect to home page
+
+      // Hard clear any persisted auth tokens (fallback)
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('sb-'))
+        .forEach((k) => localStorage.removeItem(k));
+
+      // Clear in-memory state
+      setUser(null);
+      setSession(null);
+
+      // Full reload to ensure clean state
       window.location.href = '/';
-    } catch (error) {
-      console.error('Sign out error:', error);
-      // Even if there's an error, clear local state and redirect
+    } catch (err) {
+      console.error('Sign out fatal error:', err);
+      // Ensure logout UX even if an exception occurs
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('sb-'))
+        .forEach((k) => localStorage.removeItem(k));
       setUser(null);
       setSession(null);
       window.location.href = '/';
