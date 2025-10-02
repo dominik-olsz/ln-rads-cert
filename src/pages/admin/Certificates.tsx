@@ -89,13 +89,13 @@ const AdminCertificates = () => {
 
       if (error) throw error;
 
-      // Create a blob from the HTML and trigger download
-      const htmlContent = data.html;
-      const blob = new Blob([htmlContent], { type: 'text/html' });
+      // Convert PDF array buffer to blob and trigger download
+      const pdfArray = new Uint8Array(data.pdf);
+      const blob = new Blob([pdfArray], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `certificate-${certificate.certificate_number}.html`;
+      a.download = `certificate-${certificate.certificate_number}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

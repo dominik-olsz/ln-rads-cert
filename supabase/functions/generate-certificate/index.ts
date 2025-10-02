@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { jsPDF } from "https://esm.sh/jspdf@2.5.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -136,6 +137,16 @@ serve(async (req) => {
       day: 'numeric'
     });
 
+    // Generate PDF certificate
+    const pdfBytes = await generateCertificatePDF(
+      certificateName,
+      attempt.courses?.title || 'LN-RADS Certification',
+      certificate.certificate_number,
+      completionDate,
+      attempt.score
+    );
+
+    // Also generate HTML for viewing
     const htmlContent = generateCertificateHTML(
       certificateName,
       attempt.courses?.title || 'LN-RADS Certification',
@@ -148,6 +159,7 @@ serve(async (req) => {
       JSON.stringify({ 
         certificateId: certificate.id,
         certificateNumber: certificate.certificate_number,
+        pdf: Array.from(pdfBytes),
         html: htmlContent,
         studentName: certificateName,
         courseTitle: attempt.courses?.title,
@@ -172,6 +184,146 @@ serve(async (req) => {
   }
 });
 
+async function generateCertificatePDF(
+  studentName: string,
+  courseTitle: string,
+  certificateNumber: string,
+  completionDate: string,
+  score: number
+): Promise<Uint8Array> {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // Add decorative border
+  doc.setDrawColor(212, 175, 55); // Gold color
+  doc.setLineWidth(3);
+  doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+  
+  doc.setLineWidth(0.5);
+  doc.rect(15, 15, pageWidth - 30, pageHeight - 30);
+
+  // Logo area (placeholder - in production, fetch and embed actual logo)
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(102, 126, 234); // Primary color
+  doc.text('LN-RADS', pageWidth / 2, 35, { align: 'center' });
+
+  // Title
+  doc.setFontSize(36);
+  doc.setFont('times', 'normal');
+  doc.setTextColor(45, 55, 72);
+  doc.text('Certificate of Completion', pageWidth / 2, 60, { align: 'center' });
+
+  // Decorative line
+  doc.setDrawColor(212, 175, 55);
+  doc.setLineWidth(0.5);
+  doc.line(40, 70, pageWidth - 40, 70);
+
+  // "This certifies that"
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(74, 85, 104);
+  doc.text('This certifies that', pageWidth / 2, 85, { align: 'center' });
+
+  // Student name
+  doc.setFontSize(28);
+  doc.setFont('times', 'bold');
+  doc.setTextColor(26, 32, 44);
+  doc.text(studentName, pageWidth / 2, 100, { align: 'center' });
+
+  // Underline for name
+  doc.setDrawColor(212, 175, 55);
+  doc.setLineWidth(0.3);
+  const nameWidth = doc.getTextWidth(studentName);
+  doc.line((pageWidth - nameWidth) / 2, 102, (pageWidth + nameWidth) / 2, 102);
+
+  // "has successfully completed"
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(74, 85, 104);
+  doc.text('has successfully completed the comprehensive training program', pageWidth / 2, 115, { align: 'center' });
+
+  // Course title
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(102, 126, 234);
+  doc.text(courseTitle, pageWidth / 2, 130, { align: 'center' });
+
+  // Achievement text
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(74, 85, 104);
+  doc.text('demonstrating exceptional knowledge and proficiency in radiology', pageWidth / 2, 145, { align: 'center' });
+
+  // Score
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(72, 187, 120);
+  doc.text(`Final Score: ${score}%`, pageWidth / 2, 160, { align: 'center' });
+
+  // Signature section - left side
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(45, 55, 72);
+  
+  const leftX = 40;
+  const rightX = pageWidth - 40;
+  const signatureY = 200;
+  
+  // Left signature line
+  doc.setDrawColor(45, 55, 72);
+  doc.setLineWidth(0.3);
+  doc.line(leftX - 20, signatureY, leftX + 20, signatureY);
+  
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Dr. Cezary Chudobiński', leftX, signatureY + 7, { align: 'center' });
+  
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(74, 85, 104);
+  doc.text('Program Director', leftX, signatureY + 13, { align: 'center' });
+
+  // Right signature line (Date)
+  doc.setDrawColor(45, 55, 72);
+  doc.line(rightX - 20, signatureY, rightX + 20, signatureY);
+  
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(45, 55, 72);
+  doc.text(completionDate, rightX, signatureY + 7, { align: 'center' });
+  
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(74, 85, 104);
+  doc.text('Date of Completion', rightX, signatureY + 13, { align: 'center' });
+
+  // Certificate number at bottom
+  doc.setFontSize(9);
+  doc.setFont('courier', 'bold');
+  doc.setTextColor(74, 85, 104);
+  doc.text(`Certificate No: ${certificateNumber}`, pageWidth / 2, pageHeight - 20, { align: 'center' });
+
+  // Seal (decorative circle)
+  doc.setDrawColor(212, 175, 55);
+  doc.setLineWidth(1.5);
+  doc.circle(pageWidth - 35, pageHeight - 35, 12);
+  
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(102, 126, 234);
+  doc.text('VERIFIED', pageWidth - 35, pageHeight - 37, { align: 'center' });
+  doc.text('COMPLETION', pageWidth - 35, pageHeight - 32, { align: 'center' });
+
+  return doc.output('arraybuffer') as Uint8Array;
+}
+
 function generateCertificateHTML(
   studentName: string,
   courseTitle: string,
@@ -186,7 +338,7 @@ function generateCertificateHTML(
   <meta charset="UTF-8">
   <style>
     @page {
-      size: A4 landscape;
+      size: A4 portrait;
       margin: 0;
     }
     * {
@@ -197,12 +349,12 @@ function generateCertificateHTML(
     body {
       font-family: 'Georgia', serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      width: 297mm;
-      height: 210mm;
+      width: 210mm;
+      height: 297mm;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20mm;
+      padding: 10mm;
     }
     .certificate {
       background: white;
