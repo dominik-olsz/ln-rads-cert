@@ -56,7 +56,7 @@ const Training = () => {
   const [loading, setLoading] = useState(true);
   const [userProgress, setUserProgress] = useState<Set<string>>(new Set());
   const [hasPurchased, setHasPurchased] = useState(false);
-
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({});
   useEffect(() => {
     if (!user) {
       toast.error('Please sign in to access training');
@@ -368,39 +368,53 @@ const Training = () => {
                   </>
                 ) : currentCourseItem?.type === 'question' ? (
                   <>
-                    <h2 className="text-xl font-bold mb-4">Test Question</h2>
-                    <div className="space-y-4">
-                      {(currentCourseItem.data as TestQuestion).image_url && (
-                        <img 
-                          src={(currentCourseItem.data as TestQuestion).image_url!} 
-                          alt="Question" 
-                          className="w-full max-h-[300px] object-contain rounded-lg border"
-                        />
-                      )}
-                      <p className="text-lg font-medium">{(currentCourseItem.data as TestQuestion).question_text}</p>
-                      <div className="space-y-2">
-                        <div className="border rounded-lg p-3">
-                          <span className="font-medium">A:</span> {(currentCourseItem.data as TestQuestion).option_a}
-                        </div>
-                        <div className="border rounded-lg p-3">
-                          <span className="font-medium">B:</span> {(currentCourseItem.data as TestQuestion).option_b}
-                        </div>
-                        <div className="border rounded-lg p-3">
-                          <span className="font-medium">C:</span> {(currentCourseItem.data as TestQuestion).option_c}
-                        </div>
-                        <div className="border rounded-lg p-3">
-                          <span className="font-medium">D:</span> {(currentCourseItem.data as TestQuestion).option_d}
-                        </div>
-                      </div>
-                      {(currentCourseItem.data as TestQuestion).correct_answer && (
-                        <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mt-4">
-                          <p className="font-semibold mb-2">Correct Answer: {(currentCourseItem.data as TestQuestion).correct_answer}</p>
-                          {(currentCourseItem.data as TestQuestion).explanation && (
-                            <p className="text-sm text-muted-foreground">{(currentCourseItem.data as TestQuestion).explanation}</p>
+                    <h2 className="text-xl font-bold mb-4">Course Test Question</h2>
+                    {(() => {
+                      const q = currentCourseItem.data as TestQuestion;
+                      const selected = selectedAnswers[currentCourseItem.id];
+                      const options = [
+                        { key: 'A', text: q.option_a },
+                        { key: 'B', text: q.option_b },
+                        { key: 'C', text: q.option_c },
+                        { key: 'D', text: q.option_d },
+                      ] as const;
+                      return (
+                        <div className="space-y-4">
+                          {q.image_url && (
+                            <img 
+                              src={q.image_url!} 
+                              alt="Question" 
+                              className="w-full max-h-[300px] object-contain rounded-lg border"
+                            />
+                          )}
+                          <p className="text-lg font-medium">{q.question_text}</p>
+                          <div role="radiogroup" className="space-y-2">
+                            {options.map((o) => (
+                              <button
+                                type="button"
+                                key={o.key}
+                                role="radio"
+                                aria-checked={selected === o.key}
+                                onClick={() => setSelectedAnswers(prev => ({ ...prev, [currentCourseItem.id]: o.key as 'A' | 'B' | 'C' | 'D' }))}
+                                className={`border rounded-lg p-3 w-full text-left transition-colors ${selected === o.key ? 'bg-accent/20 border-primary' : 'hover:bg-muted'}`}
+                              >
+                                <span className="font-medium mr-1">{o.key}:</span> {o.text}
+                              </button>
+                            ))}
+                          </div>
+                          {selected && (
+                            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mt-4">
+                              <p className="font-semibold mb-2">
+                                {selected === q.correct_answer ? 'Correct!' : 'Incorrect.'} Correct Answer: {q.correct_answer}
+                              </p>
+                              {q.explanation && (
+                                <p className="text-sm text-muted-foreground">{q.explanation}</p>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
-                    </div>
+                      );
+                    })()}
                   </>
                 ) : null}
               </CardContent>
