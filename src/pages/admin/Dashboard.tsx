@@ -92,7 +92,7 @@ const AdminDashboard = () => {
           <Link to="/admin/tests">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader>
-                <CardTitle>Test Management</CardTitle>
+                <CardTitle>Certification Test Management</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
