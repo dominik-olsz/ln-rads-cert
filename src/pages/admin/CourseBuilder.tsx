@@ -136,18 +136,22 @@ const CourseBuilder = () => {
       const questionsByOrder = (questionsData || []).reduce((acc, q) => {
         const order = q.order_index ?? 999;
         if (!acc[order]) {
-          acc[order] = [];
+          acc[order] = {
+            title: q.group_title || null,
+            questions: []
+          };
         }
-        acc[order].push({
+        acc[order].questions.push({
           ...q,
           order_index: q.order_index ?? 999
         });
         return acc;
-      }, {} as Record<number, TestQuestion[]>);
+      }, {} as Record<number, { title: string | null, questions: TestQuestion[] }>);
 
-      const groups: TestQuestionsGroup[] = Object.entries(questionsByOrder).map(([order, questions]) => ({
+      const groups: TestQuestionsGroup[] = Object.entries(questionsByOrder).map(([order, data]) => ({
         order_index: parseInt(order),
-        questions: questions
+        title: data.title || undefined,
+        questions: data.questions
       }));
 
       setLessons(lessonsWithoutQuestions);
@@ -491,7 +495,8 @@ const CourseBuilder = () => {
             explanation: q.explanation || null,
             image_url: q.image_url || null,
             test_type: 'course',
-            order_index: group.order_index
+            order_index: group.order_index,
+            group_title: group.title || null
           }));
 
           const { error: questionsError } = await supabase
