@@ -1,3 +1,4 @@
+// Course Builder with Drag & Drop Ordering
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
