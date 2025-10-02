@@ -23,9 +23,17 @@ serve(async (req) => {
     );
 
     // Verify user is authenticated
+    const authHeader = req.headers.get('Authorization');
+    const jwt = authHeader?.replace('Bearer ', '');
+
     const {
       data: { user },
-    } = await supabaseClient.auth.getUser();
+      error: userError,
+    } = await supabaseClient.auth.getUser(jwt);
+
+    if (userError) {
+      console.error('Auth getUser error:', userError);
+    }
 
     if (!user) {
       return new Response(
