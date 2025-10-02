@@ -43,11 +43,11 @@ serve(async (req) => {
 
     const { data: questions, error } = await supabaseAdmin
       .from('test_questions')
-      .select('id, lesson_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, image_url, created_at, test_type')
+      .select('id, lesson_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, image_url, created_at, test_type, group_title, order_index')
       .eq('course_id', courseId)
       .eq('test_type', 'course')
       .is('lesson_id', null)
-      .order('created_at');
+      .order('order_index');
 
     if (error) {
       console.error('Error fetching questions:', error);
