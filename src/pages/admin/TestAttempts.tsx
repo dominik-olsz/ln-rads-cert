@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { RotateCcw, CheckCircle, XCircle } from 'lucide-react';
+import { RotateCcw, CheckCircle, XCircle, Award } from 'lucide-react';
 
 interface TestAttempt {
   id: string;
@@ -23,6 +23,7 @@ interface TestAttempt {
   courses: {
     title: string;
   } | null;
+  hasCertificate?: boolean;
 }
 
 const AdminTestAttempts = () => {
@@ -60,9 +61,18 @@ const AdminTestAttempts = () => {
 
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
+      // Check for existing certificates
+      const { data: certificates } = await supabase
+        .from('certificates')
+        .select('test_attempt_id')
+        .in('test_attempt_id', (data || []).map(a => a.id));
+
+      const certificatesSet = new Set(certificates?.map(c => c.test_attempt_id) || []);
+
       const attemptsWithProfiles = (data || []).map(attempt => ({
         ...attempt,
-        profiles: profilesMap.get(attempt.user_id) || { full_name: 'Unknown', email: 'N/A' }
+        profiles: profilesMap.get(attempt.user_id) || { full_name: 'Unknown', email: 'N/A' },
+        hasCertificate: certificatesSet.has(attempt.id)
       }));
 
       setAttempts(attemptsWithProfiles as any);
@@ -127,6 +137,40 @@ const AdminTestAttempts = () => {
         variant: 'destructive',
       });
     }
+  };
+
+  const issueCertificate = async (attempt: TestAttempt) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-certificate', {
+        body: { attemptId: attempt.id }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: `Certificate issued for ${attempt.profiles?.full_name}`,
+      });
+
+      fetchAttempts();
+    } catch (error: any) {
+      console.error('Error issuing certificate:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to issue certificate',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const checkIfCertificateExists = async (attemptId: string): Promise<boolean> => {
+    const { data } = await supabase
+      .from('certificates')
+      .select('id')
+      .eq('test_attempt_id', attemptId)
+      .maybeSingle();
+    
+    return !!data;
   };
 
   const getUserAttemptCount = (userId: string) => {
@@ -204,14 +248,27 @@ const AdminTestAttempts = () => {
                         {new Date(attempt.completed_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => resetUserAttempts(attempt.user_id, attempt.profiles?.full_name || 'this user')}
-                        >
-                          <RotateCcw className="h-4 w-4 mr-2" />
-                          Reset Attempts
-                        </Button>
+                        <div className="flex gap-2">
+                          {attempt.passed && (
+                            <Button
+                              variant={attempt.hasCertificate ? "secondary" : "default"}
+                              size="sm"
+                              onClick={() => issueCertificate(attempt)}
+                              disabled={attempt.hasCertificate}
+                            >
+                              <Award className="h-4 w-4 mr-2" />
+                              {attempt.hasCertificate ? 'Certificate Issued' : 'Issue Certificate'}
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => resetUserAttempts(attempt.user_id, attempt.profiles?.full_name || 'this user')}
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            Reset Attempts
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
