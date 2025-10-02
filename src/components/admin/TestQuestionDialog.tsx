@@ -182,21 +182,23 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
           <DialogTitle>{question ? 'Edit Question' : 'Add Question'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="course">Course {testType === 'certification' && '(Optional)'}</Label>
-            <Select value={courseId} onValueChange={setCourseId} required={testType !== 'certification'}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a course" />
-              </SelectTrigger>
-              <SelectContent>
-                {courses.map((course) => (
-                  <SelectItem key={course.id} value={course.id}>
-                    {course.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {testType !== 'certification' && (
+            <div>
+              <Label htmlFor="course">Course</Label>
+              <Select value={courseId} onValueChange={setCourseId} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a course" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.map((course) => (
+                    <SelectItem key={course.id} value={course.id}>
+                      {course.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div>
             <Label htmlFor="questionText">Question</Label>
