@@ -15,8 +15,8 @@ interface PurchasedCourse {
   title: string;
   description: string;
   hero_image: string | null;
-  total_lessons: number;
-  completed_lessons: number;
+  total_items: number;
+  current_item_index: number;
   purchased_at: string;
 }
 
@@ -60,31 +60,50 @@ export default function Dashboard() {
             id,
             title,
             description,
-            hero_image,
-            total_lessons
+            hero_image
           )
         `)
         .eq("user_id", user?.id);
 
       if (purchasesError) throw purchasesError;
 
-      // Fetch user progress for each course
+      // Fetch course progress and calculate total items for each course
       const coursesWithProgress = await Promise.all(
         (purchases || []).map(async (purchase: any) => {
+          // Get total lessons count
+          const { count: lessonsCount } = await supabase
+            .from("lessons")
+            .select("*", { count: "exact", head: true })
+            .eq("course_id", purchase.course_id);
+
+          // Get total test question groups count (course-level questions only)
+          const { data: questions } = await supabase.functions.invoke('get-test-questions', {
+            body: { courseId: purchase.course_id },
+          });
+
+          // Group questions by group_title to count unique groups
+          const questionGroups = new Set();
+          (questions?.questions || []).forEach((q: any) => {
+            questionGroups.add(q.group_title || 'Test Questions');
+          });
+
+          const totalItems = (lessonsCount || 0) + questionGroups.size;
+
+          // Get user's current position
           const { data: progress } = await supabase
-            .from("user_progress")
-            .select("*")
+            .from("course_progress")
+            .select("last_item_index")
             .eq("user_id", user?.id)
             .eq("course_id", purchase.course_id)
-            .eq("completed", true);
+            .maybeSingle();
 
           return {
             id: purchase.courses.id,
             title: purchase.courses.title,
             description: purchase.courses.description,
             hero_image: purchase.courses.hero_image,
-            total_lessons: purchase.courses.total_lessons,
-            completed_lessons: progress?.length || 0,
+            total_items: totalItems,
+            current_item_index: progress?.last_item_index ?? 0,
             purchased_at: purchase.purchased_at,
           };
         })
@@ -219,8 +238,9 @@ export default function Dashboard() {
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {purchasedCourses.map((course) => {
-                  const progressPercentage = course.total_lessons > 0
-                    ? (course.completed_lessons / course.total_lessons) * 100
+                  const completedItems = course.current_item_index + 1;
+                  const progressPercentage = course.total_items > 0
+                    ? (completedItems / course.total_items) * 100
                     : 0;
 
                   return (
@@ -239,10 +259,15 @@ export default function Dashboard() {
                       <CardContent className="space-y-4">
                         <div>
                           <div className="flex justify-between text-sm mb-2">
-                            <span>Progress</span>
-                            <span>{course.completed_lessons} / {course.total_lessons} lessons</span>
+                            <span className="font-medium">Course Progress</span>
+                            <span className="text-muted-foreground">
+                              {completedItems} / {course.total_items} items
+                            </span>
                           </div>
-                          <Progress value={progressPercentage} />
+                          <Progress value={progressPercentage} className="h-2" />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {progressPercentage.toFixed(0)}% complete
+                          </p>
                         </div>
                         <div className="flex gap-2">
                           <Button
