@@ -466,7 +466,7 @@ const CourseBuilder = () => {
                   <CardTitle className="text-base">Course Content</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {lessons.map((lesson, index) => (
+                  {lessons?.map((lesson, index) => (
                     <div
                       key={`lesson-${index}`}
                       className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-muted ${
@@ -492,7 +492,7 @@ const CourseBuilder = () => {
                     </div>
                   ))}
                   
-                  {testQuestions.map((question, index) => (
+                  {testQuestions?.map((question, index) => (
                     <div
                       key={`question-${index}`}
                       className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-muted ${
@@ -759,7 +759,7 @@ const CourseBuilder = () => {
 
                   <div className="space-y-4">
                     <h3 className="text-xl font-semibold">Course Content</h3>
-                    {lessons.map((lesson, index) => (
+                    {lessons?.map((lesson, index) => (
                       <div key={index} className="border rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-semibold">
