@@ -47,7 +47,7 @@ export type Database = {
       certificates: {
         Row: {
           certificate_number: string
-          course_id: string
+          course_id: string | null
           id: string
           issued_at: string | null
           test_attempt_id: string
@@ -55,7 +55,7 @@ export type Database = {
         }
         Insert: {
           certificate_number: string
-          course_id: string
+          course_id?: string | null
           id?: string
           issued_at?: string | null
           test_attempt_id: string
@@ -63,7 +63,7 @@ export type Database = {
         }
         Update: {
           certificate_number?: string
-          course_id?: string
+          course_id?: string | null
           id?: string
           issued_at?: string | null
           test_attempt_id?: string

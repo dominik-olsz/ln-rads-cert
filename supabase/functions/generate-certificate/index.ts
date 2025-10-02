@@ -12,13 +12,21 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    const jwt = authHeader?.replace('Bearer ', '');
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(jwt);
+    
+    if (userError) {
+      console.error('Auth error:', userError);
+    }
+    
     if (!user) {
       throw new Error('Not authenticated');
     }
@@ -56,18 +64,25 @@ serve(async (req) => {
     const certificateNumber = `LNRADS-${Date.now()}-${user.id.slice(0, 8).toUpperCase()}`;
 
     // Create certificate record
+    const certificateData: any = {
+      user_id: user.id,
+      test_attempt_id: actualAttemptId,
+      certificate_number: certificateNumber,
+    };
+
+    // Only add course_id if it exists (certification tests might not have one)
+    if (attempt.course_id) {
+      certificateData.course_id = attempt.course_id;
+    }
+
     const { data: certificate, error: certError } = await supabaseClient
       .from('certificates')
-      .insert({
-        user_id: user.id,
-        course_id: attempt.course_id,
-        test_attempt_id: actualAttemptId,
-        certificate_number: certificateNumber,
-      })
+      .insert(certificateData)
       .select()
       .single();
 
     if (certError) {
+      console.error('Certificate creation error:', certError);
       throw certError;
     }
 
@@ -82,7 +97,7 @@ serve(async (req) => {
 
     const htmlContent = generateCertificateHTML(
       certificateName,
-      attempt.courses?.title || 'LN-RADS Course',
+      attempt.courses?.title || 'LN-RADS Certification',
       certificateNumber,
       completionDate,
       attempt.score
