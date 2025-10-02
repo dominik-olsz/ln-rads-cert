@@ -10,7 +10,7 @@ const Hero = () => {
           alt="Medical professionals" 
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/90 to-background/95" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/60 via-background/40 to-background/60" />
       </div>
       
       <div className="container mx-auto px-4 relative">
