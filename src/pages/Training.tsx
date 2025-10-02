@@ -112,7 +112,7 @@ const Training = () => {
 
         if (fnError) throw fnError;
 
-        const questionsData = (fnRes as any[]) || [];
+        const questionsData = (fnRes as any)?.questions || [];
 
         // Group questions by lesson_id
         const groupedQuestions: { [lessonId: string]: TestQuestion[] } = {};

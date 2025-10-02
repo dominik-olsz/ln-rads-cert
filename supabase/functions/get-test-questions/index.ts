@@ -51,7 +51,7 @@ serve(async (req) => {
 
     const { data: questions, error } = await supabaseAdmin
       .from('test_questions')
-      .select('id, question_text, option_a, option_b, option_c, option_d, difficulty')
+      .select('id, lesson_id, question_text, option_a, option_b, option_c, option_d, image_url, created_at')
       .eq('course_id', courseId)
       .order('created_at');
 
