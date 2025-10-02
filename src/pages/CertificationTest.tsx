@@ -43,6 +43,7 @@ const CertificationTest = () => {
   const [timeLeft, setTimeLeft] = useState(30);
   const [timerActive, setTimerActive] = useState(false);
   const [hasPurchased, setHasPurchased] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
     if (!user) {
@@ -190,8 +191,13 @@ const CertificationTest = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
       setTimeLeft(30);
-      setTimerActive(true);
+      // Timer is already active, just reset time
     }
+  };
+
+  const handleStartTest = () => {
+    setShowWelcome(false);
+    setTimerActive(true); // Start timer when entering first question
   };
 
   const handlePrevious = () => {
@@ -283,6 +289,64 @@ const CertificationTest = () => {
   const answeredCount = Object.values(answers).filter(a => a.locked).length;
   const allAnswered = answeredCount === questions.length;
 
+  if (showWelcome) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardContent className="pt-6 space-y-6">
+                <div className="text-center space-y-4">
+                  <h1 className="text-3xl font-bold">Welcome to the Certification Test</h1>
+                  <p className="text-muted-foreground text-lg">
+                    You are about to begin your certification examination.
+                  </p>
+                </div>
+
+                <div className="space-y-4 bg-muted/50 p-6 rounded-lg">
+                  <h2 className="font-semibold text-lg">Test Instructions:</h2>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold mt-1">•</span>
+                      <span>Total Questions: {questions.length}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold mt-1">•</span>
+                      <span>Time per Question: 30 seconds</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold mt-1">•</span>
+                      <span>Passing Score: 80%</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold mt-1">•</span>
+                      <span>You must accept each answer before moving to the next question</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold mt-1">•</span>
+                      <span>Once accepted, answers cannot be changed</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-semibold mt-1">•</span>
+                      <span>The timer will start automatically when you begin</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="flex justify-center pt-4">
+                  <Button onClick={handleStartTest} size="lg">
+                    Start Test
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -306,24 +370,6 @@ const CertificationTest = () => {
               Answered & Locked: {answeredCount} / {questions.length}
             </p>
           </div>
-
-          {!timerActive && !isLocked && (
-            <Card className="bg-amber-50 dark:bg-amber-950 border-amber-200">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-amber-900 dark:text-amber-100">
-                      Timer will start when you move to the next question
-                    </p>
-                    <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
-                      You have 30 seconds per question. Once you accept an answer, it cannot be changed.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           <Card>
             <CardContent className="pt-6 space-y-6">
@@ -415,36 +461,6 @@ const CertificationTest = () => {
                     </Button>
                   )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <h3 className="font-semibold mb-3">Question Navigator</h3>
-              <div className="grid grid-cols-10 gap-2">
-                {questions.map((q, index) => {
-                  const isAnswered = answers[q.id]?.locked;
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        setCurrentQuestion(index);
-                        setTimerActive(false);
-                        setTimeLeft(30);
-                      }}
-                      className={`aspect-square rounded-lg text-sm font-medium transition-colors ${
-                        index === currentQuestion
-                          ? "bg-primary text-primary-foreground"
-                          : isAnswered
-                          ? "bg-green-500 text-white"
-                          : "bg-muted hover:bg-muted/80"
-                      }`}
-                    >
-                      {index + 1}
-                    </button>
-                  );
-                })}
               </div>
             </CardContent>
           </Card>
