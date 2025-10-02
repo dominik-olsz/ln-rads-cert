@@ -74,16 +74,7 @@ const Footer = () => {
             <h3 className="font-semibold mb-4">Resources</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a href="#course-details" className="hover:text-primary transition-colors">Course Overview</a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-primary transition-colors">Documentation</a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-primary transition-colors">FAQ</a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-primary transition-colors">Support</a>
+                <Link to="/faq" className="hover:text-primary transition-colors">FAQ</Link>
               </li>
             </ul>
           </div>

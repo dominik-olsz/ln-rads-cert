@@ -13,6 +13,7 @@ import Test from "./pages/Test";
 import CertificationTest from "./pages/CertificationTest";
 import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
+import FAQ from "./pages/FAQ";
 import AdminRoute from "./components/AdminRoute";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminUsers from "./pages/admin/Users";
@@ -40,6 +41,7 @@ const App = () => (
         <Route path="/test" element={<Test />} />
         <Route path="/certification-test" element={<CertificationTest />} />
         <Route path="/results" element={<Results />} />
+        <Route path="/faq" element={<FAQ />} />
         <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         <Route path="/admin/courses" element={<AdminRoute><AdminCourses /></AdminRoute>} />
