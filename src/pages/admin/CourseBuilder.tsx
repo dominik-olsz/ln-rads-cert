@@ -67,11 +67,11 @@ const CourseBuilder = () => {
   // Lessons and Test Questions
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
-  const [currentItemType, setCurrentItemType] = useState<'lesson' | 'question'>('lesson');
+  const [currentItemType, setCurrentItemType] = useState<'lesson' | 'questions'>('lesson');
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [showAddQuestionsDialog, setShowAddQuestionsDialog] = useState(false);
   const [numQuestionsToAdd, setNumQuestionsToAdd] = useState(1);
-  const [draggedItem, setDraggedItem] = useState<{type: 'lesson' | 'question', index: number} | null>(null);
+  const [draggedItem, setDraggedItem] = useState<{type: 'lesson' | 'questions', index: number} | null>(null);
 
   useEffect(() => {
     if (courseId && courseId !== "new") {
@@ -197,8 +197,11 @@ const CourseBuilder = () => {
   const deleteLesson = (index: number) => {
     const updated = lessons.filter((_, i) => i !== index);
     setLessons(updated.map((l, i) => ({ ...l, order_index: i })));
-    if (currentItemType === 'lesson' && currentItemIndex >= updated.length) {
-      setCurrentItemIndex(Math.max(0, updated.length - 1));
+    if (currentItemType === 'lesson' && currentItemIndex >= updated.length && updated.length > 0) {
+      setCurrentItemIndex(updated.length - 1);
+    } else if (currentItemType === 'lesson' && updated.length === 0 && testQuestions.length > 0) {
+      setCurrentItemType('questions');
+      setCurrentItemIndex(0);
     }
   };
 
@@ -207,6 +210,12 @@ const CourseBuilder = () => {
   };
 
   const confirmAddTestQuestions = () => {
+    // Get the order_index for new questions (same as existing questions or after last lesson)
+    let newOrderIndex = lessons.length;
+    if (testQuestions.length > 0) {
+      newOrderIndex = testQuestions[0].order_index ?? lessons.length;
+    }
+    
     const newQuestions: TestQuestion[] = Array.from({ length: numQuestionsToAdd }, (_, i) => ({
       question_text: "",
       option_a: "",
@@ -214,10 +223,10 @@ const CourseBuilder = () => {
       option_c: "",
       option_d: "",
       correct_answer: "A",
-      order_index: testQuestions.length + i
+      order_index: newOrderIndex
     }));
     setTestQuestions([...testQuestions, ...newQuestions]);
-    setCurrentItemType('question');
+    setCurrentItemType('questions');
     setCurrentItemIndex(testQuestions.length);
     setShowAddQuestionsDialog(false);
     setNumQuestionsToAdd(1);
@@ -232,38 +241,50 @@ const CourseBuilder = () => {
   const deleteTestQuestion = (index: number) => {
     const updated = testQuestions.filter((_, i) => i !== index);
     setTestQuestions(updated);
-    if (currentItemType === 'question' && currentItemIndex >= updated.length) {
-      setCurrentItemIndex(Math.max(0, updated.length - 1));
+    if (currentItemType === 'questions') {
+      if (updated.length === 0) {
+        // Switch to first lesson if no questions left
+        if (lessons.length > 0) {
+          setCurrentItemType('lesson');
+          setCurrentItemIndex(0);
+        }
+      } else if (currentItemIndex >= updated.length) {
+        setCurrentItemIndex(updated.length - 1);
+      }
     }
   };
 
   // Combined items for display with drag-and-drop
   type DisplayItem = {
-    type: 'lesson' | 'question';
+    type: 'lesson' | 'questions';
     index: number;
     orderIndex: number;
     title: string;
   };
 
   const getDisplayItems = (): DisplayItem[] => {
-    const items: DisplayItem[] = [
-      ...lessons.map((l, idx) => ({
-        type: 'lesson' as const,
-        index: idx,
-        orderIndex: l.order_index,
-        title: l.title
-      })),
-      ...testQuestions.map((q, idx) => ({
-        type: 'question' as const,
-        index: idx,
-        orderIndex: q.order_index ?? 9999,
-        title: q.question_text || `Question ${idx + 1}`
-      }))
-    ];
+    const items: DisplayItem[] = lessons.map((l, idx) => ({
+      type: 'lesson' as const,
+      index: idx,
+      orderIndex: l.order_index,
+      title: l.title
+    }));
+    
+    // Add test questions as a single grouped item
+    if (testQuestions.length > 0) {
+      const minQuestionOrder = Math.min(...testQuestions.map(q => q.order_index ?? 9999));
+      items.push({
+        type: 'questions' as const,
+        index: 0,
+        orderIndex: minQuestionOrder,
+        title: `Test Questions (${testQuestions.length})`
+      });
+    }
+    
     return items.sort((a, b) => a.orderIndex - b.orderIndex);
   };
 
-  const handleDragStart = (type: 'lesson' | 'question', index: number) => {
+  const handleDragStart = (type: 'lesson' | 'questions', index: number) => {
     setDraggedItem({ type, index });
   };
 
@@ -271,7 +292,7 @@ const CourseBuilder = () => {
     e.preventDefault();
   };
 
-  const handleDrop = (targetType: 'lesson' | 'question', targetIndex: number) => {
+  const handleDrop = (targetType: 'lesson' | 'questions', targetIndex: number) => {
     if (!draggedItem) return;
     
     const displayItems = getDisplayItems();
@@ -296,8 +317,11 @@ const CourseBuilder = () => {
     reordered.forEach((item, newOrder) => {
       if (item.type === 'lesson') {
         newLessons[item.index] = { ...newLessons[item.index], order_index: newOrder };
-      } else {
-        newQuestions[item.index] = { ...newQuestions[item.index], order_index: newOrder };
+      } else if (item.type === 'questions') {
+        // Update all questions to have the same order_index
+        newQuestions.forEach((q, idx) => {
+          newQuestions[idx] = { ...newQuestions[idx], order_index: newOrder };
+        });
       }
     });
 
@@ -594,7 +618,7 @@ const CourseBuilder = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {getDisplayItems().map((item) => {
-                    const isCurrent = item.type === currentItemType && item.index === currentItemIndex;
+                    const isCurrent = item.type === currentItemType && (item.type === 'questions' || item.index === currentItemIndex);
                     return (
                       <div
                         key={`${item.type}-${item.index}`}
@@ -607,7 +631,11 @@ const CourseBuilder = () => {
                         }`}
                         onClick={() => {
                           setCurrentItemType(item.type);
-                          setCurrentItemIndex(item.index);
+                          if (item.type === 'lesson') {
+                            setCurrentItemIndex(item.index);
+                          } else {
+                            setCurrentItemIndex(0);
+                          }
                         }}
                       >
                         <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -615,6 +643,16 @@ const CourseBuilder = () => {
                           <>
                             <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             <span className="flex-1 text-sm truncate">{item.title}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteLesson(item.index);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </>
                         ) : (
                           <>
@@ -622,20 +660,6 @@ const CourseBuilder = () => {
                             <span className="flex-1 text-sm truncate">{item.title}</span>
                           </>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (item.type === 'lesson') {
-                              deleteLesson(item.index);
-                            } else {
-                              deleteTestQuestion(item.index);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
                       </div>
                     );
                   })}
@@ -711,129 +735,159 @@ const CourseBuilder = () => {
                       </div>
                     </CardContent>
                   </>
-                ) : currentItemType === 'question' && testQuestions[currentItemIndex] ? (
+                ) : currentItemType === 'questions' && testQuestions.length > 0 ? (
                   <>
                     <CardHeader>
-                      <CardTitle>Test Question {currentItemIndex + 1}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Question</Label>
-                        <Input
-                          value={testQuestions[currentItemIndex]?.question_text}
-                          onChange={(e) =>
-                            updateTestQuestion(currentItemIndex, { question_text: e.target.value })
-                          }
-                          placeholder="Enter question"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <Input
-                          value={testQuestions[currentItemIndex]?.option_a}
-                          onChange={(e) =>
-                            updateTestQuestion(currentItemIndex, { option_a: e.target.value })
-                          }
-                          placeholder="Option A"
-                        />
-                        <Input
-                          value={testQuestions[currentItemIndex]?.option_b}
-                          onChange={(e) =>
-                            updateTestQuestion(currentItemIndex, { option_b: e.target.value })
-                          }
-                          placeholder="Option B"
-                        />
-                        <Input
-                          value={testQuestions[currentItemIndex]?.option_c}
-                          onChange={(e) =>
-                            updateTestQuestion(currentItemIndex, { option_c: e.target.value })
-                          }
-                          placeholder="Option C"
-                        />
-                        <Input
-                          value={testQuestions[currentItemIndex]?.option_d}
-                          onChange={(e) =>
-                            updateTestQuestion(currentItemIndex, { option_d: e.target.value })
-                          }
-                          placeholder="Option D"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label>Correct Answer</Label>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>Test Questions</CardTitle>
+                        <div className="flex items-center gap-2">
                           <Select
-                            value={testQuestions[currentItemIndex]?.correct_answer}
-                            onValueChange={(value) =>
-                              updateTestQuestion(currentItemIndex, { correct_answer: value })
-                            }
+                            value={currentItemIndex.toString()}
+                            onValueChange={(value) => setCurrentItemIndex(parseInt(value))}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="w-[200px]">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="A">Option A</SelectItem>
-                              <SelectItem value="B">Option B</SelectItem>
-                              <SelectItem value="C">Option C</SelectItem>
-                              <SelectItem value="D">Option D</SelectItem>
+                              {testQuestions.map((_, idx) => (
+                                <SelectItem key={idx} value={idx.toString()}>
+                                  Question {idx + 1}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteTestQuestion(currentItemIndex)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-
-                        <div className="space-y-2">
-                          <Label>Image (Optional)</Label>
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              
-                              setUploading(true);
-                              try {
-                                const fileExt = file.name.split('.').pop();
-                                const fileName = `${Math.random()}.${fileExt}`;
-                                const filePath = `question-images/${fileName}`;
-
-                                const { error: uploadError } = await supabase.storage
-                                  .from('course-materials')
-                                  .upload(filePath, file);
-
-                                if (uploadError) throw uploadError;
-
-                                const { data } = supabase.storage
-                                  .from('course-materials')
-                                  .getPublicUrl(filePath);
-
-                                updateTestQuestion(currentItemIndex, { image_url: data.publicUrl });
-                              } catch (error) {
-                                console.error('Upload error:', error);
-                              } finally {
-                                setUploading(false);
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {testQuestions[currentItemIndex] && (
+                        <>
+                          <div className="space-y-2">
+                            <Label>Question</Label>
+                            <Input
+                              value={testQuestions[currentItemIndex]?.question_text}
+                              onChange={(e) =>
+                                updateTestQuestion(currentItemIndex, { question_text: e.target.value })
                               }
-                            }}
-                          />
-                          {testQuestions[currentItemIndex]?.image_url && (
-                            <img 
-                              src={testQuestions[currentItemIndex].image_url} 
-                              alt="" 
-                              className="max-w-xs rounded mt-2" 
+                              placeholder="Enter question"
                             />
-                          )}
-                        </div>
-                      </div>
+                          </div>
 
-                      <div className="space-y-2">
-                        <Label>Explanation (Optional)</Label>
-                        <Textarea
-                          value={testQuestions[currentItemIndex]?.explanation || ""}
-                          onChange={(e) =>
-                            updateTestQuestion(currentItemIndex, { explanation: e.target.value })
-                          }
-                          placeholder="Explain the correct answer"
-                          rows={2}
-                        />
-                      </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Input
+                              value={testQuestions[currentItemIndex]?.option_a}
+                              onChange={(e) =>
+                                updateTestQuestion(currentItemIndex, { option_a: e.target.value })
+                              }
+                              placeholder="Option A"
+                            />
+                            <Input
+                              value={testQuestions[currentItemIndex]?.option_b}
+                              onChange={(e) =>
+                                updateTestQuestion(currentItemIndex, { option_b: e.target.value })
+                              }
+                              placeholder="Option B"
+                            />
+                            <Input
+                              value={testQuestions[currentItemIndex]?.option_c}
+                              onChange={(e) =>
+                                updateTestQuestion(currentItemIndex, { option_c: e.target.value })
+                              }
+                              placeholder="Option C"
+                            />
+                            <Input
+                              value={testQuestions[currentItemIndex]?.option_d}
+                              onChange={(e) =>
+                                updateTestQuestion(currentItemIndex, { option_d: e.target.value })
+                              }
+                              placeholder="Option D"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label>Correct Answer</Label>
+                              <Select
+                                value={testQuestions[currentItemIndex]?.correct_answer}
+                                onValueChange={(value) =>
+                                  updateTestQuestion(currentItemIndex, { correct_answer: value })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="A">Option A</SelectItem>
+                                  <SelectItem value="B">Option B</SelectItem>
+                                  <SelectItem value="C">Option C</SelectItem>
+                                  <SelectItem value="D">Option D</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>Image (Optional)</Label>
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  
+                                  setUploading(true);
+                                  try {
+                                    const fileExt = file.name.split('.').pop();
+                                    const fileName = `${Math.random()}.${fileExt}`;
+                                    const filePath = `question-images/${fileName}`;
+
+                                    const { error: uploadError } = await supabase.storage
+                                      .from('course-materials')
+                                      .upload(filePath, file);
+
+                                    if (uploadError) throw uploadError;
+
+                                    const { data } = supabase.storage
+                                      .from('course-materials')
+                                      .getPublicUrl(filePath);
+
+                                    updateTestQuestion(currentItemIndex, { image_url: data.publicUrl });
+                                  } catch (error) {
+                                    console.error('Upload error:', error);
+                                  } finally {
+                                    setUploading(false);
+                                  }
+                                }}
+                              />
+                              {testQuestions[currentItemIndex]?.image_url && (
+                                <img 
+                                  src={testQuestions[currentItemIndex].image_url} 
+                                  alt="" 
+                                  className="max-w-xs rounded mt-2" 
+                                />
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Explanation (Optional)</Label>
+                            <Textarea
+                              value={testQuestions[currentItemIndex]?.explanation || ""}
+                              onChange={(e) =>
+                                updateTestQuestion(currentItemIndex, { explanation: e.target.value })
+                              }
+                              placeholder="Explain the correct answer"
+                              rows={2}
+                            />
+                          </div>
+                        </>
+                      )}
                     </CardContent>
                   </>
                 ) : null}
