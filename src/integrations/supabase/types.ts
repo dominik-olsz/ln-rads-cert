@@ -139,40 +139,40 @@ export type Database = {
       }
       courses: {
         Row: {
+          course_includes: string | null
           created_at: string | null
           description: string
-          duration: string
           hero_image: string | null
           id: string
-          level: string | null
           price: number | null
           title: string
           total_lessons: number
           updated_at: string | null
+          what_you_learn: string | null
         }
         Insert: {
+          course_includes?: string | null
           created_at?: string | null
           description: string
-          duration: string
           hero_image?: string | null
           id?: string
-          level?: string | null
           price?: number | null
           title: string
           total_lessons?: number
           updated_at?: string | null
+          what_you_learn?: string | null
         }
         Update: {
+          course_includes?: string | null
           created_at?: string | null
           description?: string
-          duration?: string
           hero_image?: string | null
           id?: string
-          level?: string | null
           price?: number | null
           title?: string
           total_lessons?: number
           updated_at?: string | null
+          what_you_learn?: string | null
         }
         Relationships: []
       }
@@ -290,9 +290,9 @@ export type Database = {
           correct_answer: string
           course_id: string
           created_at: string | null
-          difficulty: string | null
           explanation: string | null
           id: string
+          image_url: string | null
           option_a: string
           option_b: string
           option_c: string
@@ -304,9 +304,9 @@ export type Database = {
           correct_answer: string
           course_id: string
           created_at?: string | null
-          difficulty?: string | null
           explanation?: string | null
           id?: string
+          image_url?: string | null
           option_a: string
           option_b: string
           option_c: string
@@ -318,9 +318,9 @@ export type Database = {
           correct_answer?: string
           course_id?: string
           created_at?: string | null
-          difficulty?: string | null
           explanation?: string | null
           id?: string
+          image_url?: string | null
           option_a?: string
           option_b?: string
           option_c?: string

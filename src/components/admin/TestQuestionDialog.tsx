@@ -17,8 +17,8 @@ interface TestQuestion {
   option_c: string;
   option_d: string;
   correct_answer: string;
-  difficulty: string;
   explanation?: string;
+  image_url?: string;
 }
 
 interface TestQuestionDialogProps {
@@ -37,8 +37,9 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess }: TestQue
   const [optionC, setOptionC] = useState('');
   const [optionD, setOptionD] = useState('');
   const [correctAnswer, setCorrectAnswer] = useState('');
-  const [difficulty, setDifficulty] = useState('medium');
   const [explanation, setExplanation] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -55,8 +56,8 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess }: TestQue
       setOptionC(question.option_c);
       setOptionD(question.option_d);
       setCorrectAnswer(question.correct_answer);
-      setDifficulty(question.difficulty || 'medium');
       setExplanation(question.explanation || '');
+      setImageUrl(question.image_url || '');
     } else {
       setCourseId('');
       setQuestionText('');
@@ -65,8 +66,8 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess }: TestQue
       setOptionC('');
       setOptionD('');
       setCorrectAnswer('');
-      setDifficulty('medium');
       setExplanation('');
+      setImageUrl('');
     }
   }, [question, open]);
 
@@ -76,6 +77,43 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess }: TestQue
       .select('id, title')
       .order('title');
     if (data) setCourses(data);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `question-images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('course-materials')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('course-materials')
+        .getPublicUrl(filePath);
+
+      setImageUrl(data.publicUrl);
+      toast({
+        title: 'Success',
+        description: 'Image uploaded successfully',
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload image',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,8 +129,8 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess }: TestQue
         option_c: optionC,
         option_d: optionD,
         correct_answer: correctAnswer,
-        difficulty,
         explanation: explanation || null,
+        image_url: imageUrl || null,
       };
 
       if (question?.id) {
@@ -207,34 +245,38 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess }: TestQue
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="correctAnswer">Correct Answer</Label>
-              <Select value={correctAnswer} onValueChange={setCorrectAnswer} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select correct answer" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="A">A</SelectItem>
-                  <SelectItem value="B">B</SelectItem>
-                  <SelectItem value="C">C</SelectItem>
-                  <SelectItem value="D">D</SelectItem>
-                </SelectContent>
-              </Select>
+          <div>
+            <Label htmlFor="correctAnswer">Correct Answer</Label>
+            <Select value={correctAnswer} onValueChange={setCorrectAnswer} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select correct answer" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="A">A</SelectItem>
+                <SelectItem value="B">B</SelectItem>
+                <SelectItem value="C">C</SelectItem>
+                <SelectItem value="D">D</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="image">Question Image (Optional)</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploading}
+              />
+              {uploading && <span className="text-sm text-muted-foreground">Uploading...</span>}
             </div>
-            <div>
-              <Label htmlFor="difficulty">Difficulty</Label>
-              <Select value={difficulty} onValueChange={setDifficulty}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {imageUrl && (
+              <div className="mt-2">
+                <img src={imageUrl} alt="Question" className="max-w-xs rounded" />
+              </div>
+            )}
           </div>
 
           <div>

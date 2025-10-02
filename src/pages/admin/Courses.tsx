@@ -11,8 +11,10 @@ interface Course {
   id: string;
   title: string;
   description: string;
-  duration: string;
   total_lessons: number;
+  price?: number;
+  course_includes?: string;
+  what_you_learn?: string;
 }
 
 const AdminCourses = () => {
@@ -107,8 +109,8 @@ const AdminCourses = () => {
                   {course.description}
                 </p>
                 <div className="flex justify-between items-center text-sm mb-4">
-                  <span>{course.duration}</span>
                   <span>{course.total_lessons} lessons</span>
+                  <span>€{course.price || 0}</span>
                 </div>
                 <div className="flex gap-2">
                   <Button 

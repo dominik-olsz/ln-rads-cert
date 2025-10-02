@@ -17,8 +17,8 @@ interface TestQuestion {
   option_c: string;
   option_d: string;
   correct_answer: string;
-  difficulty: string;
   explanation?: string;
+  image_url?: string;
   courses: {
     title: string;
   };
@@ -119,7 +119,6 @@ const AdminTests = () => {
                 <TableRow>
                   <TableHead>Question</TableHead>
                   <TableHead>Course</TableHead>
-                  <TableHead>Difficulty</TableHead>
                   <TableHead>Answer</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -127,11 +126,15 @@ const AdminTests = () => {
               <TableBody>
                 {questions.map((question) => (
                   <TableRow key={question.id}>
-                    <TableCell className="max-w-md truncate">
-                      {question.question_text}
+                    <TableCell className="max-w-md">
+                      <div className="flex items-center gap-2">
+                        {question.image_url && (
+                          <img src={question.image_url} alt="" className="w-10 h-10 object-cover rounded" />
+                        )}
+                        <span className="truncate">{question.question_text}</span>
+                      </div>
                     </TableCell>
                     <TableCell>{question.courses?.title}</TableCell>
-                    <TableCell className="capitalize">{question.difficulty}</TableCell>
                     <TableCell>{question.correct_answer}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">

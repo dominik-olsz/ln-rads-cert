@@ -11,8 +11,10 @@ interface Course {
   id?: string;
   title: string;
   description: string;
-  duration: string;
   total_lessons: number;
+  price?: number;
+  course_includes?: string;
+  what_you_learn?: string;
 }
 
 interface CourseDialogProps {
@@ -25,8 +27,10 @@ interface CourseDialogProps {
 const CourseDialog = ({ open, onOpenChange, course, onSuccess }: CourseDialogProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [duration, setDuration] = useState('');
   const [totalLessons, setTotalLessons] = useState(0);
+  const [price, setPrice] = useState(0);
+  const [courseIncludes, setCourseIncludes] = useState('');
+  const [whatYouLearn, setWhatYouLearn] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -34,13 +38,17 @@ const CourseDialog = ({ open, onOpenChange, course, onSuccess }: CourseDialogPro
     if (course) {
       setTitle(course.title);
       setDescription(course.description);
-      setDuration(course.duration);
       setTotalLessons(course.total_lessons);
+      setPrice(course.price || 0);
+      setCourseIncludes(course.course_includes || '');
+      setWhatYouLearn(course.what_you_learn || '');
     } else {
       setTitle('');
       setDescription('');
-      setDuration('');
       setTotalLessons(0);
+      setPrice(0);
+      setCourseIncludes('');
+      setWhatYouLearn('');
     }
   }, [course, open]);
 
@@ -52,8 +60,10 @@ const CourseDialog = ({ open, onOpenChange, course, onSuccess }: CourseDialogPro
       const courseData = {
         title,
         description,
-        duration,
         total_lessons: totalLessons,
+        price,
+        course_includes: courseIncludes || null,
+        what_you_learn: whatYouLearn || null,
       };
 
       if (course?.id) {
@@ -122,16 +132,6 @@ const CourseDialog = ({ open, onOpenChange, course, onSuccess }: CourseDialogPro
             />
           </div>
           <div>
-            <Label htmlFor="duration">Duration</Label>
-            <Input
-              id="duration"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              placeholder="e.g., 4 weeks"
-              required
-            />
-          </div>
-          <div>
             <Label htmlFor="totalLessons">Total Lessons</Label>
             <Input
               id="totalLessons"
@@ -140,6 +140,37 @@ const CourseDialog = ({ open, onOpenChange, course, onSuccess }: CourseDialogPro
               onChange={(e) => setTotalLessons(Number(e.target.value))}
               required
               min="0"
+            />
+          </div>
+          <div>
+            <Label htmlFor="price">Price (€)</Label>
+            <Input
+              id="price"
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(Number(e.target.value))}
+              placeholder="299"
+              min="0"
+            />
+          </div>
+          <div>
+            <Label htmlFor="courseIncludes">This course includes</Label>
+            <Textarea
+              id="courseIncludes"
+              value={courseIncludes}
+              onChange={(e) => setCourseIncludes(e.target.value)}
+              placeholder="List what's included..."
+              rows={3}
+            />
+          </div>
+          <div>
+            <Label htmlFor="whatYouLearn">What You'll Learn</Label>
+            <Textarea
+              id="whatYouLearn"
+              value={whatYouLearn}
+              onChange={(e) => setWhatYouLearn(e.target.value)}
+              placeholder="Key learning outcomes..."
+              rows={3}
             />
           </div>
           <div className="flex justify-end gap-2">

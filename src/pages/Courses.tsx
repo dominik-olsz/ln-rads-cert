@@ -12,10 +12,10 @@ interface Course {
   title: string;
   description: string;
   price: number;
-  duration: string;
-  level: string;
   hero_image?: string;
   total_lessons: number;
+  course_includes?: string;
+  what_you_learn?: string;
 }
 
 const Courses = () => {
@@ -53,8 +53,7 @@ const Courses = () => {
   const filteredCourses = courses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLevel = levelFilter === "all" || course.level.toLowerCase() === levelFilter.toLowerCase();
-    return matchesSearch && matchesLevel;
+    return matchesSearch;
   });
 
   if (loading) {
@@ -79,27 +78,14 @@ const Courses = () => {
             Browse our comprehensive collection of radiology training courses
           </p>
           
-          <div className="flex flex-col md:flex-row gap-4 max-w-2xl">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search courses..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Select value={levelFilter} onValueChange={setLevelFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                <SelectItem value="beginner">Beginner</SelectItem>
-                <SelectItem value="intermediate">Intermediate</SelectItem>
-                <SelectItem value="advanced">Advanced</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="relative max-w-2xl">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search courses..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
       </section>
@@ -119,9 +105,7 @@ const Courses = () => {
                   title={course.title}
                   description={course.description}
                   price={course.price}
-                  duration={course.duration}
-                  students={0}
-                  level={course.level}
+                  totalLessons={course.total_lessons}
                   imageUrl={course.hero_image || "/placeholder.svg"}
                 />
               ))}

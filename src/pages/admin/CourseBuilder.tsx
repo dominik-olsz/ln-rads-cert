@@ -37,7 +37,7 @@ interface TestQuestion {
   option_d: string;
   correct_answer: string;
   explanation?: string;
-  difficulty?: string;
+  image_url?: string;
 }
 
 const CourseBuilder = () => {
@@ -50,10 +50,10 @@ const CourseBuilder = () => {
   // Course basic info
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [duration, setDuration] = useState("");
   const [price, setPrice] = useState(0);
-  const [level, setLevel] = useState("Beginner");
   const [heroImage, setHeroImage] = useState<string | null>(null);
+  const [courseIncludes, setCourseIncludes] = useState("");
+  const [whatYouLearn, setWhatYouLearn] = useState("");
 
   // Lessons
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -79,10 +79,10 @@ const CourseBuilder = () => {
 
       setTitle(courseData.title);
       setDescription(courseData.description);
-      setDuration(courseData.duration);
       setPrice(courseData.price || 0);
-      setLevel(courseData.level || "Beginner");
       setHeroImage(courseData.hero_image);
+      setCourseIncludes(courseData.course_includes || "");
+      setWhatYouLearn(courseData.what_you_learn || "");
 
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
@@ -190,8 +190,7 @@ const CourseBuilder = () => {
       option_b: "",
       option_c: "",
       option_d: "",
-      correct_answer: "A",
-      difficulty: "Medium"
+      correct_answer: "A"
     };
     const updated = [...lessons];
     updated[lessonIndex].questions.push(newQuestion);
@@ -234,11 +233,11 @@ const CourseBuilder = () => {
           .insert({
             title,
             description,
-            duration,
             price,
-            level,
             hero_image: heroImage,
-            total_lessons: lessons.length
+            total_lessons: lessons.length,
+            course_includes: courseIncludes,
+            what_you_learn: whatYouLearn
           })
           .select()
           .single();
@@ -251,11 +250,11 @@ const CourseBuilder = () => {
           .update({
             title,
             description,
-            duration,
             price,
-            level,
             hero_image: heroImage,
-            total_lessons: lessons.length
+            total_lessons: lessons.length,
+            course_includes: courseIncludes,
+            what_you_learn: whatYouLearn
           })
           .eq('id', courseId);
 
@@ -297,7 +296,7 @@ const CourseBuilder = () => {
             option_d: q.option_d,
             correct_answer: q.correct_answer,
             explanation: q.explanation,
-            difficulty: q.difficulty
+            image_url: q.image_url
           }));
 
           const { error: questionsError } = await supabase
@@ -392,30 +391,14 @@ const CourseBuilder = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Course Title *</Label>
-                    <Input
-                      id="title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="e.g., Chest X-Ray Fundamentals"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="level">Level</Label>
-                    <Select value={level} onValueChange={setLevel}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Beginner">Beginner</SelectItem>
-                        <SelectItem value="Intermediate">Intermediate</SelectItem>
-                        <SelectItem value="Advanced">Advanced</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="title">Course Title *</Label>
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g., Chest X-Ray Fundamentals"
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -429,27 +412,37 @@ const CourseBuilder = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="duration">Duration</Label>
-                    <Input
-                      id="duration"
-                      value={duration}
-                      onChange={(e) => setDuration(e.target.value)}
-                      placeholder="e.g., 12 hours"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Price (€)</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    value={price}
+                    onChange={(e) => setPrice(Number(e.target.value))}
+                    placeholder="299"
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price ($)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      value={price}
-                      onChange={(e) => setPrice(Number(e.target.value))}
-                      placeholder="299"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="courseIncludes">This course includes</Label>
+                  <Textarea
+                    id="courseIncludes"
+                    value={courseIncludes}
+                    onChange={(e) => setCourseIncludes(e.target.value)}
+                    placeholder="List what's included in the course..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="whatYouLearn">What You'll Learn</Label>
+                  <Textarea
+                    id="whatYouLearn"
+                    value={whatYouLearn}
+                    onChange={(e) => setWhatYouLearn(e.target.value)}
+                    placeholder="Key learning outcomes..."
+                    rows={3}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -629,22 +622,41 @@ const CourseBuilder = () => {
                                     </div>
 
                                     <div className="space-y-2">
-                                      <Label>Difficulty</Label>
-                                      <Select
-                                        value={question.difficulty || "Medium"}
-                                        onValueChange={(value) =>
-                                          updateQuestion(currentLesson, qIndex, { difficulty: value })
-                                        }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="Easy">Easy</SelectItem>
-                                          <SelectItem value="Medium">Medium</SelectItem>
-                                          <SelectItem value="Hard">Hard</SelectItem>
-                                        </SelectContent>
-                                      </Select>
+                                      <Label>Image (Optional)</Label>
+                                      <Input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={async (e) => {
+                                          const file = e.target.files?.[0];
+                                          if (!file) return;
+                                          
+                                          setUploading(true);
+                                          try {
+                                            const fileExt = file.name.split('.').pop();
+                                            const fileName = `${Math.random()}.${fileExt}`;
+                                            const filePath = `question-images/${fileName}`;
+
+                                            const { error: uploadError } = await supabase.storage
+                                              .from('course-materials')
+                                              .upload(filePath, file);
+
+                                            if (uploadError) throw uploadError;
+
+                                            const { data } = supabase.storage
+                                              .from('course-materials')
+                                              .getPublicUrl(filePath);
+
+                                            updateQuestion(currentLesson, qIndex, { image_url: data.publicUrl });
+                                          } catch (error) {
+                                            console.error('Upload error:', error);
+                                          } finally {
+                                            setUploading(false);
+                                          }
+                                        }}
+                                      />
+                                      {question.image_url && (
+                                        <img src={question.image_url} alt="" className="max-w-xs rounded mt-2" />
+                                      )}
                                     </div>
                                   </div>
 
@@ -693,16 +705,28 @@ const CourseBuilder = () => {
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <h2 className="text-3xl font-bold">{title || "Untitled Course"}</h2>
-                      <Badge>{level}</Badge>
                     </div>
                     <p className="text-muted-foreground">{description}</p>
                   </div>
 
                   <div className="flex gap-6 text-sm text-muted-foreground">
-                    <span>Duration: {duration || "Not set"}</span>
-                    <span>Price: ${price}</span>
+                    <span>Price: €{price}</span>
                     <span>Lessons: {lessons.length}</span>
                   </div>
+
+                  {courseIncludes && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">This course includes:</h3>
+                      <p className="text-muted-foreground whitespace-pre-wrap">{courseIncludes}</p>
+                    </div>
+                  )}
+
+                  {whatYouLearn && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">What You'll Learn:</h3>
+                      <p className="text-muted-foreground whitespace-pre-wrap">{whatYouLearn}</p>
+                    </div>
+                  )}
 
                   <div className="space-y-4">
                     <h3 className="text-xl font-semibold">Course Content</h3>

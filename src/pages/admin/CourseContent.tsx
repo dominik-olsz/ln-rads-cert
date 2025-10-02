@@ -40,7 +40,6 @@ interface Material {
 interface TestQuestion {
   id: string;
   question_text: string;
-  difficulty: string;
   course_id: string;
   option_a: string;
   option_b: string;
@@ -48,6 +47,7 @@ interface TestQuestion {
   option_d: string;
   correct_answer: string;
   explanation?: string;
+  image_url?: string;
 }
 
 const CourseContent = () => {
@@ -260,8 +260,10 @@ const CourseContent = () => {
                       <div className="text-sm">
                         <span className="font-medium">Correct: </span>
                         <span className="text-primary">{question.correct_answer}</span>
-                        <span className="ml-4 text-muted-foreground">Difficulty: {question.difficulty}</span>
                       </div>
+                      {question.image_url && (
+                        <img src={question.image_url} alt="" className="max-w-xs rounded mt-2" />
+                      )}
                       {question.explanation && (
                         <p className="text-sm text-muted-foreground">{question.explanation}</p>
                       )}
