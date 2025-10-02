@@ -21,33 +21,6 @@ const Footer = () => {
               The official certification program for the Lymph Nodes Reporting and Data System. 
               Advancing diagnostic accuracy in lymph node assessment.
             </p>
-            <div className="flex gap-3">
-              <a 
-                href="mailto:info@lnrads.com" 
-                className="p-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
-                aria-label="Email"
-              >
-                <Mail className="h-5 w-5 text-primary" />
-              </a>
-              <a 
-                href="https://linkedin.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
-                aria-label="LinkedIn"
-              >
-                <Linkedin className="h-5 w-5 text-primary" />
-              </a>
-              <a 
-                href="https://twitter.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
-                aria-label="Twitter"
-              >
-                <Twitter className="h-5 w-5 text-primary" />
-              </a>
-            </div>
           </div>
           
           {/* Quick links */}
