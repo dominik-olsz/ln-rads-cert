@@ -342,6 +342,7 @@ export type Database = {
           option_b: string
           option_c: string
           option_d: string
+          order_index: number | null
           question_text: string
           test_type: string
           updated_at: string | null
@@ -358,6 +359,7 @@ export type Database = {
           option_b: string
           option_c: string
           option_d: string
+          order_index?: number | null
           question_text: string
           test_type?: string
           updated_at?: string | null
@@ -374,6 +376,7 @@ export type Database = {
           option_b?: string
           option_c?: string
           option_d?: string
+          order_index?: number | null
           question_text?: string
           test_type?: string
           updated_at?: string | null

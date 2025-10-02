@@ -45,6 +45,7 @@ interface TestQuestion {
   correct_answer: string;
   explanation?: string;
   image_url?: string;
+  order_index?: number;
 }
 
 const CourseBuilder = () => {
@@ -62,13 +63,14 @@ const CourseBuilder = () => {
   const [courseIncludes, setCourseIncludes] = useState("");
   const [whatYouLearn, setWhatYouLearn] = useState("");
 
-  // Lessons and Test Questions combined
+  // Lessons and Test Questions
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
   const [currentItemType, setCurrentItemType] = useState<'lesson' | 'question'>('lesson');
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [showAddQuestionsDialog, setShowAddQuestionsDialog] = useState(false);
   const [numQuestionsToAdd, setNumQuestionsToAdd] = useState(1);
+  const [draggedItem, setDraggedItem] = useState<{type: 'lesson' | 'question', index: number} | null>(null);
 
   useEffect(() => {
     if (courseId && courseId !== "new") {
@@ -107,6 +109,7 @@ const CourseBuilder = () => {
         .from('test_questions')
         .select('*')
         .eq('course_id', courseId)
+        .eq('test_type', 'course')
         .is('lesson_id', null);
 
       if (questionsError) throw questionsError;
@@ -122,7 +125,10 @@ const CourseBuilder = () => {
       }));
 
       setLessons(lessonsWithoutQuestions);
-      setTestQuestions(questionsData || []);
+      setTestQuestions((questionsData || []).map(q => ({
+        ...q,
+        order_index: q.order_index ?? 999
+      })));
     } catch (error: any) {
       toast({
         title: "Error",
@@ -206,7 +212,8 @@ const CourseBuilder = () => {
       option_b: "",
       option_c: "",
       option_d: "",
-      correct_answer: "A"
+      correct_answer: "A",
+      order_index: testQuestions.length + i
     }));
     setTestQuestions([...testQuestions, ...newQuestions]);
     setCurrentItemType('question');
@@ -227,6 +234,75 @@ const CourseBuilder = () => {
     if (currentItemType === 'question' && currentItemIndex >= updated.length) {
       setCurrentItemIndex(Math.max(0, updated.length - 1));
     }
+  };
+
+  // Combined items for display with drag-and-drop
+  type DisplayItem = {
+    type: 'lesson' | 'question';
+    index: number;
+    orderIndex: number;
+    title: string;
+  };
+
+  const getDisplayItems = (): DisplayItem[] => {
+    const items: DisplayItem[] = [
+      ...lessons.map((l, idx) => ({
+        type: 'lesson' as const,
+        index: idx,
+        orderIndex: l.order_index,
+        title: l.title
+      })),
+      ...testQuestions.map((q, idx) => ({
+        type: 'question' as const,
+        index: idx,
+        orderIndex: q.order_index ?? 9999,
+        title: q.question_text || `Question ${idx + 1}`
+      }))
+    ];
+    return items.sort((a, b) => a.orderIndex - b.orderIndex);
+  };
+
+  const handleDragStart = (type: 'lesson' | 'question', index: number) => {
+    setDraggedItem({ type, index });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetType: 'lesson' | 'question', targetIndex: number) => {
+    if (!draggedItem) return;
+    
+    const displayItems = getDisplayItems();
+    const draggedDisplayIndex = displayItems.findIndex(
+      item => item.type === draggedItem.type && item.index === draggedItem.index
+    );
+    const targetDisplayIndex = displayItems.findIndex(
+      item => item.type === targetType && item.index === targetIndex
+    );
+
+    if (draggedDisplayIndex === -1 || targetDisplayIndex === -1) return;
+
+    // Reorder the display items
+    const reordered = [...displayItems];
+    const [removed] = reordered.splice(draggedDisplayIndex, 1);
+    reordered.splice(targetDisplayIndex, 0, removed);
+
+    // Update order_index for all items
+    const newLessons = [...lessons];
+    const newQuestions = [...testQuestions];
+
+    reordered.forEach((item, newOrder) => {
+      if (item.type === 'lesson') {
+        newLessons[item.index] = { ...newLessons[item.index], order_index: newOrder };
+      } else {
+        newQuestions[item.index] = { ...newQuestions[item.index], order_index: newOrder };
+      }
+    });
+
+    setLessons(newLessons);
+    setTestQuestions(newQuestions);
+    setDraggedItem(null);
   };
 
   const saveCourse = async () => {
@@ -314,7 +390,7 @@ const CourseBuilder = () => {
       );
 
       if (validQuestions.length > 0) {
-        const questionsToInsert = validQuestions.map(q => ({
+        const questionsToInsert = validQuestions.map((q, idx) => ({
           course_id: finalCourseId,
           lesson_id: null,
           question_text: q.question_text,
@@ -325,7 +401,8 @@ const CourseBuilder = () => {
           correct_answer: q.correct_answer,
           explanation: q.explanation || null,
           image_url: q.image_url || null,
-          test_type: 'course'
+          test_type: 'course',
+          order_index: q.order_index ?? (lessons.length + idx)
         }));
 
         const { error: questionsError } = await supabase
@@ -515,59 +592,52 @@ const CourseBuilder = () => {
                   <CardTitle className="text-base">Course Content</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {lessons?.map((lesson, index) => (
-                    <div
-                      key={`lesson-${index}`}
-                      className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-muted ${
-                        currentItemType === 'lesson' && currentItemIndex === index ? 'bg-muted' : ''
-                      }`}
-                      onClick={() => {
-                        setCurrentItemType('lesson');
-                        setCurrentItemIndex(index);
-                      }}
-                    >
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="flex-1 text-sm truncate">{lesson.title}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteLesson(index);
+                  {getDisplayItems().map((item) => {
+                    const isCurrent = item.type === currentItemType && item.index === currentItemIndex;
+                    return (
+                      <div
+                        key={`${item.type}-${item.index}`}
+                        draggable
+                        onDragStart={() => handleDragStart(item.type, item.index)}
+                        onDragOver={handleDragOver}
+                        onDrop={() => handleDrop(item.type, item.index)}
+                        className={`flex items-center gap-2 p-2 rounded cursor-move hover:bg-muted transition-colors ${
+                          isCurrent ? 'bg-muted ring-2 ring-primary' : ''
+                        }`}
+                        onClick={() => {
+                          setCurrentItemType(item.type);
+                          setCurrentItemIndex(item.index);
                         }}
                       >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                  
-                  {testQuestions?.map((question, index) => (
-                    <div
-                      key={`question-${index}`}
-                      className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-muted ${
-                        currentItemType === 'question' && currentItemIndex === index ? 'bg-muted' : ''
-                      }`}
-                      onClick={() => {
-                        setCurrentItemType('question');
-                        setCurrentItemIndex(index);
-                      }}
-                    >
-                      <Badge variant="outline" className="h-4 px-1.5 text-xs">Q</Badge>
-                      <span className="flex-1 text-sm truncate">
-                        {question.question_text || `Question ${index + 1}`}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteTestQuestion(index);
-                        }}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
+                        <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        {item.type === 'lesson' ? (
+                          <>
+                            <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="flex-1 text-sm truncate">{item.title}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Badge variant="outline" className="h-4 px-1.5 text-xs flex-shrink-0">Q</Badge>
+                            <span className="flex-1 text-sm truncate">{item.title}</span>
+                          </>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.type === 'lesson') {
+                              deleteLesson(item.index);
+                            } else {
+                              deleteTestQuestion(item.index);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                   
                   <div className="space-y-2 pt-2">
                     <Button variant="outline" className="w-full" onClick={addLesson}>
@@ -583,7 +653,7 @@ const CourseBuilder = () => {
               </Card>
 
               <Card className="col-span-3">
-                {lessons.length === 0 && (!testQuestions || testQuestions.length === 0) ? (
+                {lessons.length === 0 && testQuestions.length === 0 ? (
                   <CardContent className="flex items-center justify-center min-h-[400px]">
                     <div className="text-center">
                       <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
