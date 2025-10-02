@@ -285,25 +285,36 @@ const CourseBuilder = () => {
 
         if (lessonError) throw lessonError;
 
-        // Save questions for this lesson
+        // Save questions for this lesson - only save complete questions
         if (lesson.questions.length > 0) {
-          const questionsToInsert = lesson.questions.map(q => ({
-            course_id: finalCourseId,
-            question_text: q.question_text,
-            option_a: q.option_a,
-            option_b: q.option_b,
-            option_c: q.option_c,
-            option_d: q.option_d,
-            correct_answer: q.correct_answer,
-            explanation: q.explanation,
-            image_url: q.image_url
-          }));
+          const validQuestions = lesson.questions.filter(q => 
+            q.question_text?.trim() && 
+            q.option_a?.trim() && 
+            q.option_b?.trim() && 
+            q.option_c?.trim() && 
+            q.option_d?.trim() &&
+            q.correct_answer
+          );
 
-          const { error: questionsError } = await supabase
-            .from('test_questions')
-            .insert(questionsToInsert);
+          if (validQuestions.length > 0) {
+            const questionsToInsert = validQuestions.map(q => ({
+              course_id: finalCourseId,
+              question_text: q.question_text,
+              option_a: q.option_a,
+              option_b: q.option_b,
+              option_c: q.option_c,
+              option_d: q.option_d,
+              correct_answer: q.correct_answer,
+              explanation: q.explanation || null,
+              image_url: q.image_url || null
+            }));
 
-          if (questionsError) throw questionsError;
+            const { error: questionsError } = await supabase
+              .from('test_questions')
+              .insert(questionsToInsert);
+
+            if (questionsError) throw questionsError;
+          }
         }
       }
 
