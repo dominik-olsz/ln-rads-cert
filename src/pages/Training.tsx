@@ -406,18 +406,37 @@ const Training = () => {
                           )}
                           <p className="text-lg font-medium">{q.question_text}</p>
                           <div role="radiogroup" className="space-y-2">
-                            {options.map((o) => (
-                              <button
-                                type="button"
-                                key={o.key}
-                                role="radio"
-                                aria-checked={selected === o.key}
-                                onClick={() => setSelectedAnswers(prev => ({ ...prev, [currentCourseItem.id]: o.key as 'A' | 'B' | 'C' | 'D' }))}
-                                className={`border rounded-lg p-3 w-full text-left transition-colors ${selected === o.key ? 'bg-accent/20 border-primary' : 'hover:bg-muted'}`}
-                              >
-                                <span className="font-medium mr-1">{o.key}:</span> {o.text}
-                              </button>
-                            ))}
+                            {options.map((o) => {
+                              const isSelected = selected === o.key;
+                              const isCorrectOption = o.key === correctLetter;
+                              const showFeedback = selected !== undefined;
+                              
+                              let buttonClass = 'border rounded-lg p-3 w-full text-left transition-colors ';
+                              if (isSelected) {
+                                if (showFeedback && isCorrect) {
+                                  buttonClass += 'bg-green-100 border-green-500 dark:bg-green-900/20 dark:border-green-600';
+                                } else if (showFeedback && !isCorrect) {
+                                  buttonClass += 'bg-red-100 border-red-500 dark:bg-red-900/20 dark:border-red-600';
+                                } else {
+                                  buttonClass += 'bg-accent/20 border-primary';
+                                }
+                              } else {
+                                buttonClass += 'hover:bg-muted';
+                              }
+                              
+                              return (
+                                <button
+                                  type="button"
+                                  key={o.key}
+                                  role="radio"
+                                  aria-checked={isSelected}
+                                  onClick={() => setSelectedAnswers(prev => ({ ...prev, [currentCourseItem.id]: o.key as 'A' | 'B' | 'C' | 'D' }))}
+                                  className={buttonClass}
+                                >
+                                  <span className="font-medium mr-1">{o.key}:</span> {o.text}
+                                </button>
+                              );
+                            })}
                           </div>
                           {selected && (
                             <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mt-4">
