@@ -41,6 +41,11 @@ const Navbar = () => {
           <Link to="/courses" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
             Courses
           </Link>
+          {user && !isAdmin && (
+            <Link to="/dashboard" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
+              My Dashboard
+            </Link>
+          )}
           {isAdmin && (
             <Link to="/admin/dashboard" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
               Admin

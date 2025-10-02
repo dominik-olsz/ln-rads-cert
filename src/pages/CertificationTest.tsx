@@ -42,6 +42,7 @@ const CertificationTest = () => {
   const [submitting, setSubmitting] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [timerActive, setTimerActive] = useState(false);
+  const [hasPurchased, setHasPurchased] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -91,6 +92,26 @@ const CertificationTest = () => {
         navigate("/auth");
         return;
       }
+
+      // Check if user has purchased this course
+      const { data: purchaseData } = await supabase
+        .from('course_purchases')
+        .select('id')
+        .eq('user_id', user?.id)
+        .eq('course_id', courseId)
+        .single();
+
+      if (!purchaseData) {
+        toast({
+          title: "Purchase Required",
+          description: "You need to purchase this course to take the certification test",
+          variant: "destructive",
+        });
+        navigate(`/course/${courseId}`);
+        return;
+      }
+
+      setHasPurchased(true);
 
       const { data, error } = await supabase.functions.invoke('get-test-questions', {
         body: { courseId }

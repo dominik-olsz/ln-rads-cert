@@ -1,0 +1,346 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Award, BookOpen, FileText } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import Navbar from "@/components/Navbar";
+
+interface PurchasedCourse {
+  id: string;
+  title: string;
+  description: string;
+  hero_image: string | null;
+  total_lessons: number;
+  completed_lessons: number;
+  purchased_at: string;
+}
+
+interface Certificate {
+  id: string;
+  certificate_number: string;
+  issued_at: string;
+  course_title: string;
+  score: number;
+}
+
+export default function Dashboard() {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [purchasedCourses, setPurchasedCourses] = useState<PurchasedCourse[]>([]);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch purchased courses
+      const { data: purchases, error: purchasesError } = await supabase
+        .from("course_purchases")
+        .select(`
+          course_id,
+          purchased_at,
+          courses (
+            id,
+            title,
+            description,
+            hero_image,
+            total_lessons
+          )
+        `)
+        .eq("user_id", user?.id);
+
+      if (purchasesError) throw purchasesError;
+
+      // Fetch user progress for each course
+      const coursesWithProgress = await Promise.all(
+        (purchases || []).map(async (purchase: any) => {
+          const { data: progress } = await supabase
+            .from("user_progress")
+            .select("*")
+            .eq("user_id", user?.id)
+            .eq("course_id", purchase.course_id)
+            .eq("completed", true);
+
+          return {
+            id: purchase.courses.id,
+            title: purchase.courses.title,
+            description: purchase.courses.description,
+            hero_image: purchase.courses.hero_image,
+            total_lessons: purchase.courses.total_lessons,
+            completed_lessons: progress?.length || 0,
+            purchased_at: purchase.purchased_at,
+          };
+        })
+      );
+
+      setPurchasedCourses(coursesWithProgress);
+
+      // Fetch certificates
+      const { data: certsData, error: certsError } = await supabase
+        .from("certificates")
+        .select(`
+          id,
+          certificate_number,
+          issued_at,
+          course_id,
+          test_attempts (
+            score
+          ),
+          courses (
+            title
+          )
+        `)
+        .eq("user_id", user?.id)
+        .order("issued_at", { ascending: false });
+
+      if (certsError) throw certsError;
+
+      const formattedCerts = (certsData || []).map((cert: any) => ({
+        id: cert.id,
+        certificate_number: cert.certificate_number,
+        issued_at: cert.issued_at,
+        course_title: cert.courses?.title || "Unknown Course",
+        score: cert.test_attempts?.score || 0,
+      }));
+
+      setCertificates(formattedCerts);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadCertificate = async (certificateId: string) => {
+    try {
+      const { data: cert } = await supabase
+        .from("certificates")
+        .select("test_attempt_id")
+        .eq("id", certificateId)
+        .single();
+
+      if (!cert) return;
+
+      const { data, error } = await supabase.functions.invoke("generate-certificate", {
+        body: { attemptId: cert.test_attempt_id },
+      });
+
+      if (error) throw error;
+
+      const blob = new Blob([data.html], { type: "text/html" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `certificate-${certificateId}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Success",
+        description: "Certificate downloaded successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex items-center justify-center h-96">
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-4xl font-bold mb-8">My Dashboard</h1>
+
+        <Tabs defaultValue="courses" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
+            <TabsTrigger value="courses">
+              <BookOpen className="w-4 h-4 mr-2" />
+              My Courses
+            </TabsTrigger>
+            <TabsTrigger value="tests">
+              <FileText className="w-4 h-4 mr-2" />
+              Certification Tests
+            </TabsTrigger>
+            <TabsTrigger value="certificates">
+              <Award className="w-4 h-4 mr-2" />
+              Certificates
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="courses">
+            {purchasedCourses.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-center text-muted-foreground">
+                    You haven't purchased any courses yet.{" "}
+                    <Button variant="link" onClick={() => navigate("/courses")} className="p-0">
+                      Browse courses
+                    </Button>
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {purchasedCourses.map((course) => {
+                  const progressPercentage = course.total_lessons > 0
+                    ? (course.completed_lessons / course.total_lessons) * 100
+                    : 0;
+
+                  return (
+                    <Card key={course.id}>
+                      {course.hero_image && (
+                        <img
+                          src={course.hero_image}
+                          alt={course.title}
+                          className="w-full h-48 object-cover rounded-t-lg"
+                        />
+                      )}
+                      <CardHeader>
+                        <CardTitle>{course.title}</CardTitle>
+                        <CardDescription>{course.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <div className="flex justify-between text-sm mb-2">
+                            <span>Progress</span>
+                            <span>{course.completed_lessons} / {course.total_lessons} lessons</span>
+                          </div>
+                          <Progress value={progressPercentage} />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => navigate(`/training/${course.id}`)}
+                            className="flex-1"
+                          >
+                            Continue Training
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="tests">
+            {purchasedCourses.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-center text-muted-foreground">
+                    Purchase a course to access certification tests.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {purchasedCourses.map((course) => (
+                  <Card key={course.id}>
+                    <CardHeader>
+                      <CardTitle>{course.title}</CardTitle>
+                      <CardDescription>Certification Test</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Complete the certification test to earn your certificate.
+                      </p>
+                      <Button
+                        onClick={() => navigate(`/certification-test?courseId=${course.id}`)}
+                        className="w-full"
+                      >
+                        Start Test
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="certificates">
+            {certificates.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-center text-muted-foreground">
+                    You haven't earned any certificates yet. Complete a certification test to earn one!
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {certificates.map((cert) => (
+                  <Card key={cert.id}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Award className="w-5 h-5 text-primary" />
+                        {cert.course_title}
+                      </CardTitle>
+                      <CardDescription>
+                        Certificate #{cert.certificate_number}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2 text-sm">
+                        <p>
+                          <span className="font-medium">Score:</span> {cert.score}%
+                        </p>
+                        <p>
+                          <span className="font-medium">Issued:</span>{" "}
+                          {new Date(cert.issued_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => downloadCertificate(cert.id)}
+                        className="w-full"
+                        variant="outline"
+                      >
+                        Download Certificate
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}

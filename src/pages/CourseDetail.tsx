@@ -33,6 +33,8 @@ const CourseDetail = () => {
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -56,6 +58,18 @@ const CourseDetail = () => {
 
         if (lessonsError) throw lessonsError;
         setLessons(lessonsData || []);
+
+        // Check if user has purchased this course
+        if (user) {
+          const { data: purchaseData } = await supabase
+            .from('course_purchases')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('course_id', id)
+            .single();
+          
+          setHasPurchased(!!purchaseData);
+        }
       } catch (error) {
         console.error('Error fetching course:', error);
         toast.error('Failed to load course details');
@@ -67,12 +81,46 @@ const CourseDetail = () => {
     if (id) {
       fetchCourseData();
     }
-  }, [id]);
+  }, [id, user]);
+
+  const handleBuyCourse = async () => {
+    if (!user) {
+      toast.error('Please sign in to purchase this course');
+      navigate('/auth');
+      return;
+    }
+
+    setPurchasing(true);
+    try {
+      const { error } = await supabase
+        .from('course_purchases')
+        .insert({
+          user_id: user.id,
+          course_id: id,
+          amount_paid: course?.price || 0,
+          payment_status: 'completed'
+        });
+
+      if (error) throw error;
+
+      setHasPurchased(true);
+      toast.success('Course purchased successfully!');
+    } catch (error: any) {
+      console.error('Error purchasing course:', error);
+      toast.error(error.message || 'Failed to purchase course');
+    } finally {
+      setPurchasing(false);
+    }
+  };
 
   const handleStartTraining = () => {
     if (!user) {
       toast.error('Please sign in to start training');
       navigate('/auth');
+      return;
+    }
+    if (!hasPurchased) {
+      toast.error('Please purchase this course first');
       return;
     }
     navigate(`/training/${id}`);
@@ -82,6 +130,10 @@ const CourseDetail = () => {
     if (!user) {
       toast.error('Please sign in to take the certification test');
       navigate('/auth');
+      return;
+    }
+    if (!hasPurchased) {
+      toast.error('Please purchase this course first');
       return;
     }
     navigate('/certification-test', { state: { courseId: id } });
@@ -200,23 +252,36 @@ const CourseDetail = () => {
                   </div>
 
                   <div className="space-y-3">
-                    <Button 
-                      className="w-full" 
-                      size="lg"
-                      onClick={handleStartTraining}
-                    >
-                      <PlayCircle className="h-5 w-5 mr-2" />
-                      Start Training
-                    </Button>
-                    <Button 
-                      className="w-full" 
-                      size="lg"
-                      variant="outline"
-                      onClick={handleStartCertification}
-                    >
-                      <Award className="h-5 w-5 mr-2" />
-                      Take Certification Test
-                    </Button>
+                    {!hasPurchased ? (
+                      <Button 
+                        className="w-full" 
+                        size="lg"
+                        onClick={handleBuyCourse}
+                        disabled={purchasing}
+                      >
+                        {purchasing ? 'Processing...' : 'Buy Course'}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button 
+                          className="w-full" 
+                          size="lg"
+                          onClick={handleStartTraining}
+                        >
+                          <PlayCircle className="h-5 w-5 mr-2" />
+                          Start Training
+                        </Button>
+                        <Button 
+                          className="w-full" 
+                          size="lg"
+                          variant="outline"
+                          onClick={handleStartCertification}
+                        >
+                          <Award className="h-5 w-5 mr-2" />
+                          Take Certification Test
+                        </Button>
+                      </>
+                    )}
                   </div>
 
                   {courseIncludesList.length > 0 && (

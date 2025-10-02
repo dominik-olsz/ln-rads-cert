@@ -20,6 +20,7 @@ import AdminCourses from "./pages/admin/Courses";
 import AdminTests from "./pages/admin/Tests";
 import CourseBuilder from "./pages/admin/CourseBuilder";
 import AdminCertificates from "./pages/admin/Certificates";
+import Dashboard from "./pages/Dashboard";
 
 
 
@@ -31,6 +32,7 @@ const App = () => (
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/course/:id" element={<CourseDetail />} />
         <Route path="/training/:courseId" element={<Training />} />

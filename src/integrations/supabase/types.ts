@@ -137,6 +137,41 @@ export type Database = {
           },
         ]
       }
+      course_purchases: {
+        Row: {
+          amount_paid: number
+          course_id: string
+          id: string
+          payment_status: string
+          purchased_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_paid?: number
+          course_id: string
+          id?: string
+          payment_status?: string
+          purchased_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_paid?: number
+          course_id?: string
+          id?: string
+          payment_status?: string
+          purchased_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_purchases_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           course_includes: string | null

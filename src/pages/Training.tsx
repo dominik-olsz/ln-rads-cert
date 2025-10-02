@@ -35,6 +35,7 @@ const Training = () => {
   const [materials, setMaterials] = useState<{ [lessonId: string]: CourseMaterial[] }>({});
   const [loading, setLoading] = useState(true);
   const [userProgress, setUserProgress] = useState<Set<string>>(new Set());
+  const [hasPurchased, setHasPurchased] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -45,6 +46,22 @@ const Training = () => {
 
     const fetchTrainingData = async () => {
       try {
+        // Check if user has purchased this course
+        const { data: purchaseData } = await supabase
+          .from('course_purchases')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('course_id', courseId)
+          .single();
+
+        if (!purchaseData) {
+          toast.error('You need to purchase this course first');
+          navigate(`/course/${courseId}`);
+          return;
+        }
+
+        setHasPurchased(true);
+
         // Fetch lessons
         const { data: lessonsData, error: lessonsError } = await supabase
           .from('lessons')
