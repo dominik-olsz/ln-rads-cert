@@ -64,11 +64,11 @@ serve(async (req) => {
       throw new Error('Certificate can only be generated for passed tests (80%+)');
     }
 
-    // Get user profile
+    // Get user profile (for the student, not the admin)
     const { data: profile } = await supabaseClient
       .from('profiles')
       .select('full_name, certificate_name')
-      .eq('id', user.id)
+      .eq('id', attempt.user_id)
       .single();
 
     const certificateName = profile?.certificate_name || profile?.full_name || 'Student';
