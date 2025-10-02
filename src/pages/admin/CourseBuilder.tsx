@@ -647,7 +647,7 @@ const CourseBuilder = () => {
                     </Button>
                     <Button variant="outline" className="w-full" onClick={addTestQuestion}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Test Question
+                      Add Test Questions
                     </Button>
                   </div>
                 </CardContent>
