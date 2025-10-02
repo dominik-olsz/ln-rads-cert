@@ -173,22 +173,27 @@ const CertificationTest = () => {
             // If no answer selected, mark as unanswered (will be counted as wrong)
             const currentAnswerValue = answers[question.id]?.answer || '';
             
-            setAnswers(prev => ({
-              ...prev,
+            const newAnswers = {
+              ...answers,
               [question.id]: {
                 questionId: question.id,
-                answer: currentAnswerValue, // Empty string if no answer selected
+                answer: currentAnswerValue,
                 timeSpent: 30,
                 locked: true
               }
-            }));
+            };
 
-            toast({
-              title: "Time's Up!",
-              description: currentAnswerValue 
-                ? "Your answer has been locked" 
-                : "Question marked as unanswered (incorrect)",
-              variant: "destructive",
+            setAnswers(newAnswers);
+            
+            // Save the locked state to database
+            saveProgress(currentQuestion, newAnswers, 0).then(() => {
+              toast({
+                title: "Time's Up!",
+                description: currentAnswerValue 
+                  ? "Your answer has been locked" 
+                  : "Question marked as unanswered (incorrect)",
+                variant: "destructive",
+              });
             });
           }
           return 0;
