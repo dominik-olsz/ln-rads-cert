@@ -353,8 +353,8 @@ const CourseBuilder = () => {
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="lessons">Lessons ({lessons.length})</TabsTrigger>
-            <TabsTrigger value="questions">Test Questions ({testQuestions.length})</TabsTrigger>
+            <TabsTrigger value="lessons">Lessons ({lessons?.length || 0})</TabsTrigger>
+            <TabsTrigger value="questions">Test Questions ({testQuestions?.length || 0})</TabsTrigger>
             <TabsTrigger value="preview">Preview</TabsTrigger>
           </TabsList>
 
@@ -565,7 +565,7 @@ const CourseBuilder = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {testQuestions.length === 0 ? (
+                {!testQuestions || testQuestions.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-muted-foreground">No test questions yet. Add your first question.</p>
                   </div>
@@ -762,7 +762,7 @@ const CourseBuilder = () => {
                     ))}
                   </div>
 
-                  {testQuestions.length > 0 && (
+                  {testQuestions && testQuestions.length > 0 && (
                     <div className="space-y-2">
                       <h3 className="font-semibold">Course Test Questions</h3>
                       <Badge variant="secondary">{testQuestions.length} test questions</Badge>
