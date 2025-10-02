@@ -992,7 +992,7 @@ const CourseBuilder = () => {
                     {questionGroups.length > 0 && (
                       <div className="flex items-center gap-2">
                         <FileQuestion className="h-5 w-5" />
-                        <span>{questionGroups.reduce((acc, g) => acc + g.questions.length, 0)} course questions</span>
+                        <span>{questionGroups.reduce((acc, g) => acc + g.questions.length, 0)} course use cases</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2">
