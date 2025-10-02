@@ -92,15 +92,15 @@ const Training = () => {
         if (lessonsError) throw lessonsError;
 
         // Fetch course-level test questions (not certification tests)
-        const { data: questionsData, error: questionsError } = await supabase
-          .from('test_questions')
-          .select('*')
-          .eq('course_id', courseId)
-          .eq('test_type', 'course')
-          .is('lesson_id', null)
-          .order('created_at');
+        // Fetch course-level test questions via backend function to bypass RLS
+        const { data: fnData, error: fnError } = await supabase.functions.invoke('get-test-questions', {
+          body: { courseId }
+        });
 
-        if (questionsError) throw questionsError;
+        if (fnError) throw fnError as any;
+
+        const questionsData = (fnData?.questions || []);
+
 
         // Combine lessons and questions into course items
         const items: CourseItem[] = [
