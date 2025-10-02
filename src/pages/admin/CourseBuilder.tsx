@@ -54,12 +54,11 @@ const CourseBuilder = () => {
   const [courseIncludes, setCourseIncludes] = useState("");
   const [whatYouLearn, setWhatYouLearn] = useState("");
 
-  // Lessons
+  // Lessons and Test Questions combined
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [currentLesson, setCurrentLesson] = useState(0);
-
-  // Test Questions (course-level)
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
+  const [currentItemType, setCurrentItemType] = useState<'lesson' | 'question'>('lesson');
+  const [currentItemIndex, setCurrentItemIndex] = useState(0);
 
   useEffect(() => {
     if (courseId && courseId !== "new") {
@@ -168,7 +167,8 @@ const CourseBuilder = () => {
       content_text: ""
     };
     setLessons([...lessons, newLesson]);
-    setCurrentLesson(lessons.length);
+    setCurrentItemType('lesson');
+    setCurrentItemIndex(lessons.length);
   };
 
   const updateLesson = (index: number, updates: Partial<Lesson>) => {
@@ -180,8 +180,8 @@ const CourseBuilder = () => {
   const deleteLesson = (index: number) => {
     const updated = lessons.filter((_, i) => i !== index);
     setLessons(updated.map((l, i) => ({ ...l, order_index: i })));
-    if (currentLesson >= updated.length) {
-      setCurrentLesson(Math.max(0, updated.length - 1));
+    if (currentItemType === 'lesson' && currentItemIndex >= updated.length) {
+      setCurrentItemIndex(Math.max(0, updated.length - 1));
     }
   };
 
@@ -195,6 +195,8 @@ const CourseBuilder = () => {
       correct_answer: "A"
     };
     setTestQuestions([...testQuestions, newQuestion]);
+    setCurrentItemType('question');
+    setCurrentItemIndex(testQuestions.length);
   };
 
   const updateTestQuestion = (index: number, updates: Partial<TestQuestion>) => {
@@ -204,7 +206,11 @@ const CourseBuilder = () => {
   };
 
   const deleteTestQuestion = (index: number) => {
-    setTestQuestions(testQuestions.filter((_, i) => i !== index));
+    const updated = testQuestions.filter((_, i) => i !== index);
+    setTestQuestions(updated);
+    if (currentItemType === 'question' && currentItemIndex >= updated.length) {
+      setCurrentItemIndex(Math.max(0, updated.length - 1));
+    }
   };
 
   const saveCourse = async () => {
@@ -351,10 +357,9 @@ const CourseBuilder = () => {
         </div>
 
         <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="lessons">Lessons ({lessons?.length || 0})</TabsTrigger>
-            <TabsTrigger value="questions">Test Questions ({testQuestions?.length || 0})</TabsTrigger>
+            <TabsTrigger value="content">Course Content ({lessons?.length || 0} lessons, {testQuestions?.length || 0} questions)</TabsTrigger>
             <TabsTrigger value="preview">Preview</TabsTrigger>
           </TabsList>
 
@@ -454,22 +459,25 @@ const CourseBuilder = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="lessons">
+          <TabsContent value="content">
             <div className="grid grid-cols-4 gap-6">
               <Card className="col-span-1">
                 <CardHeader>
-                  <CardTitle className="text-base">Lessons</CardTitle>
+                  <CardTitle className="text-base">Course Content</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-3">
                   {lessons.map((lesson, index) => (
                     <div
-                      key={index}
+                      key={`lesson-${index}`}
                       className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-muted ${
-                        currentLesson === index ? 'bg-muted' : ''
+                        currentItemType === 'lesson' && currentItemIndex === index ? 'bg-muted' : ''
                       }`}
-                      onClick={() => setCurrentLesson(index)}
+                      onClick={() => {
+                        setCurrentItemType('lesson');
+                        setCurrentItemIndex(index);
+                      }}
                     >
-                      <GripVertical className="h-4 w-4 text-muted-foreground" />
+                      <FileText className="h-4 w-4 text-muted-foreground" />
                       <span className="flex-1 text-sm truncate">{lesson.title}</span>
                       <Button
                         variant="ghost"
@@ -483,40 +491,75 @@ const CourseBuilder = () => {
                       </Button>
                     </div>
                   ))}
-                  <Button variant="outline" className="w-full" onClick={addLesson}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Lesson
-                  </Button>
+                  
+                  {testQuestions.map((question, index) => (
+                    <div
+                      key={`question-${index}`}
+                      className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-muted ${
+                        currentItemType === 'question' && currentItemIndex === index ? 'bg-muted' : ''
+                      }`}
+                      onClick={() => {
+                        setCurrentItemType('question');
+                        setCurrentItemIndex(index);
+                      }}
+                    >
+                      <Badge variant="outline" className="h-4 px-1.5 text-xs">Q</Badge>
+                      <span className="flex-1 text-sm truncate">
+                        {question.question_text || `Question ${index + 1}`}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteTestQuestion(index);
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  <div className="space-y-2 pt-2">
+                    <Button variant="outline" className="w-full" onClick={addLesson}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Lesson
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={addTestQuestion}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Test Question
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
               <Card className="col-span-3">
-                {lessons.length === 0 ? (
+                {lessons.length === 0 && (!testQuestions || testQuestions.length === 0) ? (
                   <CardContent className="flex items-center justify-center min-h-[400px]">
                     <div className="text-center">
                       <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">No lessons yet. Add your first lesson to get started.</p>
+                      <p className="text-muted-foreground">No content yet. Add a lesson or test question to get started.</p>
                     </div>
                   </CardContent>
-                ) : (
+                ) : currentItemType === 'lesson' && lessons[currentItemIndex] ? (
                   <>
                     <CardHeader>
-                      <CardTitle>Lesson {currentLesson + 1}: {lessons[currentLesson]?.title}</CardTitle>
+                      <CardTitle>Lesson {currentItemIndex + 1}: {lessons[currentItemIndex]?.title}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Lesson Title</Label>
                           <Input
-                            value={lessons[currentLesson]?.title}
-                            onChange={(e) => updateLesson(currentLesson, { title: e.target.value })}
+                            value={lessons[currentItemIndex]?.title}
+                            onChange={(e) => updateLesson(currentItemIndex, { title: e.target.value })}
                           />
                         </div>
                         <div className="space-y-2">
                           <Label>Duration</Label>
                           <Input
-                            value={lessons[currentLesson]?.duration || ""}
-                            onChange={(e) => updateLesson(currentLesson, { duration: e.target.value })}
+                            value={lessons[currentItemIndex]?.duration || ""}
+                            onChange={(e) => updateLesson(currentItemIndex, { duration: e.target.value })}
                             placeholder="e.g., 15 min"
                           />
                         </div>
@@ -527,8 +570,8 @@ const CourseBuilder = () => {
                         <div className="flex gap-2">
                           <Video className="h-4 w-4 mt-3 text-muted-foreground" />
                           <Input
-                            value={lessons[currentLesson]?.content_url || ""}
-                            onChange={(e) => updateLesson(currentLesson, { content_url: e.target.value })}
+                            value={lessons[currentItemIndex]?.content_url || ""}
+                            onChange={(e) => updateLesson(currentItemIndex, { content_url: e.target.value })}
                             placeholder="YouTube or Vimeo URL"
                           />
                         </div>
@@ -540,170 +583,142 @@ const CourseBuilder = () => {
                           Use the editor below. You can drag and drop images directly into the content.
                         </p>
                         <RichTextEditor
-                          key={currentLesson}
-                          content={lessons[currentLesson]?.content_text || ""}
-                          onChange={(content) => updateLesson(currentLesson, { content_text: content })}
+                          key={currentItemIndex}
+                          content={lessons[currentItemIndex]?.content_text || ""}
+                          onChange={(content) => updateLesson(currentItemIndex, { content_text: content })}
                           placeholder="Write your lesson content here. Drag and drop images to include them."
                         />
                       </div>
                     </CardContent>
                   </>
-                )}
+                ) : currentItemType === 'question' && testQuestions[currentItemIndex] ? (
+                  <>
+                    <CardHeader>
+                      <CardTitle>Test Question {currentItemIndex + 1}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Question</Label>
+                        <Input
+                          value={testQuestions[currentItemIndex]?.question_text}
+                          onChange={(e) =>
+                            updateTestQuestion(currentItemIndex, { question_text: e.target.value })
+                          }
+                          placeholder="Enter question"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          value={testQuestions[currentItemIndex]?.option_a}
+                          onChange={(e) =>
+                            updateTestQuestion(currentItemIndex, { option_a: e.target.value })
+                          }
+                          placeholder="Option A"
+                        />
+                        <Input
+                          value={testQuestions[currentItemIndex]?.option_b}
+                          onChange={(e) =>
+                            updateTestQuestion(currentItemIndex, { option_b: e.target.value })
+                          }
+                          placeholder="Option B"
+                        />
+                        <Input
+                          value={testQuestions[currentItemIndex]?.option_c}
+                          onChange={(e) =>
+                            updateTestQuestion(currentItemIndex, { option_c: e.target.value })
+                          }
+                          placeholder="Option C"
+                        />
+                        <Input
+                          value={testQuestions[currentItemIndex]?.option_d}
+                          onChange={(e) =>
+                            updateTestQuestion(currentItemIndex, { option_d: e.target.value })
+                          }
+                          placeholder="Option D"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>Correct Answer</Label>
+                          <Select
+                            value={testQuestions[currentItemIndex]?.correct_answer}
+                            onValueChange={(value) =>
+                              updateTestQuestion(currentItemIndex, { correct_answer: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="A">Option A</SelectItem>
+                              <SelectItem value="B">Option B</SelectItem>
+                              <SelectItem value="C">Option C</SelectItem>
+                              <SelectItem value="D">Option D</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Image (Optional)</Label>
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              
+                              setUploading(true);
+                              try {
+                                const fileExt = file.name.split('.').pop();
+                                const fileName = `${Math.random()}.${fileExt}`;
+                                const filePath = `question-images/${fileName}`;
+
+                                const { error: uploadError } = await supabase.storage
+                                  .from('course-materials')
+                                  .upload(filePath, file);
+
+                                if (uploadError) throw uploadError;
+
+                                const { data } = supabase.storage
+                                  .from('course-materials')
+                                  .getPublicUrl(filePath);
+
+                                updateTestQuestion(currentItemIndex, { image_url: data.publicUrl });
+                              } catch (error) {
+                                console.error('Upload error:', error);
+                              } finally {
+                                setUploading(false);
+                              }
+                            }}
+                          />
+                          {testQuestions[currentItemIndex]?.image_url && (
+                            <img 
+                              src={testQuestions[currentItemIndex].image_url} 
+                              alt="" 
+                              className="max-w-xs rounded mt-2" 
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Explanation (Optional)</Label>
+                        <Textarea
+                          value={testQuestions[currentItemIndex]?.explanation || ""}
+                          onChange={(e) =>
+                            updateTestQuestion(currentItemIndex, { explanation: e.target.value })
+                          }
+                          placeholder="Explain the correct answer"
+                          rows={2}
+                        />
+                      </div>
+                    </CardContent>
+                  </>
+                ) : null}
               </Card>
             </div>
-          </TabsContent>
-
-          <TabsContent value="questions">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Course Test Questions</CardTitle>
-                  <Button onClick={addTestQuestion}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Test Question
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!testQuestions || testQuestions.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-muted-foreground">No test questions yet. Add your first question.</p>
-                  </div>
-                ) : (
-                  testQuestions.map((question, qIndex) => (
-                    <Card key={qIndex}>
-                      <CardContent className="pt-6 space-y-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 space-y-4">
-                            <div className="space-y-2">
-                              <Label>Question {qIndex + 1}</Label>
-                              <Input
-                                value={question.question_text}
-                                onChange={(e) =>
-                                  updateTestQuestion(qIndex, { question_text: e.target.value })
-                                }
-                                placeholder="Enter question"
-                              />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                              <Input
-                                value={question.option_a}
-                                onChange={(e) =>
-                                  updateTestQuestion(qIndex, { option_a: e.target.value })
-                                }
-                                placeholder="Option A"
-                              />
-                              <Input
-                                value={question.option_b}
-                                onChange={(e) =>
-                                  updateTestQuestion(qIndex, { option_b: e.target.value })
-                                }
-                                placeholder="Option B"
-                              />
-                              <Input
-                                value={question.option_c}
-                                onChange={(e) =>
-                                  updateTestQuestion(qIndex, { option_c: e.target.value })
-                                }
-                                placeholder="Option C"
-                              />
-                              <Input
-                                value={question.option_d}
-                                onChange={(e) =>
-                                  updateTestQuestion(qIndex, { option_d: e.target.value })
-                                }
-                                placeholder="Option D"
-                              />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-2">
-                                <Label>Correct Answer</Label>
-                                <Select
-                                  value={question.correct_answer}
-                                  onValueChange={(value) =>
-                                    updateTestQuestion(qIndex, { correct_answer: value })
-                                  }
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="A">Option A</SelectItem>
-                                    <SelectItem value="B">Option B</SelectItem>
-                                    <SelectItem value="C">Option C</SelectItem>
-                                    <SelectItem value="D">Option D</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label>Image (Optional)</Label>
-                                <Input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    
-                                    setUploading(true);
-                                    try {
-                                      const fileExt = file.name.split('.').pop();
-                                      const fileName = `${Math.random()}.${fileExt}`;
-                                      const filePath = `question-images/${fileName}`;
-
-                                      const { error: uploadError } = await supabase.storage
-                                        .from('course-materials')
-                                        .upload(filePath, file);
-
-                                      if (uploadError) throw uploadError;
-
-                                      const { data } = supabase.storage
-                                        .from('course-materials')
-                                        .getPublicUrl(filePath);
-
-                                      updateTestQuestion(qIndex, { image_url: data.publicUrl });
-                                    } catch (error) {
-                                      console.error('Upload error:', error);
-                                    } finally {
-                                      setUploading(false);
-                                    }
-                                  }}
-                                />
-                                {question.image_url && (
-                                  <img src={question.image_url} alt="" className="max-w-xs rounded mt-2" />
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Explanation (Optional)</Label>
-                              <Textarea
-                                value={question.explanation || ""}
-                                onChange={(e) =>
-                                  updateTestQuestion(qIndex, { explanation: e.target.value })
-                                }
-                                placeholder="Explain the correct answer"
-                                rows={2}
-                              />
-                            </div>
-                          </div>
-
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteTestQuestion(qIndex)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="preview">
