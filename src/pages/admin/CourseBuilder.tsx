@@ -664,7 +664,7 @@ const CourseBuilder = () => {
                 ) : currentItemType === 'lesson' && lessons[currentItemIndex] ? (
                   <>
                     <CardHeader>
-                      <CardTitle>Lesson {currentItemIndex + 1}: {lessons[currentItemIndex]?.title}</CardTitle>
+                      <CardTitle>{lessons[currentItemIndex]?.title}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="grid grid-cols-2 gap-4">
