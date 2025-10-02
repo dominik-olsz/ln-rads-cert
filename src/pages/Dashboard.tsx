@@ -119,7 +119,7 @@ export default function Dashboard() {
           certificate_number,
           issued_at,
           course_id,
-          test_attempts (
+          test_attempts!inner (
             score
           ),
           courses (
@@ -129,13 +129,16 @@ export default function Dashboard() {
         .eq("user_id", user?.id)
         .order("issued_at", { ascending: false });
 
-      if (certsError) throw certsError;
+      if (certsError) {
+        console.error("Certificate fetch error:", certsError);
+        throw certsError;
+      }
 
       const formattedCerts = (certsData || []).map((cert: any) => ({
         id: cert.id,
         certificate_number: cert.certificate_number,
         issued_at: cert.issued_at,
-        course_title: cert.courses?.title || "Unknown Course",
+        course_title: cert.courses?.title || "LN-RADS Certification",
         score: cert.test_attempts?.score || 0,
       }));
 
