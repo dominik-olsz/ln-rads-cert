@@ -35,7 +35,7 @@ const Hero = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/auth">
+            <Link to="/courses">
               <Button size="lg" className="gap-2">
                 Start Certification Course
                 <ArrowRight className="h-4 w-4" />
