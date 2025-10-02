@@ -115,8 +115,10 @@ const AdminUsers = () => {
 
   const deleteUser = async (userId: string) => {
     try {
-      // Delete user from auth.users (this will cascade delete related data due to foreign keys)
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      // Call edge function to delete user
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId },
+      });
 
       if (error) throw error;
 
@@ -126,11 +128,11 @@ const AdminUsers = () => {
       });
 
       fetchUsers();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting user:', error);
       toast({
         title: 'Error',
-        description: 'Failed to delete user. Make sure you have admin permissions.',
+        description: error.message || 'Failed to delete user',
         variant: 'destructive',
       });
     } finally {
