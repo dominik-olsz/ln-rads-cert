@@ -343,6 +343,7 @@ export type Database = {
           option_c: string
           option_d: string
           question_text: string
+          test_type: string
           updated_at: string | null
         }
         Insert: {
@@ -358,6 +359,7 @@ export type Database = {
           option_c: string
           option_d: string
           question_text: string
+          test_type?: string
           updated_at?: string | null
         }
         Update: {
@@ -373,6 +375,7 @@ export type Database = {
           option_c?: string
           option_d?: string
           question_text?: string
+          test_type?: string
           updated_at?: string | null
         }
         Relationships: [

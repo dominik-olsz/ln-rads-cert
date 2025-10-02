@@ -19,6 +19,7 @@ interface TestQuestion {
   correct_answer: string;
   explanation?: string;
   image_url?: string;
+  test_type?: 'course' | 'certification';
 }
 
 interface TestQuestionDialogProps {
@@ -26,9 +27,10 @@ interface TestQuestionDialogProps {
   onOpenChange: (open: boolean) => void;
   question?: TestQuestion | null;
   onSuccess: () => void;
+  testType?: 'course' | 'certification';
 }
 
-const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess }: TestQuestionDialogProps) => {
+const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType = 'certification' }: TestQuestionDialogProps) => {
   const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
   const [courseId, setCourseId] = useState('');
   const [questionText, setQuestionText] = useState('');
@@ -131,6 +133,7 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess }: TestQue
         correct_answer: correctAnswer,
         explanation: explanation || null,
         image_url: imageUrl || null,
+        test_type: question?.test_type || testType,
       };
 
       if (question?.id) {

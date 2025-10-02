@@ -24,7 +24,7 @@ interface TestQuestion {
   };
 }
 
-const AdminTests = () => {
+const AdminCertificationTests = () => {
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -36,6 +36,7 @@ const AdminTests = () => {
       const { data, error } = await supabase
         .from('test_questions')
         .select('*, courses(title)')
+        .eq('test_type', 'certification')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -99,19 +100,19 @@ const AdminTests = () => {
       <Navbar />
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Test Management</h1>
+          <h1 className="text-4xl font-bold">Certification Test Management</h1>
           <Button onClick={() => {
             setSelectedQuestion(null);
             setDialogOpen(true);
           }}>
             <Plus className="h-4 w-4 mr-2" />
-            Add Question
+            Add Certification Question
           </Button>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Test Questions</CardTitle>
+            <CardTitle>Certification Test Questions</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -169,10 +170,11 @@ const AdminTests = () => {
           onOpenChange={setDialogOpen}
           question={selectedQuestion}
           onSuccess={fetchQuestions}
+          testType="certification"
         />
       </main>
     </div>
   );
 };
 
-export default AdminTests;
+export default AdminCertificationTests;

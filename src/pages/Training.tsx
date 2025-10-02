@@ -91,13 +91,16 @@ const Training = () => {
 
         if (lessonsError) throw lessonsError;
 
-        // Fetch course-level test questions via backend function (respects RLS and hides answers)
-        const { data: fnData, error: fnError } = await supabase.functions.invoke('get-test-questions', {
-          body: { courseId },
-        });
+        // Fetch course-level test questions (not certification tests)
+        const { data: questionsData, error: questionsError } = await supabase
+          .from('test_questions')
+          .select('*')
+          .eq('course_id', courseId)
+          .eq('test_type', 'course')
+          .is('lesson_id', null)
+          .order('created_at');
 
-        if (fnError) throw fnError;
-        const questionsData = (fnData as any)?.questions || [];
+        if (questionsError) throw questionsError;
 
         // Combine lessons and questions into course items
         const items: CourseItem[] = [
@@ -386,11 +389,11 @@ const Training = () => {
                           <span className="font-medium">D:</span> {(currentCourseItem.data as TestQuestion).option_d}
                         </div>
                       </div>
-                      {'correct_answer' in (currentCourseItem.data as any) && (
+                      {(currentCourseItem.data as TestQuestion).correct_answer && (
                         <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mt-4">
-                          <p className="font-semibold mb-2">Correct Answer: {(currentCourseItem.data as any).correct_answer}</p>
-                          {(currentCourseItem.data as any).explanation && (
-                            <p className="text-sm text-muted-foreground">{(currentCourseItem.data as any).explanation}</p>
+                          <p className="font-semibold mb-2">Correct Answer: {(currentCourseItem.data as TestQuestion).correct_answer}</p>
+                          {(currentCourseItem.data as TestQuestion).explanation && (
+                            <p className="text-sm text-muted-foreground">{(currentCourseItem.data as TestQuestion).explanation}</p>
                           )}
                         </div>
                       )}
