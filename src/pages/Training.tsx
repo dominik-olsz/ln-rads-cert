@@ -18,6 +18,14 @@ interface Lesson {
   order_index: number;
 }
 
+interface CourseItem {
+  id: string;
+  type: 'lesson' | 'question';
+  title: string;
+  order_index: number;
+  data: Lesson | TestQuestion;
+}
+
 interface CourseMaterial {
   id: string;
   title: string;
@@ -42,10 +50,9 @@ const Training = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [currentLesson, setCurrentLesson] = useState(0);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [currentItem, setCurrentItem] = useState(0);
+  const [courseItems, setCourseItems] = useState<CourseItem[]>([]);
   const [materials, setMaterials] = useState<{ [lessonId: string]: CourseMaterial[] }>({});
-  const [questions, setQuestions] = useState<{ [lessonId: string]: TestQuestion[] }>({});
   const [loading, setLoading] = useState(true);
   const [userProgress, setUserProgress] = useState<Set<string>>(new Set());
   const [hasPurchased, setHasPurchased] = useState(false);
@@ -83,7 +90,35 @@ const Training = () => {
           .order('order_index');
 
         if (lessonsError) throw lessonsError;
-        setLessons(lessonsData || []);
+
+        // Fetch course-level test questions
+        const { data: questionsData, error: questionsError } = await supabase
+          .from('test_questions')
+          .select('*')
+          .eq('course_id', courseId)
+          .is('lesson_id', null);
+
+        if (questionsError) throw questionsError;
+
+        // Combine lessons and questions into course items
+        const items: CourseItem[] = [
+          ...(lessonsData || []).map((lesson, index) => ({
+            id: lesson.id,
+            type: 'lesson' as const,
+            title: lesson.title,
+            order_index: lesson.order_index,
+            data: lesson
+          })),
+          ...(questionsData || []).map((question, index) => ({
+            id: question.id,
+            type: 'question' as const,
+            title: question.question_text || `Question ${index + 1}`,
+            order_index: (lessonsData?.length || 0) + index,
+            data: question
+          }))
+        ];
+
+        setCourseItems(items);
 
         // Fetch all materials for this course
         const { data: materialsData, error: materialsError } = await supabase
@@ -104,10 +139,6 @@ const Training = () => {
           }
         });
         setMaterials(groupedMaterials);
-
-        // Note: Test questions are now course-level only, not lesson-specific
-        // They won't be displayed in the training view anymore
-        setQuestions({});
 
         // Fetch user progress
         const { data: progressData } = await supabase
@@ -133,10 +164,9 @@ const Training = () => {
     }
   }, [courseId, user, navigate]);
 
-  const lesson = lessons[currentLesson];
-  const progress = lessons.length > 0 ? ((currentLesson + 1) / lessons.length) * 100 : 0;
-  const lessonMaterials = lesson ? materials[lesson.id] || [] : [];
-  const lessonQuestions = lesson ? questions[lesson.id] || [] : [];
+  const currentCourseItem = courseItems[currentItem];
+  const progress = courseItems.length > 0 ? ((currentItem + 1) / courseItems.length) * 100 : 0;
+  const lessonMaterials = currentCourseItem?.type === 'lesson' ? materials[currentCourseItem.id] || [] : [];
 
   // Convert YouTube URLs to embed format
   const getYouTubeEmbedUrl = (url: string) => {
@@ -157,7 +187,9 @@ const Training = () => {
   };
 
   const markLessonComplete = async () => {
-    if (!lesson || !user) return;
+    if (!currentCourseItem || currentCourseItem.type !== 'lesson' || !user) return;
+
+    const lesson = currentCourseItem.data as Lesson;
 
     try {
       // Find existing progress row (avoid upsert without unique index)
@@ -201,17 +233,17 @@ const Training = () => {
   };
 
   const handleNext = async () => {
-    if (lesson && !userProgress.has(lesson.id)) {
+    if (currentCourseItem?.type === 'lesson' && !userProgress.has(currentCourseItem.id)) {
       await markLessonComplete();
     }
-    if (currentLesson < lessons.length - 1) {
-      setCurrentLesson(currentLesson + 1);
+    if (currentItem < courseItems.length - 1) {
+      setCurrentItem(currentItem + 1);
     }
   };
 
   const handlePrevious = () => {
-    if (currentLesson > 0) {
-      setCurrentLesson(currentLesson - 1);
+    if (currentItem > 0) {
+      setCurrentItem(currentItem - 1);
     }
   };
 
@@ -226,7 +258,7 @@ const Training = () => {
     );
   }
 
-  if (lessons.length === 0) {
+  if (courseItems.length === 0) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -246,7 +278,7 @@ const Training = () => {
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-2xl font-bold">Course Training</h1>
             <span className="text-sm text-muted-foreground">
-              Lesson {currentLesson + 1} of {lessons.length}
+              Item {currentItem + 1} of {courseItems.length}
             </span>
           </div>
           <Progress value={progress} className="h-2" />
@@ -256,76 +288,114 @@ const Training = () => {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardContent className="pt-6">
-                <h2 className="text-xl font-bold mb-4">{lesson.title}</h2>
-                
-                {(lesson.content_type === "video" || lesson.content_type === "mixed") && lesson.content_url && (
-                  <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-4">
-                    <iframe
-                      className="w-full h-full"
-                      src={getYouTubeEmbedUrl(lesson.content_url) || lesson.content_url}
-                      title={lesson.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  </div>
-                )}
+                {currentCourseItem?.type === 'lesson' ? (
+                  <>
+                    <h2 className="text-xl font-bold mb-4">{currentCourseItem.title}</h2>
+                    
+                    {((currentCourseItem.data as Lesson).content_type === "video" || (currentCourseItem.data as Lesson).content_type === "mixed") && (currentCourseItem.data as Lesson).content_url && (
+                      <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-4">
+                        <iframe
+                          className="w-full h-full"
+                          src={getYouTubeEmbedUrl((currentCourseItem.data as Lesson).content_url!) || (currentCourseItem.data as Lesson).content_url!}
+                          title={currentCourseItem.title}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    )}
 
-                {lesson.content_type === "image" && lesson.content_url && (
-                  <div className="bg-muted rounded-lg overflow-hidden mb-4 p-4">
-                    <img
-                      src={lesson.content_url}
-                      alt={lesson.title}
-                      className="w-full max-h-[500px] object-contain"
-                    />
-                  </div>
-                )}
+                    {(currentCourseItem.data as Lesson).content_type === "image" && (currentCourseItem.data as Lesson).content_url && (
+                      <div className="bg-muted rounded-lg overflow-hidden mb-4 p-4">
+                        <img
+                          src={(currentCourseItem.data as Lesson).content_url!}
+                          alt={currentCourseItem.title}
+                          className="w-full max-h-[500px] object-contain"
+                        />
+                      </div>
+                    )}
 
-                {(lesson.content_type === "text" || lesson.content_type === "mixed") && lesson.content_text && (
-                  <div className="prose prose-sm max-w-none mb-4" dangerouslySetInnerHTML={{ __html: lesson.content_text }} />
-                )}
+                    {((currentCourseItem.data as Lesson).content_type === "text" || (currentCourseItem.data as Lesson).content_type === "mixed") && (currentCourseItem.data as Lesson).content_text && (
+                      <div className="prose prose-sm max-w-none mb-4" dangerouslySetInnerHTML={{ __html: (currentCourseItem.data as Lesson).content_text! }} />
+                    )}
 
-                {/* Display course materials for this lesson */}
-                {lessonMaterials.length > 0 && (
-                  <div className="space-y-4 mt-6">
-                    <h3 className="font-semibold text-lg">Additional Materials</h3>
-                    {lessonMaterials.map((material) => (
-                      <div key={material.id} className="border rounded-lg p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1">
-                            <h4 className="font-medium mb-2">{material.title}</h4>
-                            {material.explanation && (
-                              <p className="text-sm text-muted-foreground mb-3">{material.explanation}</p>
-                            )}
-                            {material.file_type === 'image' && (
-                              <img 
-                                src={material.file_url} 
-                                alt={material.title}
-                                className="w-full max-h-[400px] object-contain rounded-lg"
-                              />
-                            )}
-                            {material.file_type === 'video' && (
-                              <video 
-                                src={material.file_url} 
-                                controls
-                                className="w-full max-h-[400px] rounded-lg"
-                              />
-                            )}
-                            {material.file_type === 'pdf' && (
-                              <a 
-                                href={material.file_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline"
-                              >
-                                View PDF Document
-                              </a>
-                            )}
+                    {/* Display course materials for this lesson */}
+                    {lessonMaterials.length > 0 && (
+                      <div className="space-y-4 mt-6">
+                        <h3 className="font-semibold text-lg">Additional Materials</h3>
+                        {lessonMaterials.map((material) => (
+                          <div key={material.id} className="border rounded-lg p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="flex-1">
+                                <h4 className="font-medium mb-2">{material.title}</h4>
+                                {material.explanation && (
+                                  <p className="text-sm text-muted-foreground mb-3">{material.explanation}</p>
+                                )}
+                                {material.file_type === 'image' && (
+                                  <img 
+                                    src={material.file_url} 
+                                    alt={material.title}
+                                    className="w-full max-h-[400px] object-contain rounded-lg"
+                                  />
+                                )}
+                                {material.file_type === 'video' && (
+                                  <video 
+                                    src={material.file_url} 
+                                    controls
+                                    className="w-full max-h-[400px] rounded-lg"
+                                  />
+                                )}
+                                {material.file_type === 'pdf' && (
+                                  <a 
+                                    href={material.file_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline"
+                                  >
+                                    View PDF Document
+                                  </a>
+                                )}
+                              </div>
+                            </div>
                           </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : currentCourseItem?.type === 'question' ? (
+                  <>
+                    <h2 className="text-xl font-bold mb-4">Test Question</h2>
+                    <div className="space-y-4">
+                      {(currentCourseItem.data as TestQuestion).image_url && (
+                        <img 
+                          src={(currentCourseItem.data as TestQuestion).image_url!} 
+                          alt="Question" 
+                          className="w-full max-h-[300px] object-contain rounded-lg border"
+                        />
+                      )}
+                      <p className="text-lg font-medium">{(currentCourseItem.data as TestQuestion).question_text}</p>
+                      <div className="space-y-2">
+                        <div className="border rounded-lg p-3">
+                          <span className="font-medium">A:</span> {(currentCourseItem.data as TestQuestion).option_a}
+                        </div>
+                        <div className="border rounded-lg p-3">
+                          <span className="font-medium">B:</span> {(currentCourseItem.data as TestQuestion).option_b}
+                        </div>
+                        <div className="border rounded-lg p-3">
+                          <span className="font-medium">C:</span> {(currentCourseItem.data as TestQuestion).option_c}
+                        </div>
+                        <div className="border rounded-lg p-3">
+                          <span className="font-medium">D:</span> {(currentCourseItem.data as TestQuestion).option_d}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mt-4">
+                        <p className="font-semibold mb-2">Correct Answer: {(currentCourseItem.data as TestQuestion).correct_answer}</p>
+                        {(currentCourseItem.data as TestQuestion).explanation && (
+                          <p className="text-sm text-muted-foreground">{(currentCourseItem.data as TestQuestion).explanation}</p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
               </CardContent>
             </Card>
 
@@ -333,7 +403,7 @@ const Training = () => {
               <Button
                 variant="outline"
                 onClick={handlePrevious}
-                disabled={currentLesson === 0}
+                disabled={currentItem === 0}
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 Previous
@@ -341,7 +411,7 @@ const Training = () => {
               
               <Button
                 onClick={handleNext}
-                disabled={currentLesson === lessons.length - 1}
+                disabled={currentItem === courseItems.length - 1}
               >
                 Next
                 <ChevronRight className="h-4 w-4 ml-2" />
@@ -352,25 +422,30 @@ const Training = () => {
           <div className="lg:col-span-1">
             <Card className="sticky top-20">
               <CardContent className="pt-6">
-                <h3 className="font-semibold mb-4">Course Progress</h3>
+                <h3 className="font-semibold mb-4">Course Content</h3>
                 <div className="space-y-2">
-                  {lessons.map((l, index) => (
+                  {courseItems.map((item, index) => (
                     <button
-                      key={l.id}
-                      onClick={() => setCurrentLesson(index)}
+                      key={item.id}
+                      onClick={() => setCurrentItem(index)}
                       className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        index === currentLesson
+                        index === currentItem
                           ? "bg-primary text-primary-foreground"
-                          : index < currentLesson
+                          : index < currentItem
                           ? "bg-accent/10 border-accent"
                           : "hover:bg-muted"
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        {index < currentLesson && (
+                        {index < currentItem && (
                           <CheckCircle className="h-4 w-4 flex-shrink-0" />
                         )}
-                        <span className="text-sm font-medium line-clamp-1">{l.title}</span>
+                        <div className="flex-1">
+                          <span className="text-xs text-muted-foreground block">
+                            {item.type === 'lesson' ? 'Lesson' : 'Test Question'}
+                          </span>
+                          <span className="text-sm font-medium line-clamp-1">{item.title}</span>
+                        </div>
                       </div>
                     </button>
                   ))}
