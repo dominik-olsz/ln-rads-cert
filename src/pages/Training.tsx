@@ -59,7 +59,6 @@ const Training = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [currentItem, setCurrentItem] = useState(0);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [courseItems, setCourseItems] = useState<CourseItem[]>([]);
   const [materials, setMaterials] = useState<{ [lessonId: string]: CourseMaterial[] }>({});
   const [loading, setLoading] = useState(true);
@@ -121,32 +120,48 @@ const Training = () => {
           console.error('Failed to fetch course test questions via function:', e);
         }
 
-        // Group questions by group_title
-        const questionGroups: { [key: string]: TestQuestion[] } = {};
+        // Group questions by group_title and order_index
+        const questionGroupsMap: Map<string, { title: string; orderIndex: number; questions: any[] }> = new Map();
+        
         questionsData.forEach((question: any) => {
           const groupTitle = question.group_title || 'Test Questions';
-          if (!questionGroups[groupTitle]) {
-            questionGroups[groupTitle] = [];
-          }
-          questionGroups[groupTitle].push(question);
-        });
-
-        // Append question groups after lessons
-        Object.entries(questionGroups).forEach(([groupTitle, questions], groupIndex) => {
-          items.push({
-            id: `group-${groupIndex}`,
-            type: 'questionGroup' as const,
-            title: groupTitle,
-            order_index: (lessonsData?.length || 0) + groupIndex,
-            data: {
-              id: `group-${groupIndex}`,
+          const orderIndex = question.order_index || 0;
+          
+          if (!questionGroupsMap.has(groupTitle)) {
+            questionGroupsMap.set(groupTitle, {
               title: groupTitle,
-              questions: questions.sort((a, b) => a.order_index - b.order_index),
-            },
-          });
+              orderIndex: orderIndex,
+              questions: []
+            });
+          }
+          questionGroupsMap.get(groupTitle)!.questions.push(question);
         });
 
-        setCourseItems(items);
+        // Convert lessons to items
+        const lessonItems: CourseItem[] = (lessonsData || []).map((lesson) => ({
+          id: lesson.id,
+          type: 'lesson' as const,
+          title: lesson.title,
+          order_index: lesson.order_index,
+          data: lesson,
+        }));
+
+        // Convert question groups to items
+        const questionGroupItems: CourseItem[] = Array.from(questionGroupsMap.values()).map((group, idx) => ({
+          id: `group-${idx}`,
+          type: 'questionGroup' as const,
+          title: `${group.title} (${group.questions.length})`,
+          order_index: group.orderIndex,
+          data: {
+            id: `group-${idx}`,
+            title: group.title,
+            questions: group.questions,
+          },
+        }));
+
+        // Combine and sort by order_index
+        const allItems = [...lessonItems, ...questionGroupItems].sort((a, b) => a.order_index - b.order_index);
+        setCourseItems(allItems);
 
         // Fetch all materials for this course
         const { data: materialsData, error: materialsError } = await supabase
@@ -264,41 +279,14 @@ const Training = () => {
     if (currentCourseItem?.type === 'lesson' && !userProgress.has(currentCourseItem.id)) {
       await markLessonComplete();
     }
-    
-    // If we're in a question group, try to move to next question in the group first
-    if (currentCourseItem?.type === 'questionGroup') {
-      const group = currentCourseItem.data as TestQuestionGroup;
-      if (currentQuestionIndex < group.questions.length - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-        return;
-      }
-    }
-    
-    // Move to next item and reset question index
     if (currentItem < courseItems.length - 1) {
       setCurrentItem(currentItem + 1);
-      setCurrentQuestionIndex(0);
     }
   };
 
   const handlePrevious = () => {
-    // If we're in a question group, try to move to previous question in the group first
-    if (currentCourseItem?.type === 'questionGroup' && currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-      return;
-    }
-    
-    // Move to previous item
     if (currentItem > 0) {
-      const prevItem = courseItems[currentItem - 1];
       setCurrentItem(currentItem - 1);
-      // If previous item is a question group, go to its last question
-      if (prevItem.type === 'questionGroup') {
-        const group = prevItem.data as TestQuestionGroup;
-        setCurrentQuestionIndex(group.questions.length - 1);
-      } else {
-        setCurrentQuestionIndex(0);
-      }
     }
   };
 
@@ -420,93 +408,111 @@ const Training = () => {
                   <>
                     {(() => {
                       const group = currentCourseItem.data as TestQuestionGroup;
-                      const q = group.questions[currentQuestionIndex];
                       
-                      if (!q) return null;
-                      
-                      const selected = selectedAnswers[q.id];
-
-                      const normalizeLetter = (val?: string | null) => {
-                        if (!val) return '';
-                        const v = String(val).trim();
-                        const first = v.charAt(0).toUpperCase();
-                        if (['A','B','C','D'].includes(first)) return first;
-                        const lower = v.toLowerCase();
-                        if (lower === (q.option_a || '').toLowerCase()) return 'A';
-                        if (lower === (q.option_b || '').toLowerCase()) return 'B';
-                        if (lower === (q.option_c || '').toLowerCase()) return 'C';
-                        if (lower === (q.option_d || '').toLowerCase()) return 'D';
-                        return first;
-                      };
-
-                      const correctLetter = normalizeLetter(q.correct_answer);
-                      const isCorrect = selected && correctLetter ? selected === correctLetter : false;
-
-                      const options = [
-                        { key: 'A', text: q.option_a },
-                        { key: 'B', text: q.option_b },
-                        { key: 'C', text: q.option_c },
-                        { key: 'D', text: q.option_d },
-                      ] as const;
                       return (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold">{currentCourseItem.title}</h2>
-                            <span className="text-sm text-muted-foreground">
-                              Question {currentQuestionIndex + 1} of {group.questions.length}
-                            </span>
+                        <div className="space-y-6">
+                          <div className="mb-6">
+                            <h2 className="text-xl font-bold">{group.title}</h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {group.questions.length} {group.questions.length === 1 ? 'question' : 'questions'}
+                            </p>
                           </div>
-                          {q.image_url && (
-                            <img 
-                              src={q.image_url!} 
-                              alt="Question" 
-                              className="w-full max-h-[300px] object-contain rounded-lg border"
-                            />
-                          )}
-                          <p className="text-lg font-medium">{q.question_text}</p>
-                          <div role="radiogroup" className="space-y-2">
-                            {options.map((o) => {
-                              const isSelected = selected === o.key;
-                              const isCorrectOption = o.key === correctLetter;
-                              const showFeedback = selected !== undefined;
-                              
-                              let buttonClass = 'border rounded-lg p-3 w-full text-left transition-colors ';
-                              if (isSelected) {
-                                if (showFeedback && isCorrect) {
-                                  buttonClass += 'bg-green-100 border-green-500 dark:bg-green-900/20 dark:border-green-600';
-                                } else if (showFeedback && !isCorrect) {
-                                  buttonClass += 'bg-red-100 border-red-500 dark:bg-red-900/20 dark:border-red-600';
-                                } else {
-                                  buttonClass += 'bg-accent/20 border-primary';
-                                }
-                              } else {
-                                buttonClass += 'hover:bg-muted';
-                              }
-                              
-                              return (
-                                <button
-                                  type="button"
-                                  key={o.key}
-                                  role="radio"
-                                  aria-checked={isSelected}
-                                  onClick={() => setSelectedAnswers(prev => ({ ...prev, [q.id]: o.key as 'A' | 'B' | 'C' | 'D' }))}
-                                  className={buttonClass}
-                                >
-                                  <span className="font-medium mr-1">{o.key}:</span> {o.text}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          {selected && (
-                            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mt-4">
-                              <p className="font-semibold mb-2">
-                                {isCorrect ? 'Correct!' : 'Incorrect.'} Correct Answer: {correctLetter}
-                              </p>
-                              {q.explanation && (
-                                <p className="text-sm text-muted-foreground">{q.explanation}</p>
-                              )}
-                            </div>
-                          )}
+                          
+                          {group.questions.map((q, qIndex) => {
+                            const selected = selectedAnswers?.[q.id];
+                            
+                            const normalizeLetter = (val?: string | null) => {
+                              if (!val) return '';
+                              const v = String(val).trim();
+                              const first = v.charAt(0).toUpperCase();
+                              if (['A','B','C','D'].includes(first)) return first;
+                              const lower = v.toLowerCase();
+                              if (lower === (q.option_a || '').toLowerCase()) return 'A';
+                              if (lower === (q.option_b || '').toLowerCase()) return 'B';
+                              if (lower === (q.option_c || '').toLowerCase()) return 'C';
+                              if (lower === (q.option_d || '').toLowerCase()) return 'D';
+                              return first;
+                            };
+
+                            const correctLetter = normalizeLetter(q.correct_answer);
+                            const isCorrect = selected && correctLetter ? selected === correctLetter : false;
+
+                            const options = [
+                              { key: 'A', text: q.option_a },
+                              { key: 'B', text: q.option_b },
+                              { key: 'C', text: q.option_c },
+                              { key: 'D', text: q.option_d },
+                            ] as const;
+                            
+                            return (
+                              <div key={q.id} className="border rounded-lg p-6 space-y-4 bg-card">
+                                <div className="flex items-start justify-between gap-4">
+                                  <h3 className="font-semibold text-lg">Question {qIndex + 1}</h3>
+                                </div>
+                                
+                                {q.image_url && (
+                                  <img 
+                                    src={q.image_url} 
+                                    alt="Question" 
+                                    className="w-full max-h-[300px] object-contain rounded-lg border"
+                                  />
+                                )}
+                                
+                                <p className="text-base">{q.question_text}</p>
+                                
+                                <div role="radiogroup" className="space-y-2">
+                                  {options.map((o) => {
+                                    const isSelected = selected === o.key;
+                                    const isCorrectOption = o.key === correctLetter;
+                                    const showFeedback = selected !== undefined;
+                                    
+                                    let buttonClass = 'border rounded-lg p-3 w-full text-left transition-colors ';
+                                    if (isSelected) {
+                                      if (showFeedback && isCorrect) {
+                                        buttonClass += 'bg-green-100 border-green-500 dark:bg-green-900/20 dark:border-green-600';
+                                      } else if (showFeedback && !isCorrect) {
+                                        buttonClass += 'bg-red-100 border-red-500 dark:bg-red-900/20 dark:border-red-600';
+                                      } else {
+                                        buttonClass += 'bg-accent/20 border-primary';
+                                      }
+                                    } else if (showFeedback && isCorrectOption) {
+                                      buttonClass += 'bg-green-50 border-green-300 dark:bg-green-900/10 dark:border-green-700';
+                                    } else {
+                                      buttonClass += 'hover:bg-muted';
+                                    }
+                                    
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={o.key}
+                                        role="radio"
+                                        aria-checked={isSelected}
+                                        onClick={() => setSelectedAnswers(prev => ({ ...prev, [q.id]: o.key as 'A' | 'B' | 'C' | 'D' }))}
+                                        className={buttonClass}
+                                      >
+                                        <span className="font-medium mr-1">{o.key}:</span> {o.text}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                
+                                {selected && (
+                                  <div className={`rounded-lg p-4 mt-4 ${
+                                    isCorrect 
+                                      ? 'bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800' 
+                                      : 'bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                                  }`}>
+                                    <p className="font-semibold mb-2">
+                                      {isCorrect ? '✓ Correct!' : '✗ Incorrect.'} Correct Answer: {correctLetter}
+                                    </p>
+                                    {q.explanation && (
+                                      <p className="text-sm">{q.explanation}</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       );
                     })()}
@@ -543,10 +549,7 @@ const Training = () => {
                   {courseItems.map((item, index) => (
                     <button
                       key={item.id}
-                      onClick={() => {
-                        setCurrentItem(index);
-                        setCurrentQuestionIndex(0);
-                      }}
+                      onClick={() => setCurrentItem(index)}
                       className={`w-full text-left p-3 rounded-lg border transition-colors ${
                         index === currentItem
                           ? "bg-primary text-primary-foreground"
