@@ -2,11 +2,9 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Microscope, Award, Users } from "lucide-react";
 import lnradsLogo from "@/assets/lnrads-logo.jpg";
-import heroBackground from "@/assets/hero-background.jpg";
 const Hero = () => {
   return <section className="relative py-20 md:py-32 overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBackground})` }} />
-      <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/90 to-background/95 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-background to-background pointer-events-none" />
       
       <div className="container mx-auto px-4 relative">
         <div className="max-w-5xl mx-auto text-center space-y-8">
@@ -17,9 +15,7 @@ const Hero = () => {
             </span>
           </div>
           
-          <div className="flex justify-center mb-6">
-            <img src={lnradsLogo} alt="LN-RADS" className="h-24 w-auto" />
-          </div>
+          
           
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
             LN-RADS
@@ -39,9 +35,7 @@ const Hero = () => {
               </Button>
             </Link>
             <Link to="#course-details">
-              <Button size="lg" variant="outline">
-                Learn More
-              </Button>
+              
             </Link>
           </div>
           
@@ -56,7 +50,7 @@ const Hero = () => {
             <div className="flex flex-col items-center gap-3 p-6 rounded-lg bg-card border">
               <Award className="h-8 w-8 text-accent" />
               <div className="text-center">
-                <div className="font-bold text-2xl">80%</div>
+                
                 <div className="text-sm text-muted-foreground">Pass Rate Required</div>
               </div>
             </div>
