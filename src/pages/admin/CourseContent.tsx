@@ -98,7 +98,8 @@ const CourseContent = () => {
     const { data } = await supabase
       .from('test_questions')
       .select('*')
-      .eq('course_id', courseId);
+      .eq('course_id', courseId)
+      .is('lesson_id', null);
     if (data) setQuestions(data);
   };
 

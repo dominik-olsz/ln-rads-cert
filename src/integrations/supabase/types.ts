@@ -337,6 +337,7 @@ export type Database = {
           explanation: string | null
           id: string
           image_url: string | null
+          lesson_id: string | null
           option_a: string
           option_b: string
           option_c: string
@@ -351,6 +352,7 @@ export type Database = {
           explanation?: string | null
           id?: string
           image_url?: string | null
+          lesson_id?: string | null
           option_a: string
           option_b: string
           option_c: string
@@ -365,6 +367,7 @@ export type Database = {
           explanation?: string | null
           id?: string
           image_url?: string | null
+          lesson_id?: string | null
           option_a?: string
           option_b?: string
           option_c?: string
@@ -378,6 +381,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_questions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
         ]

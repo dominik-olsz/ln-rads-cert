@@ -107,7 +107,7 @@ const CourseBuilder = () => {
         content_url: lesson.content_url,
         content_text: lesson.content_text || "",
         duration: lesson.duration,
-        questions: questionsData.filter(q => q.id === lesson.id) || []
+        questions: questionsData.filter((q: any) => q.lesson_id === lesson.id) || []
       }));
 
       setLessons(lessonsWithQuestions);
@@ -264,7 +264,7 @@ const CourseBuilder = () => {
       // Delete existing lessons and questions for clean update
       if (finalCourseId && finalCourseId !== "new") {
         await supabase.from('lessons').delete().eq('course_id', finalCourseId);
-        await supabase.from('test_questions').delete().eq('course_id', finalCourseId);
+        await supabase.from('test_questions').delete().eq('course_id', finalCourseId).not('lesson_id', 'is', null);
       }
 
       // Save lessons
@@ -299,6 +299,7 @@ const CourseBuilder = () => {
           if (validQuestions.length > 0) {
             const questionsToInsert = validQuestions.map(q => ({
               course_id: finalCourseId,
+              lesson_id: savedLesson.id,
               question_text: q.question_text,
               option_a: q.option_a,
               option_b: q.option_b,
