@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, CheckCircle, PlayCircle, BookOpen } from "lucide-react";
+import { Award, CheckCircle, PlayCircle, BookOpen, FileQuestion } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ const CourseDetail = () => {
   const [loading, setLoading] = useState(true);
   const [hasPurchased, setHasPurchased] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [courseQuestionsCount, setCourseQuestionsCount] = useState(0);
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -58,6 +59,15 @@ const CourseDetail = () => {
 
         if (lessonsError) throw lessonsError;
         setLessons(lessonsData || []);
+
+        // Fetch course questions count
+        const { data: questionsData } = await supabase.functions.invoke('get-test-questions', {
+          body: { courseId: id },
+        });
+
+        if (questionsData?.questions) {
+          setCourseQuestionsCount(questionsData.questions.length);
+        }
 
         // Check if user has purchased this course
         if (user) {
@@ -181,6 +191,12 @@ const CourseDetail = () => {
                     <BookOpen className="h-5 w-5" />
                     <span>{course.total_lessons} lessons</span>
                   </div>
+                  {courseQuestionsCount > 0 && (
+                    <div className="flex items-center gap-2">
+                      <FileQuestion className="h-5 w-5" />
+                      <span>{courseQuestionsCount} course questions</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Award className="h-5 w-5" />
                     <span>Certificate included</span>
