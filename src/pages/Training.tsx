@@ -91,34 +91,37 @@ const Training = () => {
 
         if (lessonsError) throw lessonsError;
 
-        // Fetch course-level test questions (not certification tests)
-        // Fetch course-level test questions via backend function to bypass RLS
-        const { data: fnData, error: fnError } = await supabase.functions.invoke('get-test-questions', {
-          body: { courseId }
-        });
+        // Build initial items from lessons so UI doesn't break if questions fetch fails
+        const items: CourseItem[] = (lessonsData || []).map((lesson) => ({
+          id: lesson.id,
+          type: 'lesson' as const,
+          title: lesson.title,
+          order_index: lesson.order_index,
+          data: lesson,
+        }));
 
-        if (fnError) throw fnError as any;
+        // Try fetching course-level test questions via backend function (bypasses RLS)
+        let questionsData: any[] = [];
+        try {
+          const { data: fnData, error: fnError } = await supabase.functions.invoke('get-test-questions', {
+            body: { courseId },
+          });
+          if (fnError) throw fnError as any;
+          questionsData = fnData?.questions || [];
+        } catch (e) {
+          console.error('Failed to fetch course test questions via function:', e);
+        }
 
-        const questionsData = (fnData?.questions || []);
-
-
-        // Combine lessons and questions into course items
-        const items: CourseItem[] = [
-          ...(lessonsData || []).map((lesson, index) => ({
-            id: lesson.id,
-            type: 'lesson' as const,
-            title: lesson.title,
-            order_index: lesson.order_index,
-            data: lesson
-          })),
-          ...(questionsData || []).map((question, index) => ({
+        // Append questions after lessons
+        items.push(
+          ...questionsData.map((question: any, index: number) => ({
             id: question.id,
             type: 'question' as const,
             title: question.question_text || `Question ${index + 1}`,
             order_index: (lessonsData?.length || 0) + index,
-            data: question
+            data: question,
           }))
-        ];
+        );
 
         setCourseItems(items);
 

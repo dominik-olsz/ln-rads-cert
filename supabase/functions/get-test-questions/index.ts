@@ -22,17 +22,9 @@ serve(async (req) => {
       }
     );
 
-    // Verify user is authenticated
-    const {
-      data: { user },
-    } = await supabaseClient.auth.getUser();
+    // Public function: authentication not required
+    // (We still create a client in case we want to tailor results by user in the future)
 
-    if (!user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     const { courseId } = await req.json();
 
