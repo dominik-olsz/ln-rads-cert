@@ -26,14 +26,7 @@ serve(async (req) => {
     // (We still create a client in case we want to tailor results by user in the future)
 
 
-    const { courseId } = await req.json();
-
-    if (!courseId) {
-      return new Response(
-        JSON.stringify({ error: 'Course ID is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const { courseId, testType } = await req.json();
 
     // Fetch questions using service role to bypass RLS
     const supabaseAdmin = createClient(
@@ -41,13 +34,25 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { data: questions, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('test_questions')
-      .select('id, lesson_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, image_url, created_at, test_type, group_title, order_index')
-      .eq('course_id', courseId)
-      .eq('test_type', 'course')
-      .is('lesson_id', null)
-      .order('order_index');
+      .select('id, lesson_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, image_url, created_at, test_type, group_title, order_index');
+
+    // For certification tests, fetch all certification questions regardless of course
+    if (testType === 'certification') {
+      query = query.eq('test_type', 'certification').is('course_id', null);
+    } else {
+      // For course tests, fetch questions for specific course
+      if (!courseId) {
+        return new Response(
+          JSON.stringify({ error: 'Course ID is required for course tests' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      query = query.eq('course_id', courseId).eq('test_type', 'course').is('lesson_id', null);
+    }
+
+    const { data: questions, error } = await query.order('order_index');
 
     if (error) {
       console.error('Error fetching questions:', error);
