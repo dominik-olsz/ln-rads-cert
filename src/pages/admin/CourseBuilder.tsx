@@ -49,6 +49,12 @@ interface TestQuestion {
   order_index?: number;
 }
 
+interface TestQuestionsGroup {
+  id?: string;
+  order_index: number;
+  questions: TestQuestion[];
+}
+
 const CourseBuilder = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
@@ -64,9 +70,9 @@ const CourseBuilder = () => {
   const [courseIncludes, setCourseIncludes] = useState("");
   const [whatYouLearn, setWhatYouLearn] = useState("");
 
-  // Lessons and Test Questions
+  // Lessons and Test Questions Groups
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
+  const [questionGroups, setQuestionGroups] = useState<TestQuestionsGroup[]>([]);
   const [currentItemType, setCurrentItemType] = useState<'lesson' | 'questions'>('lesson');
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [showAddQuestionsDialog, setShowAddQuestionsDialog] = useState(false);
@@ -125,11 +131,26 @@ const CourseBuilder = () => {
         duration: lesson.duration
       }));
 
+      // Group questions by order_index to recreate question groups
+      const questionsByOrder = (questionsData || []).reduce((acc, q) => {
+        const order = q.order_index ?? 999;
+        if (!acc[order]) {
+          acc[order] = [];
+        }
+        acc[order].push({
+          ...q,
+          order_index: q.order_index ?? 999
+        });
+        return acc;
+      }, {} as Record<number, TestQuestion[]>);
+
+      const groups: TestQuestionsGroup[] = Object.entries(questionsByOrder).map(([order, questions]) => ({
+        order_index: parseInt(order),
+        questions: questions
+      }));
+
       setLessons(lessonsWithoutQuestions);
-      setTestQuestions((questionsData || []).map(q => ({
-        ...q,
-        order_index: q.order_index ?? 999
-      })));
+      setQuestionGroups(groups);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -199,24 +220,20 @@ const CourseBuilder = () => {
     setLessons(updated.map((l, i) => ({ ...l, order_index: i })));
     if (currentItemType === 'lesson' && currentItemIndex >= updated.length && updated.length > 0) {
       setCurrentItemIndex(updated.length - 1);
-    } else if (currentItemType === 'lesson' && updated.length === 0 && testQuestions.length > 0) {
+    } else if (currentItemType === 'lesson' && updated.length === 0 && questionGroups.length > 0) {
       setCurrentItemType('questions');
       setCurrentItemIndex(0);
     }
   };
 
-  const addTestQuestion = () => {
+  const addTestQuestionsGroup = () => {
     setShowAddQuestionsDialog(true);
   };
 
   const confirmAddTestQuestions = () => {
-    // Get the order_index for new questions (same as existing questions or after last lesson)
-    let newOrderIndex = lessons.length;
-    if (testQuestions.length > 0) {
-      newOrderIndex = testQuestions[0].order_index ?? lessons.length;
-    }
+    const newOrderIndex = lessons.length + questionGroups.length;
     
-    const newQuestions: TestQuestion[] = Array.from({ length: numQuestionsToAdd }, (_, i) => ({
+    const newQuestions: TestQuestion[] = Array.from({ length: numQuestionsToAdd }, () => ({
       question_text: "",
       option_a: "",
       option_b: "",
@@ -225,25 +242,45 @@ const CourseBuilder = () => {
       correct_answer: "A",
       order_index: newOrderIndex
     }));
-    setTestQuestions([...testQuestions, ...newQuestions]);
+    
+    const newGroup: TestQuestionsGroup = {
+      order_index: newOrderIndex,
+      questions: newQuestions
+    };
+    
+    setQuestionGroups([...questionGroups, newGroup]);
     setCurrentItemType('questions');
-    setCurrentItemIndex(testQuestions.length);
+    setCurrentItemIndex(questionGroups.length);
     setShowAddQuestionsDialog(false);
     setNumQuestionsToAdd(1);
   };
 
-  const updateTestQuestion = (index: number, updates: Partial<TestQuestion>) => {
-    const updated = [...testQuestions];
-    updated[index] = { ...updated[index], ...updates };
-    setTestQuestions(updated);
+  const updateQuestionInGroup = (groupIndex: number, questionIndex: number, updates: Partial<TestQuestion>) => {
+    const updatedGroups = [...questionGroups];
+    updatedGroups[groupIndex].questions[questionIndex] = {
+      ...updatedGroups[groupIndex].questions[questionIndex],
+      ...updates
+    };
+    setQuestionGroups(updatedGroups);
   };
 
-  const deleteTestQuestion = (index: number) => {
-    const updated = testQuestions.filter((_, i) => i !== index);
-    setTestQuestions(updated);
+  const deleteQuestionFromGroup = (groupIndex: number, questionIndex: number) => {
+    const updatedGroups = [...questionGroups];
+    updatedGroups[groupIndex].questions = updatedGroups[groupIndex].questions.filter((_, i) => i !== questionIndex);
+    
+    // If no questions left in group, remove the group
+    if (updatedGroups[groupIndex].questions.length === 0) {
+      deleteQuestionGroup(groupIndex);
+    } else {
+      setQuestionGroups(updatedGroups);
+    }
+  };
+
+  const deleteQuestionGroup = (groupIndex: number) => {
+    const updated = questionGroups.filter((_, i) => i !== groupIndex);
+    setQuestionGroups(updated);
     if (currentItemType === 'questions') {
       if (updated.length === 0) {
-        // Switch to first lesson if no questions left
         if (lessons.length > 0) {
           setCurrentItemType('lesson');
           setCurrentItemIndex(0);
@@ -252,6 +289,21 @@ const CourseBuilder = () => {
         setCurrentItemIndex(updated.length - 1);
       }
     }
+  };
+
+  const addQuestionToGroup = (groupIndex: number) => {
+    const updatedGroups = [...questionGroups];
+    const newQuestion: TestQuestion = {
+      question_text: "",
+      option_a: "",
+      option_b: "",
+      option_c: "",
+      option_d: "",
+      correct_answer: "A",
+      order_index: updatedGroups[groupIndex].order_index
+    };
+    updatedGroups[groupIndex].questions.push(newQuestion);
+    setQuestionGroups(updatedGroups);
   };
 
   // Combined items for display with drag-and-drop
@@ -270,16 +322,15 @@ const CourseBuilder = () => {
       title: l.title
     }));
     
-    // Add test questions as a single grouped item
-    if (testQuestions.length > 0) {
-      const minQuestionOrder = Math.min(...testQuestions.map(q => q.order_index ?? 9999));
+    // Add each question group as a separate item
+    questionGroups.forEach((group, idx) => {
       items.push({
         type: 'questions' as const,
-        index: 0,
-        orderIndex: minQuestionOrder,
-        title: `Test Questions (${testQuestions.length})`
+        index: idx,
+        orderIndex: group.order_index,
+        title: `Test Questions (${group.questions.length})`
       });
-    }
+    });
     
     return items.sort((a, b) => a.orderIndex - b.orderIndex);
   };
@@ -312,21 +363,22 @@ const CourseBuilder = () => {
 
     // Update order_index for all items
     const newLessons = [...lessons];
-    const newQuestions = [...testQuestions];
+    const newGroups = [...questionGroups];
 
     reordered.forEach((item, newOrder) => {
       if (item.type === 'lesson') {
         newLessons[item.index] = { ...newLessons[item.index], order_index: newOrder };
       } else if (item.type === 'questions') {
-        // Update all questions to have the same order_index
-        newQuestions.forEach((q, idx) => {
-          newQuestions[idx] = { ...newQuestions[idx], order_index: newOrder };
-        });
+        newGroups[item.index] = { 
+          ...newGroups[item.index], 
+          order_index: newOrder,
+          questions: newGroups[item.index].questions.map(q => ({ ...q, order_index: newOrder }))
+        };
       }
     });
 
     setLessons(newLessons);
-    setTestQuestions(newQuestions);
+    setQuestionGroups(newGroups);
     setDraggedItem(null);
   };
 
@@ -405,36 +457,38 @@ const CourseBuilder = () => {
       }
 
       // Save course-level test questions
-      const validQuestions = testQuestions.filter(q => 
-        q.question_text?.trim() && 
-        q.option_a?.trim() && 
-        q.option_b?.trim() && 
-        q.option_c?.trim() && 
-        q.option_d?.trim() &&
-        q.correct_answer
-      );
+      for (const group of questionGroups) {
+        const validQuestions = group.questions.filter(q => 
+          q.question_text?.trim() && 
+          q.option_a?.trim() && 
+          q.option_b?.trim() && 
+          q.option_c?.trim() && 
+          q.option_d?.trim() &&
+          q.correct_answer
+        );
 
-      if (validQuestions.length > 0) {
-        const questionsToInsert = validQuestions.map((q, idx) => ({
-          course_id: finalCourseId,
-          lesson_id: null,
-          question_text: q.question_text,
-          option_a: q.option_a,
-          option_b: q.option_b,
-          option_c: q.option_c,
-          option_d: q.option_d,
-          correct_answer: q.correct_answer,
-          explanation: q.explanation || null,
-          image_url: q.image_url || null,
-          test_type: 'course',
-          order_index: q.order_index ?? (lessons.length + idx)
-        }));
+        if (validQuestions.length > 0) {
+          const questionsToInsert = validQuestions.map((q) => ({
+            course_id: finalCourseId,
+            lesson_id: null,
+            question_text: q.question_text,
+            option_a: q.option_a,
+            option_b: q.option_b,
+            option_c: q.option_c,
+            option_d: q.option_d,
+            correct_answer: q.correct_answer,
+            explanation: q.explanation || null,
+            image_url: q.image_url || null,
+            test_type: 'course',
+            order_index: group.order_index
+          }));
 
-        const { error: questionsError } = await supabase
-          .from('test_questions')
-          .insert(questionsToInsert);
+          const { error: questionsError } = await supabase
+            .from('test_questions')
+            .insert(questionsToInsert);
 
-        if (questionsError) throw questionsError;
+          if (questionsError) throw questionsError;
+        }
       }
 
       toast({
@@ -510,7 +564,7 @@ const CourseBuilder = () => {
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="content">Course Content ({lessons?.length || 0} lessons, {testQuestions?.length || 0} questions)</TabsTrigger>
+            <TabsTrigger value="content">Course Content ({lessons?.length || 0} lessons, {questionGroups?.length || 0} question groups)</TabsTrigger>
             <TabsTrigger value="preview">Preview</TabsTrigger>
           </TabsList>
 
@@ -658,6 +712,16 @@ const CourseBuilder = () => {
                           <>
                             <Badge variant="outline" className="h-4 px-1.5 text-xs flex-shrink-0">Q</Badge>
                             <span className="flex-1 text-sm truncate">{item.title}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteQuestionGroup(item.index);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </>
                         )}
                       </div>
@@ -669,7 +733,7 @@ const CourseBuilder = () => {
                       <Plus className="h-4 w-4 mr-2" />
                       Add Lesson
                     </Button>
-                    <Button variant="outline" className="w-full" onClick={addTestQuestion}>
+                    <Button variant="outline" className="w-full" onClick={addTestQuestionsGroup}>
                       <Plus className="h-4 w-4 mr-2" />
                       Add Test Questions
                     </Button>
@@ -678,11 +742,11 @@ const CourseBuilder = () => {
               </Card>
 
               <Card className="col-span-3">
-                {lessons.length === 0 && testQuestions.length === 0 ? (
+                {lessons.length === 0 && questionGroups.length === 0 ? (
                   <CardContent className="flex items-center justify-center min-h-[400px]">
                     <div className="text-center">
                       <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">No content yet. Add a lesson or test question to get started.</p>
+                      <p className="text-muted-foreground">No content yet. Add a lesson or test questions to get started.</p>
                     </div>
                   </CardContent>
                 ) : currentItemType === 'lesson' && lessons[currentItemIndex] ? (
@@ -735,19 +799,19 @@ const CourseBuilder = () => {
                       </div>
                     </CardContent>
                   </>
-                ) : currentItemType === 'questions' && testQuestions.length > 0 ? (
+                ) : currentItemType === 'questions' && questionGroups[currentItemIndex] ? (
                   <>
                     <CardHeader>
                       <div className="flex items-center justify-between">
-                        <CardTitle>Test Questions ({testQuestions.length})</CardTitle>
-                        <Button onClick={addTestQuestion} size="sm">
+                        <CardTitle>Test Questions ({questionGroups[currentItemIndex].questions.length})</CardTitle>
+                        <Button onClick={() => addQuestionToGroup(currentItemIndex)} size="sm">
                           <Plus className="h-4 w-4 mr-2" />
                           Add More Questions
                         </Button>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      {testQuestions.map((question, idx) => (
+                      {questionGroups[currentItemIndex].questions.map((question, idx) => (
                         <Card key={idx} className="relative">
                           <CardHeader className="pb-4">
                             <div className="flex items-center justify-between">
@@ -755,7 +819,7 @@ const CourseBuilder = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => deleteTestQuestion(idx)}
+                                onClick={() => deleteQuestionFromGroup(currentItemIndex, idx)}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -767,7 +831,7 @@ const CourseBuilder = () => {
                               <Input
                                 value={question.question_text}
                                 onChange={(e) =>
-                                  updateTestQuestion(idx, { question_text: e.target.value })
+                                  updateQuestionInGroup(currentItemIndex, idx, { question_text: e.target.value })
                                 }
                                 placeholder="Enter question"
                               />
@@ -777,28 +841,28 @@ const CourseBuilder = () => {
                               <Input
                                 value={question.option_a}
                                 onChange={(e) =>
-                                  updateTestQuestion(idx, { option_a: e.target.value })
+                                  updateQuestionInGroup(currentItemIndex, idx, { option_a: e.target.value })
                                 }
                                 placeholder="Option A"
                               />
                               <Input
                                 value={question.option_b}
                                 onChange={(e) =>
-                                  updateTestQuestion(idx, { option_b: e.target.value })
+                                  updateQuestionInGroup(currentItemIndex, idx, { option_b: e.target.value })
                                 }
                                 placeholder="Option B"
                               />
                               <Input
                                 value={question.option_c}
                                 onChange={(e) =>
-                                  updateTestQuestion(idx, { option_c: e.target.value })
+                                  updateQuestionInGroup(currentItemIndex, idx, { option_c: e.target.value })
                                 }
                                 placeholder="Option C"
                               />
                               <Input
                                 value={question.option_d}
                                 onChange={(e) =>
-                                  updateTestQuestion(idx, { option_d: e.target.value })
+                                  updateQuestionInGroup(currentItemIndex, idx, { option_d: e.target.value })
                                 }
                                 placeholder="Option D"
                               />
@@ -810,7 +874,7 @@ const CourseBuilder = () => {
                                 <Select
                                   value={question.correct_answer}
                                   onValueChange={(value) =>
-                                    updateTestQuestion(idx, { correct_answer: value })
+                                    updateQuestionInGroup(currentItemIndex, idx, { correct_answer: value })
                                   }
                                 >
                                   <SelectTrigger>
@@ -850,7 +914,7 @@ const CourseBuilder = () => {
                                         .from('course-materials')
                                         .getPublicUrl(filePath);
 
-                                      updateTestQuestion(idx, { image_url: data.publicUrl });
+                                      updateQuestionInGroup(currentItemIndex, idx, { image_url: data.publicUrl });
                                     } catch (error) {
                                       console.error('Upload error:', error);
                                     } finally {
@@ -873,7 +937,7 @@ const CourseBuilder = () => {
                               <Textarea
                                 value={question.explanation || ""}
                                 onChange={(e) =>
-                                  updateTestQuestion(idx, { explanation: e.target.value })
+                                  updateQuestionInGroup(currentItemIndex, idx, { explanation: e.target.value })
                                 }
                                 placeholder="Explain the correct answer"
                                 rows={2}
@@ -945,10 +1009,16 @@ const CourseBuilder = () => {
                     ))}
                   </div>
 
-                  {testQuestions && testQuestions.length > 0 && (
+                  {questionGroups && questionGroups.length > 0 && (
                     <div className="space-y-2">
                       <h3 className="font-semibold">Course Test Questions</h3>
-                      <Badge variant="secondary">{testQuestions.length} test questions</Badge>
+                      <div className="flex gap-2">
+                        {questionGroups.map((group, idx) => (
+                          <Badge key={idx} variant="secondary">
+                            Group {idx + 1}: {group.questions.length} questions
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
