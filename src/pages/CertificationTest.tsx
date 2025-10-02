@@ -205,6 +205,54 @@ const CertificationTest = () => {
     return () => clearInterval(timer);
   }, [timerActive, timeLeft, currentQuestion, questions, answers]);
 
+  // Auto-lock question when leaving the page
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      const question = questions[currentQuestion];
+      if (question && !answers[question.id]?.locked && timerActive) {
+        const currentAnswerValue = answers[question.id]?.answer || '';
+        
+        const newAnswers = {
+          ...answers,
+          [question.id]: {
+            questionId: question.id,
+            answer: currentAnswerValue,
+            timeSpent: 30 - timeLeft,
+            locked: true
+          }
+        };
+
+        // Save immediately before leaving
+        await saveProgress(currentQuestion, newAnswers, 0);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Also handle component unmount
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      
+      // Lock current question on unmount if timer is active
+      const question = questions[currentQuestion];
+      if (question && !answers[question.id]?.locked && timerActive) {
+        const currentAnswerValue = answers[question.id]?.answer || '';
+        
+        const newAnswers = {
+          ...answers,
+          [question.id]: {
+            questionId: question.id,
+            answer: currentAnswerValue,
+            timeSpent: 30 - timeLeft,
+            locked: true
+          }
+        };
+
+        saveProgress(currentQuestion, newAnswers, 0);
+      }
+    };
+  }, [currentQuestion, questions, answers, timerActive, timeLeft]);
+
   const fetchQuestions = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
