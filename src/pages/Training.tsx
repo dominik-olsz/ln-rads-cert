@@ -177,18 +177,37 @@ const Training = () => {
     if (!lesson || !user) return;
 
     try {
-      const { error } = await supabase
+      // Find existing progress row (avoid upsert without unique index)
+      const { data: existing, error: findError } = await supabase
         .from('user_progress')
-        .upsert({
-          user_id: user.id,
-          course_id: courseId!,
-          lesson_id: lesson.id,
-          completed: true
-        }, {
-          onConflict: 'user_id,course_id,lesson_id'
-        });
+        .select('id, completed')
+        .eq('user_id', user.id)
+        .eq('course_id', courseId!)
+        .eq('lesson_id', lesson.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (findError) throw findError;
+
+      if (existing) {
+        if (!existing.completed) {
+          const { error: updateError } = await supabase
+            .from('user_progress')
+            .update({ completed: true, completed_at: new Date().toISOString() })
+            .eq('id', existing.id);
+          if (updateError) throw updateError;
+        }
+      } else {
+        const { error: insertError } = await supabase
+          .from('user_progress')
+          .insert({
+            user_id: user.id,
+            course_id: courseId!,
+            lesson_id: lesson.id,
+            completed: true,
+            completed_at: new Date().toISOString(),
+          });
+        if (insertError) throw insertError;
+      }
 
       setUserProgress(prev => new Set(prev).add(lesson.id));
       toast.success('Lesson marked as complete');
