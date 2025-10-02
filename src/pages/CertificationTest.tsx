@@ -122,10 +122,22 @@ const CertificationTest = () => {
         setQuestions(savedQuestions);
         setCurrentQuestion(existingProgress.current_question_index);
         setAnswers(savedAnswers);
-        setTimeLeft(existingProgress.time_left);
+        
+        // Check if current question is locked
+        const currentQuestionId = savedQuestions[existingProgress.current_question_index]?.id;
+        const isCurrentQuestionLocked = savedAnswers[currentQuestionId]?.locked || false;
+        
+        // Only activate timer if current question is not locked
+        if (isCurrentQuestionLocked) {
+          setTimeLeft(30);
+          setTimerActive(false);
+        } else {
+          setTimeLeft(existingProgress.time_left);
+          setTimerActive(true);
+        }
+        
         setProgressId(existingProgress.id);
         setShowWelcome(false);
-        setTimerActive(true);
         setLoading(false);
         
         toast({
