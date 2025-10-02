@@ -35,13 +35,26 @@ serve(async (req) => {
     const actualAttemptId = testAttemptId || attemptId;
     console.log('Generating certificate for test attempt:', actualAttemptId);
 
-    // Get test attempt details
-    const { data: attempt, error: attemptError } = await supabaseClient
+    // Determine if requester is admin
+    const { data: adminRole } = await supabaseClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+    const isAdmin = adminRole?.role === 'admin';
+
+    // Get test attempt details (admins can access any attempt)
+    let attemptQuery = supabaseClient
       .from('test_attempts')
       .select('*, courses(title)')
-      .eq('id', actualAttemptId)
-      .eq('user_id', user.id)
-      .single();
+      .eq('id', actualAttemptId);
+
+    if (!isAdmin) {
+      attemptQuery = attemptQuery.eq('user_id', user.id);
+    }
+
+    const { data: attempt, error: attemptError } = await attemptQuery.single();
 
     if (attemptError || !attempt) {
       throw new Error('Test attempt not found');
@@ -65,7 +78,7 @@ serve(async (req) => {
 
     // Create certificate record
     const certificateData: any = {
-      user_id: user.id,
+      user_id: attempt.user_id,
       test_attempt_id: actualAttemptId,
       certificate_number: certificateNumber,
     };
@@ -75,18 +88,46 @@ serve(async (req) => {
       certificateData.course_id = attempt.course_id;
     }
 
-    const { data: certificate, error: certError } = await supabaseClient
+    let certificate;
+    const insertResult = await supabaseClient
       .from('certificates')
       .insert(certificateData)
       .select()
       .single();
 
-    if (certError) {
-      console.error('Certificate creation error:', certError);
-      throw certError;
+    if (insertResult.error) {
+      console.error('Certificate creation error:', insertResult.error);
+      // Handle duplicate by returning existing certificate
+      // First, try by attempt id (idempotent)
+      const { data: existingByAttempt } = await supabaseClient
+        .from('certificates')
+        .select('*')
+        .eq('test_attempt_id', actualAttemptId)
+        .maybeSingle();
+      if (existingByAttempt) {
+        certificate = existingByAttempt;
+      } else {
+        // Then, try by (user_id, course_id)
+        let existingQuery = supabaseClient
+          .from('certificates')
+          .select('*')
+          .eq('user_id', attempt.user_id);
+        if (attempt.course_id) {
+          existingQuery = existingQuery.eq('course_id', attempt.course_id);
+        } else {
+          existingQuery = existingQuery.is('course_id', null);
+        }
+        const { data: existingByCourse } = await existingQuery.maybeSingle();
+        if (existingByCourse) {
+          certificate = existingByCourse;
+        } else {
+          throw insertResult.error;
+        }
+      }
+    } else {
+      certificate = insertResult.data;
+      console.log('Certificate created:', certificate);
     }
-
-    console.log('Certificate created:', certificate);
 
     // Generate HTML certificate
     const completionDate = new Date(attempt.completed_at || attempt.started_at).toLocaleDateString('en-US', {
@@ -98,7 +139,7 @@ serve(async (req) => {
     const htmlContent = generateCertificateHTML(
       certificateName,
       attempt.courses?.title || 'LN-RADS Certification',
-      certificateNumber,
+      certificate.certificate_number,
       completionDate,
       attempt.score
     );
