@@ -58,6 +58,27 @@ const CertificationTest = () => {
 
   const checkExistingAttemptAndFetchQuestions = async () => {
     try {
+      // Check if user has purchased any course
+      const { data: purchases, error: purchaseError } = await supabase
+        .from('course_purchases')
+        .select('id')
+        .eq('user_id', user?.id);
+
+      if (purchaseError) throw purchaseError;
+
+      if (!purchases || purchases.length === 0) {
+        toast({
+          title: "Purchase Required",
+          description: "You must purchase a course before taking the certification test",
+          variant: "destructive",
+        });
+        setHasPurchased(false);
+        setLoading(false);
+        return;
+      }
+
+      setHasPurchased(true);
+
       // Check if user has completed certification test or has existing progress
       const { data: existingProgress, error: progressError } = await supabase
         .from('certification_test_progress')
@@ -77,7 +98,7 @@ const CertificationTest = () => {
           .from('test_attempts')
           .select('passed, score')
           .eq('id', existingProgress.test_attempt_id)
-          .single();
+          .maybeSingle();
 
         if (attemptData) {
           toast({
@@ -175,26 +196,6 @@ const CertificationTest = () => {
         navigate("/auth");
         return;
       }
-
-      // Check if user has purchased this course
-      const { data: purchaseData } = await supabase
-        .from('course_purchases')
-        .select('id')
-        .eq('user_id', user?.id)
-        .eq('course_id', courseId)
-        .single();
-
-      if (!purchaseData) {
-        toast({
-          title: "Purchase Required",
-          description: "You need to purchase this course to take the certification test",
-          variant: "destructive",
-        });
-        navigate(`/course/${courseId}`);
-        return;
-      }
-
-      setHasPurchased(true);
 
       const { data, error } = await supabase.functions.invoke('get-test-questions', {
         body: { testType: 'certification' },
@@ -435,6 +436,29 @@ const CertificationTest = () => {
                 </p>
                 <Button onClick={() => navigate("/dashboard")}>
                   Return to Dashboard
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasPurchased) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardContent className="pt-6 space-y-6 text-center">
+                <h1 className="text-2xl font-bold">Purchase Required</h1>
+                <p className="text-muted-foreground">
+                  You must purchase a course before you can take the certification test.
+                </p>
+                <Button onClick={() => navigate("/courses")}>
+                  View Available Courses
                 </Button>
               </CardContent>
             </Card>
