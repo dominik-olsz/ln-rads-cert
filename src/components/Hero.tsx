@@ -50,7 +50,7 @@ const Hero = () => {
             <div className="flex flex-col items-center gap-3 p-6 rounded-lg bg-card border">
               <Award className="h-8 w-8 text-accent" />
               <div className="text-center">
-                
+                <div className="font-bold text-2xl">80%</div>
                 <div className="text-sm text-muted-foreground">Pass Rate Required</div>
               </div>
             </div>
