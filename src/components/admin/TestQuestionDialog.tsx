@@ -124,7 +124,7 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
 
     try {
       const questionData = {
-        course_id: courseId,
+        course_id: courseId || null,
         question_text: questionText,
         option_a: optionA,
         option_b: optionB,
@@ -183,8 +183,8 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="course">Course</Label>
-            <Select value={courseId} onValueChange={setCourseId} required>
+            <Label htmlFor="course">Course {testType === 'certification' && '(Optional)'}</Label>
+            <Select value={courseId} onValueChange={setCourseId} required={testType !== 'certification'}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a course" />
               </SelectTrigger>

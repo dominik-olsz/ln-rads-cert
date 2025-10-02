@@ -402,7 +402,7 @@ export type Database = {
       test_questions: {
         Row: {
           correct_answer: string
-          course_id: string
+          course_id: string | null
           created_at: string | null
           explanation: string | null
           group_title: string | null
@@ -420,7 +420,7 @@ export type Database = {
         }
         Insert: {
           correct_answer: string
-          course_id: string
+          course_id?: string | null
           created_at?: string | null
           explanation?: string | null
           group_title?: string | null
@@ -438,7 +438,7 @@ export type Database = {
         }
         Update: {
           correct_answer?: string
-          course_id?: string
+          course_id?: string | null
           created_at?: string | null
           explanation?: string | null
           group_title?: string | null
