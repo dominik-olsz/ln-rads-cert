@@ -511,8 +511,6 @@ const CourseBuilder = () => {
         title: "Success",
         description: "Course saved successfully"
       });
-
-      navigate('/admin/courses');
     } catch (error: any) {
       toast({
         title: "Error",
