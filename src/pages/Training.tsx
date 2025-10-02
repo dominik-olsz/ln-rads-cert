@@ -105,23 +105,23 @@ const Training = () => {
         });
         setMaterials(groupedMaterials);
 
-        // Fetch all test questions for this course (lesson-specific only)
-        const { data: questionsData, error: questionsError } = await supabase
-          .from('test_questions')
-          .select('*')
-          .eq('course_id', courseId)
-          .not('lesson_id', 'is', null);
+        // Fetch all test questions via backend function (avoid RLS restrictions)
+        const { data: fnRes, error: fnError } = await supabase.functions.invoke('get-test-questions', {
+          body: { courseId }
+        });
 
-        if (questionsError) throw questionsError;
+        if (fnError) throw fnError;
+
+        const questionsData = (fnRes as any[]) || [];
 
         // Group questions by lesson_id
         const groupedQuestions: { [lessonId: string]: TestQuestion[] } = {};
-        questionsData?.forEach((question) => {
+        questionsData.forEach((question: any) => {
           if (question.lesson_id) {
             if (!groupedQuestions[question.lesson_id]) {
               groupedQuestions[question.lesson_id] = [];
             }
-            groupedQuestions[question.lesson_id].push(question);
+            groupedQuestions[question.lesson_id].push(question as TestQuestion);
           }
         });
         setQuestions(groupedQuestions);
