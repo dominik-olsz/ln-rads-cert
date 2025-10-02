@@ -372,6 +372,23 @@ const Training = () => {
                     {(() => {
                       const q = currentCourseItem.data as TestQuestion;
                       const selected = selectedAnswers[currentCourseItem.id];
+
+                      const normalizeLetter = (val?: string | null) => {
+                        if (!val) return '';
+                        const v = String(val).trim();
+                        const first = v.charAt(0).toUpperCase();
+                        if (['A','B','C','D'].includes(first)) return first;
+                        const lower = v.toLowerCase();
+                        if (lower === (q.option_a || '').toLowerCase()) return 'A';
+                        if (lower === (q.option_b || '').toLowerCase()) return 'B';
+                        if (lower === (q.option_c || '').toLowerCase()) return 'C';
+                        if (lower === (q.option_d || '').toLowerCase()) return 'D';
+                        return first;
+                      };
+
+                      const correctLetter = normalizeLetter(q.correct_answer);
+                      const isCorrect = selected && correctLetter ? selected === correctLetter : false;
+
                       const options = [
                         { key: 'A', text: q.option_a },
                         { key: 'B', text: q.option_b },
@@ -405,7 +422,7 @@ const Training = () => {
                           {selected && (
                             <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mt-4">
                               <p className="font-semibold mb-2">
-                                {selected === q.correct_answer ? 'Correct!' : 'Incorrect.'} Correct Answer: {q.correct_answer}
+                                {isCorrect ? 'Correct!' : 'Incorrect.'} Correct Answer: {correctLetter}
                               </p>
                               {q.explanation && (
                                 <p className="text-sm text-muted-foreground">{q.explanation}</p>
