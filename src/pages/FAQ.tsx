@@ -41,7 +41,7 @@ const FAQ = () => {
     },
     {
       question: "Can I retake the exam if I don't pass?",
-      answer: "Yes, you can retake the certification exam. We encourage you to review the course materials and practice more before attempting again."
+      answer: "No, you have only one attempt to pass the certification exam. Please ensure you're well-prepared before taking the test, as there are no retakes available."
     },
     {
       question: "Will I receive a certificate upon completion?",
