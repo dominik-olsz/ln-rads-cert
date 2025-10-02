@@ -14,6 +14,14 @@ import {
   ArrowLeft, Plus, Trash2, Upload, Video, FileText, 
   GripVertical, Save 
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import { Badge } from "@/components/ui/badge";
 
@@ -59,6 +67,8 @@ const CourseBuilder = () => {
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
   const [currentItemType, setCurrentItemType] = useState<'lesson' | 'question'>('lesson');
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
+  const [showAddQuestionsDialog, setShowAddQuestionsDialog] = useState(false);
+  const [numQuestionsToAdd, setNumQuestionsToAdd] = useState(1);
 
   useEffect(() => {
     if (courseId && courseId !== "new") {
@@ -186,17 +196,23 @@ const CourseBuilder = () => {
   };
 
   const addTestQuestion = () => {
-    const newQuestion: TestQuestion = {
+    setShowAddQuestionsDialog(true);
+  };
+
+  const confirmAddTestQuestions = () => {
+    const newQuestions: TestQuestion[] = Array.from({ length: numQuestionsToAdd }, (_, i) => ({
       question_text: "",
       option_a: "",
       option_b: "",
       option_c: "",
       option_d: "",
       correct_answer: "A"
-    };
-    setTestQuestions([...testQuestions, newQuestion]);
+    }));
+    setTestQuestions([...testQuestions, ...newQuestions]);
     setCurrentItemType('question');
     setCurrentItemIndex(testQuestions.length);
+    setShowAddQuestionsDialog(false);
+    setNumQuestionsToAdd(1);
   };
 
   const updateTestQuestion = (index: number, updates: Partial<TestQuestion>) => {
@@ -338,6 +354,38 @@ const CourseBuilder = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      
+      <Dialog open={showAddQuestionsDialog} onOpenChange={setShowAddQuestionsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Test Questions</DialogTitle>
+            <DialogDescription>
+              How many test questions do you want to add?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="numQuestions">Number of Questions</Label>
+              <Input
+                id="numQuestions"
+                type="number"
+                min="1"
+                max="50"
+                value={numQuestionsToAdd}
+                onChange={(e) => setNumQuestionsToAdd(Math.max(1, parseInt(e.target.value) || 1))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddQuestionsDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmAddTestQuestions}>
+              Add {numQuestionsToAdd} Question{numQuestionsToAdd > 1 ? 's' : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
