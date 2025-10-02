@@ -439,16 +439,20 @@ const CertificationTest = () => {
         return acc;
       }, {} as Record<string, string>);
 
+      const payload: any = { 
+        isCertificationTest: true,
+        progressId: progressId,
+        answers: formattedAnswers,
+        timePerQuestion: Object.values(answers).reduce((acc, curr) => {
+          acc[curr.questionId] = curr.timeSpent;
+          return acc;
+        }, {} as Record<string, number>)
+      };
+
+      if (courseId) payload.courseId = courseId;
+
       const { data, error } = await supabase.functions.invoke('submit-test', {
-        body: { 
-          isCertificationTest: true,
-          progressId: progressId,
-          answers: formattedAnswers,
-          timePerQuestion: Object.values(answers).reduce((acc, curr) => {
-            acc[curr.questionId] = curr.timeSpent;
-            return acc;
-          }, {} as Record<string, number>)
-        }
+        body: payload
       });
 
       if (error) {
