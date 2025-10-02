@@ -421,9 +421,10 @@ const Training = () => {
                     {(() => {
                       const group = currentCourseItem.data as TestQuestionGroup;
                       const q = group.questions[currentQuestionIndex];
-                      const selected = selectedAnswers[q.id];
                       
                       if (!q) return null;
+                      
+                      const selected = selectedAnswers[q.id];
 
                       const normalizeLetter = (val?: string | null) => {
                         if (!val) return '';
@@ -542,7 +543,10 @@ const Training = () => {
                   {courseItems.map((item, index) => (
                     <button
                       key={item.id}
-                      onClick={() => setCurrentItem(index)}
+                      onClick={() => {
+                        setCurrentItem(index);
+                        setCurrentQuestionIndex(0);
+                      }}
                       className={`w-full text-left p-3 rounded-lg border transition-colors ${
                         index === currentItem
                           ? "bg-primary text-primary-foreground"
