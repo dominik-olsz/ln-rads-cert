@@ -155,7 +155,12 @@ const AdminCertificates = () => {
       <Navbar />
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Certificate Management</h1>
+          <div>
+            <h1 className="text-4xl font-bold">Certificate Management</h1>
+            <p className="text-muted-foreground mt-2">
+              Total Certificates Issued: <span className="font-semibold">{certificates.length}</span>
+            </p>
+          </div>
         </div>
 
         <Card>
@@ -187,7 +192,7 @@ const AdminCertificates = () => {
                           <div className="text-sm text-muted-foreground">{cert.profiles?.email}</div>
                         </div>
                       </TableCell>
-                      <TableCell>{cert.courses?.title}</TableCell>
+                      <TableCell>{cert.courses?.title || 'LN-RADS Certification'}</TableCell>
                       <TableCell>
                         <span className="font-semibold text-green-600">{cert.test_attempts?.score}%</span>
                       </TableCell>
