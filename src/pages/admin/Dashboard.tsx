@@ -36,8 +36,8 @@ const AdminDashboard = () => {
   const statCards = [
     { title: 'Total Users', value: stats.totalUsers, icon: Users, link: '/admin/users' },
     { title: 'Total Courses', value: stats.totalCourses, icon: BookOpen, link: '/admin/courses' },
-    { title: 'Test Attempts', value: stats.totalTests, icon: ClipboardCheck, link: '/admin/tests' },
-    { title: 'Certificates Issued', value: stats.totalCertificates, icon: Award, link: '/admin/users' },
+    { title: 'Test Attempts', value: stats.totalTests, icon: ClipboardCheck, link: '/admin/test-attempts' },
+    { title: 'Certificates Issued', value: stats.totalCertificates, icon: Award, link: '/admin/certificates' },
   ];
 
   return (
