@@ -73,8 +73,27 @@ const CertificationTest = () => {
         if (prev <= 1) {
           // Auto-lock answer when time runs out
           const question = questions[currentQuestion];
-          if (question && answers[question.id] && !answers[question.id].locked) {
-            handleAcceptAnswer();
+          if (question && !answers[question.id]?.locked) {
+            // If no answer selected, mark as unanswered (will be counted as wrong)
+            const currentAnswerValue = answers[question.id]?.answer || '';
+            
+            setAnswers(prev => ({
+              ...prev,
+              [question.id]: {
+                questionId: question.id,
+                answer: currentAnswerValue, // Empty string if no answer selected
+                timeSpent: 30,
+                locked: true
+              }
+            }));
+
+            toast({
+              title: "Time's Up!",
+              description: currentAnswerValue 
+                ? "Your answer has been locked" 
+                : "Question marked as unanswered (incorrect)",
+              variant: "destructive",
+            });
           }
           return 0;
         }
