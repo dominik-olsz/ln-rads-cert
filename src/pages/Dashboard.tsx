@@ -28,6 +28,13 @@ interface Certificate {
   score: number;
 }
 
+interface PassedTestWithoutCertificate {
+  attempt_id: string;
+  course_title: string;
+  score: number;
+  completed_at: string;
+}
+
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -35,6 +42,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [purchasedCourses, setPurchasedCourses] = useState<PurchasedCourse[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [passedTestsWithoutCerts, setPassedTestsWithoutCerts] = useState<PassedTestWithoutCertificate[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -119,6 +127,7 @@ export default function Dashboard() {
           certificate_number,
           issued_at,
           course_id,
+          test_attempt_id,
           test_attempts!inner (
             score
           ),
@@ -143,6 +152,37 @@ export default function Dashboard() {
       }));
 
       setCertificates(formattedCerts);
+
+      // Fetch passed test attempts without certificates
+      const { data: passedAttempts, error: attemptsError } = await supabase
+        .from("test_attempts")
+        .select(`
+          id,
+          score,
+          completed_at,
+          courses (
+            title
+          )
+        `)
+        .eq("user_id", user?.id)
+        .eq("is_certification_test", true)
+        .eq("passed", true)
+        .order("completed_at", { ascending: false });
+
+      if (attemptsError) throw attemptsError;
+
+      // Filter out attempts that already have certificates
+      const certifiedAttemptIds = new Set(certsData?.map((c: any) => c.test_attempt_id));
+      const uncertifiedAttempts = (passedAttempts || [])
+        .filter((attempt: any) => !certifiedAttemptIds.has(attempt.id))
+        .map((attempt: any) => ({
+          attempt_id: attempt.id,
+          course_title: attempt.courses?.title || "LN-RADS Certification",
+          score: attempt.score,
+          completed_at: attempt.completed_at,
+        }));
+
+      setPassedTestsWithoutCerts(uncertifiedAttempts);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -151,6 +191,30 @@ export default function Dashboard() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateCertificate = async (attemptId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-certificate", {
+        body: { attemptId },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Certificate generated successfully",
+      });
+
+      // Refresh dashboard data to show the new certificate
+      fetchDashboardData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -323,7 +387,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="certificates">
-            {certificates.length === 0 ? (
+            {certificates.length === 0 && passedTestsWithoutCerts.length === 0 ? (
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-center text-muted-foreground">
@@ -332,38 +396,83 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {certificates.map((cert) => (
-                  <Card key={cert.id}>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Award className="w-5 h-5 text-primary" />
-                        {cert.course_title}
-                      </CardTitle>
-                      <CardDescription>
-                        Certificate #{cert.certificate_number}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2 text-sm">
-                        <p>
-                          <span className="font-medium">Score:</span> {cert.score}%
-                        </p>
-                        <p>
-                          <span className="font-medium">Issued:</span>{" "}
-                          {new Date(cert.issued_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <Button
-                        onClick={() => downloadCertificate(cert.id)}
-                        className="w-full"
-                        variant="outline"
-                      >
-                        Download Certificate
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="space-y-6">
+                {passedTestsWithoutCerts.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Generate Your Certificate</h3>
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                      {passedTestsWithoutCerts.map((test) => (
+                        <Card key={test.attempt_id}>
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                              <Award className="w-5 h-5 text-primary" />
+                              {test.course_title}
+                            </CardTitle>
+                            <CardDescription>
+                              Test Passed - Certificate Available
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="space-y-2 text-sm">
+                              <p>
+                                <span className="font-medium">Score:</span> {test.score}%
+                              </p>
+                              <p>
+                                <span className="font-medium">Completed:</span>{" "}
+                                {new Date(test.completed_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => generateCertificate(test.attempt_id)}
+                              className="w-full"
+                            >
+                              Generate Certificate
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {certificates.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Your Certificates</h3>
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                      {certificates.map((cert) => (
+                        <Card key={cert.id}>
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                              <Award className="w-5 h-5 text-primary" />
+                              {cert.course_title}
+                            </CardTitle>
+                            <CardDescription>
+                              Certificate #{cert.certificate_number}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="space-y-2 text-sm">
+                              <p>
+                                <span className="font-medium">Score:</span> {cert.score}%
+                              </p>
+                              <p>
+                                <span className="font-medium">Issued:</span>{" "}
+                                {new Date(cert.issued_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => downloadCertificate(cert.id)}
+                              className="w-full"
+                              variant="outline"
+                            >
+                              Download Certificate
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>
