@@ -546,6 +546,7 @@ const CourseBuilder = () => {
                           Use the editor below. You can drag and drop images directly into the content.
                         </p>
                         <RichTextEditor
+                          key={currentLesson}
                           content={lessons[currentLesson]?.content_text || ""}
                           onChange={(content) => updateLesson(currentLesson, { content_text: content })}
                           placeholder="Write your lesson content here. Drag and drop images to include them."
