@@ -688,7 +688,7 @@ const CourseBuilder = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {getDisplayItems().map((item) => {
-                    const isCurrent = item.type === currentItemType && (item.type === 'questions' || item.index === currentItemIndex);
+                    const isCurrent = item.type === currentItemType && item.index === currentItemIndex;
                     return (
                       <div
                         key={`${item.type}-${item.index}`}
@@ -701,11 +701,7 @@ const CourseBuilder = () => {
                         }`}
                         onClick={() => {
                           setCurrentItemType(item.type);
-                          if (item.type === 'lesson') {
-                            setCurrentItemIndex(item.index);
-                          } else {
-                            setCurrentItemIndex(0);
-                          }
+                          setCurrentItemIndex(item.index);
                         }}
                       >
                         <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
