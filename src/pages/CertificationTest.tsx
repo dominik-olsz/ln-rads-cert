@@ -44,6 +44,8 @@ const CertificationTest = () => {
   const [timerActive, setTimerActive] = useState(false);
   const [hasPurchased, setHasPurchased] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [progressId, setProgressId] = useState<string | null>(null);
+  const [hasExistingAttempt, setHasExistingAttempt] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -51,18 +53,79 @@ const CertificationTest = () => {
       return;
     }
 
-    if (!courseId) {
+    checkExistingAttemptAndFetchQuestions();
+  }, [user, navigate]);
+
+  const checkExistingAttemptAndFetchQuestions = async () => {
+    try {
+      // Check if user has completed certification test or has existing progress
+      const { data: existingProgress, error: progressError } = await supabase
+        .from('certification_test_progress')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (progressError && progressError.code !== 'PGRST116') {
+        throw progressError;
+      }
+
+      // If there's a completed attempt, check if they passed or failed
+      if (existingProgress?.is_completed) {
+        const { data: attemptData } = await supabase
+          .from('test_attempts')
+          .select('passed, score')
+          .eq('id', existingProgress.test_attempt_id)
+          .single();
+
+        if (attemptData) {
+          toast({
+            title: "Test Already Completed",
+            description: attemptData.passed 
+              ? `You already passed this test with ${attemptData.score}%` 
+              : `You failed this test with ${attemptData.score}%. You cannot retake it.`,
+            variant: attemptData.passed ? "default" : "destructive",
+          });
+          setHasExistingAttempt(true);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // If there's an incomplete attempt, resume it
+      if (existingProgress && !existingProgress.is_completed) {
+        const savedQuestions = existingProgress.questions as unknown as TestQuestion[];
+        const savedAnswers = existingProgress.answers as unknown as Record<string, QuestionAnswer>;
+        
+        setQuestions(savedQuestions);
+        setCurrentQuestion(existingProgress.current_question_index);
+        setAnswers(savedAnswers);
+        setTimeLeft(existingProgress.time_left);
+        setProgressId(existingProgress.id);
+        setShowWelcome(false);
+        setTimerActive(true);
+        setLoading(false);
+        
+        toast({
+          title: "Resuming Test",
+          description: `Continuing from question ${existingProgress.current_question_index + 1}`,
+        });
+        return;
+      }
+
+      // No existing attempt, fetch questions
+      await fetchQuestions();
+    } catch (error) {
+      console.error('Error checking existing attempt:', error);
       toast({
         title: "Error",
-        description: "No course selected",
+        description: "Failed to load test",
         variant: "destructive",
       });
       navigate("/courses");
-      return;
     }
-
-    fetchQuestions();
-  }, [user, courseId, navigate]);
+  };
 
   // Timer effect
   useEffect(() => {
@@ -166,7 +229,7 @@ const CertificationTest = () => {
     const question = questions[currentQuestion];
     if (!question || answers[question.id]?.locked) return;
 
-    setAnswers({
+    const newAnswers = {
       ...answers,
       [question.id]: {
         questionId: question.id,
@@ -174,10 +237,32 @@ const CertificationTest = () => {
         timeSpent: 30 - timeLeft,
         locked: false
       }
-    });
+    };
+    
+    setAnswers(newAnswers);
+    
+    // Save progress to database
+    saveProgress(currentQuestion, newAnswers, timeLeft);
   };
 
-  const handleAcceptAnswer = () => {
+  const saveProgress = async (questionIndex: number, currentAnswers: Record<string, QuestionAnswer>, currentTimeLeft: number) => {
+    if (!user || !progressId) return;
+
+    try {
+      await supabase
+        .from('certification_test_progress')
+        .update({
+          current_question_index: questionIndex,
+          answers: currentAnswers as any,
+          time_left: currentTimeLeft,
+        })
+        .eq('id', progressId);
+    } catch (error) {
+      console.error('Error saving progress:', error);
+    }
+  };
+
+  const handleAcceptAnswer = async () => {
     const question = questions[currentQuestion];
     if (!question || !answers[question.id]) {
       toast({
@@ -189,16 +274,20 @@ const CertificationTest = () => {
     }
 
     // Lock the answer
-    setAnswers({
+    const newAnswers = {
       ...answers,
       [question.id]: {
         ...answers[question.id],
         locked: true,
         timeSpent: 30 - timeLeft
       }
-    });
-
+    };
+    
+    setAnswers(newAnswers);
     setTimerActive(false);
+    
+    // Save progress
+    await saveProgress(currentQuestion, newAnswers, 30);
     
     toast({
       title: "Answer Locked",
@@ -206,24 +295,54 @@ const CertificationTest = () => {
     });
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
+      const nextQuestion = currentQuestion + 1;
+      setCurrentQuestion(nextQuestion);
       setTimeLeft(30);
-      // Timer is already active, just reset time
+      setTimerActive(true);
+      // Save progress with new question index
+      await saveProgress(nextQuestion, answers, 30);
     }
   };
 
-  const handleStartTest = () => {
-    setShowWelcome(false);
-    setTimerActive(true); // Start timer when entering first question
-  };
-
-  const handlePrevious = () => {
+  const handlePrevious = async () => {
     if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
+      const prevQuestion = currentQuestion - 1;
+      setCurrentQuestion(prevQuestion);
       setTimerActive(false);
       setTimeLeft(30);
+      await saveProgress(prevQuestion, answers, 30);
+    }
+  };
+
+  const handleStartTest = async () => {
+    // Create progress record
+    try {
+      const { data: progressData, error: progressError } = await supabase
+        .from('certification_test_progress')
+        .insert({
+          user_id: user?.id!,
+          current_question_index: 0,
+          answers: {} as any,
+          time_left: 30,
+          questions: questions as any,
+        })
+        .select()
+        .single();
+
+      if (progressError) throw progressError;
+
+      setProgressId(progressData.id);
+      setShowWelcome(false);
+      setTimerActive(true);
+    } catch (error) {
+      console.error('Error creating progress:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start test",
+        variant: "destructive",
+      });
     }
   };
 
@@ -256,7 +375,8 @@ const CertificationTest = () => {
 
       const { data, error } = await supabase.functions.invoke('submit-test', {
         body: { 
-          courseId, 
+          isCertificationTest: true,
+          progressId: progressId,
           answers: formattedAnswers,
           timePerQuestion: Object.values(answers).reduce((acc, curr) => {
             acc[curr.questionId] = curr.timeSpent;
@@ -273,11 +393,11 @@ const CertificationTest = () => {
         title: passed ? "Congratulations!" : "Test Complete",
         description: passed 
           ? `You passed with a score of ${score}%!` 
-          : `You scored ${score}%. You need 80% to pass.`,
+          : `You scored ${score}%. You need 80% to pass. You cannot retake this test.`,
         variant: passed ? "default" : "destructive",
       });
 
-      navigate(`/results?score=${score}&passed=${passed}&courseId=${courseId}&attemptId=${attemptId}`);
+      navigate(`/results?score=${score}&passed=${passed}&isCertification=true&attemptId=${attemptId}`);
     } catch (error) {
       console.error('Error submitting test:', error);
       toast({
@@ -290,7 +410,41 @@ const CertificationTest = () => {
     }
   };
 
-  if (loading || questions.length === 0) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasExistingAttempt) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardContent className="pt-6 space-y-6 text-center">
+                <h1 className="text-2xl font-bold">Test Already Completed</h1>
+                <p className="text-muted-foreground">
+                  You have already taken this certification test. Each user gets only one attempt.
+                </p>
+                <Button onClick={() => navigate("/dashboard")}>
+                  Return to Dashboard
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />

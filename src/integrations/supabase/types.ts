@@ -86,6 +86,50 @@ export type Database = {
           },
         ]
       }
+      certification_test_progress: {
+        Row: {
+          answers: Json
+          current_question_index: number
+          id: string
+          is_completed: boolean
+          questions: Json
+          started_at: string
+          test_attempt_id: string | null
+          time_left: number
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          current_question_index?: number
+          id?: string
+          is_completed?: boolean
+          questions?: Json
+          started_at?: string
+          test_attempt_id?: string | null
+          time_left?: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          current_question_index?: number
+          id?: string
+          is_completed?: boolean
+          questions?: Json
+          started_at?: string
+          test_attempt_id?: string | null
+          time_left?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certification_test_progress_test_attempt_id_fkey"
+            columns: ["test_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "test_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_bookmarks: {
         Row: {
           course_id: string
@@ -358,6 +402,7 @@ export type Database = {
           completed_at: string | null
           course_id: string
           id: string
+          is_certification_test: boolean
           passed: boolean
           score: number
           started_at: string | null
@@ -370,6 +415,7 @@ export type Database = {
           completed_at?: string | null
           course_id: string
           id?: string
+          is_certification_test?: boolean
           passed: boolean
           score: number
           started_at?: string | null
@@ -382,6 +428,7 @@ export type Database = {
           completed_at?: string | null
           course_id?: string
           id?: string
+          is_certification_test?: boolean
           passed?: boolean
           score?: number
           started_at?: string | null

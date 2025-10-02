@@ -34,11 +34,11 @@ serve(async (req) => {
       );
     }
 
-    const { courseId, answers, timePerQuestion } = await req.json();
+    const { courseId, answers, timePerQuestion, isCertificationTest, progressId } = await req.json();
 
-    if (!courseId || !answers) {
+    if (!answers) {
       return new Response(
-        JSON.stringify({ error: 'Course ID and answers are required' }),
+        JSON.stringify({ error: 'Answers are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -49,12 +49,56 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { data: questions, error } = await supabaseAdmin
-      .from('test_questions')
-      .select('id, correct_answer')
-      .eq('course_id', courseId);
+    let questions;
+    let error;
 
-    if (error) {
+    if (isCertificationTest) {
+      // For certification tests, get questions from the progress record
+      const { data: progressData, error: progressError } = await supabaseAdmin
+        .from('certification_test_progress')
+        .select('questions')
+        .eq('id', progressId)
+        .single();
+
+      if (progressError) {
+        console.error('Error fetching progress:', progressError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch test progress' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get question IDs from progress
+      const savedQuestions = progressData.questions as any[];
+      const questionIds = savedQuestions.map((q: any) => q.id);
+
+      // Fetch correct answers for these questions
+      const { data: questionsData, error: questionsError } = await supabaseAdmin
+        .from('test_questions')
+        .select('id, correct_answer')
+        .in('id', questionIds);
+
+      questions = questionsData;
+      error = questionsError;
+    } else {
+      // For course tests
+      if (!courseId) {
+        return new Response(
+          JSON.stringify({ error: 'Course ID is required for course tests' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: questionsData, error: questionsError } = await supabaseAdmin
+        .from('test_questions')
+        .select('id, correct_answer')
+        .eq('course_id', courseId);
+
+      questions = questionsData;
+      error = questionsError;
+    }
+
+    if (error || !questions) {
       console.error('Error fetching questions:', error);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch questions' }),
@@ -66,7 +110,7 @@ serve(async (req) => {
     let correctCount = 0;
     const totalQuestions = questions.length;
 
-    questions.forEach(question => {
+    questions.forEach((question: any) => {
       if (answers[question.id] === question.correct_answer) {
         correctCount++;
       }
@@ -76,17 +120,23 @@ serve(async (req) => {
     const passed = score >= 80; // 80% passing grade
 
     // Record test attempt
+    const testAttemptData: any = {
+      user_id: user.id,
+      score,
+      passed,
+      total_questions: totalQuestions,
+      answers: answers,
+      time_per_question: timePerQuestion || {},
+      is_certification_test: isCertificationTest || false
+    };
+
+    if (courseId) {
+      testAttemptData.course_id = courseId;
+    }
+
     const { data: testAttempt, error: attemptError } = await supabaseClient
       .from('test_attempts')
-      .insert({
-        user_id: user.id,
-        course_id: courseId,
-        score,
-        passed,
-        total_questions: totalQuestions,
-        answers: answers,
-        time_per_question: timePerQuestion || {}
-      })
+      .insert(testAttemptData)
       .select()
       .single();
 
@@ -96,6 +146,17 @@ serve(async (req) => {
         JSON.stringify({ error: 'Failed to record test attempt' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // If certification test, mark progress as completed
+    if (isCertificationTest && progressId) {
+      await supabaseAdmin
+        .from('certification_test_progress')
+        .update({
+          is_completed: true,
+          test_attempt_id: testAttempt.id
+        })
+        .eq('id', progressId);
     }
 
     return new Response(
