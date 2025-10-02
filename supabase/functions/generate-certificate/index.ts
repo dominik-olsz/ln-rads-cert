@@ -231,13 +231,7 @@ function generateCertificateHTML(
     .header {
       text-align: center;
       z-index: 1;
-      margin-bottom: 30px;
-    }
-    .logo {
-      width: 150px;
-      height: auto;
-      margin: 0 auto 20px;
-      display: block;
+      margin-bottom: 20px;
     }
     .title {
       font-size: 48px;
@@ -334,13 +328,11 @@ function generateCertificateHTML(
 <body>
   <div class="certificate">
     <div class="header">
-      <img src="https://kkbgxovmdpdjnblliqka.supabase.co/storage/v1/object/public/course-materials/lnrads-logo.jpg" alt="LN-RADS Logo" class="logo">
       <div class="title">Certificate of Completion</div>
-      <div class="subtitle">This certifies that</div>
+      <div class="subtitle">This certifies that is hereby awarded to</div>
     </div>
     
     <div class="content">
-      <div class="presented-to">is hereby awarded to</div>
       <div class="student-name">${studentName}</div>
       <div class="completion-text">
         for successfully completing the comprehensive training program
