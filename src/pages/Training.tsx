@@ -4,10 +4,11 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, CheckCircle, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Star, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface Lesson {
   id: string;
@@ -66,6 +67,7 @@ const Training = () => {
   const [hasPurchased, setHasPurchased] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({});
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
+  const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
   useEffect(() => {
     if (!user) {
       toast.error('Please sign in to access training');
@@ -547,7 +549,8 @@ const Training = () => {
                                   <img 
                                     src={q.image_url} 
                                     alt="Question" 
-                                    className="w-full max-h-[300px] object-contain rounded-lg border"
+                                    className="w-full rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => setFullSizeImage(q.image_url)}
                                   />
                                 )}
                                 
@@ -688,6 +691,29 @@ const Training = () => {
             </Card>
           </div>
         </div>
+
+        {/* Full size image dialog */}
+        <Dialog open={!!fullSizeImage} onOpenChange={(open) => !open && setFullSizeImage(null)}>
+          <DialogContent className="max-w-[95vw] max-h-[95vh] p-0">
+            <div className="relative w-full h-full flex items-center justify-center bg-background">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 z-10"
+                onClick={() => setFullSizeImage(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              {fullSizeImage && (
+                <img
+                  src={fullSizeImage}
+                  alt="Full size"
+                  className="max-w-full max-h-[95vh] object-contain"
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
