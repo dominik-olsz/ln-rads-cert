@@ -51,6 +51,7 @@ interface TestQuestion {
 
 interface TestQuestionsGroup {
   id?: string;
+  title?: string;
   order_index: number;
   questions: TestQuestion[];
 }
@@ -244,6 +245,7 @@ const CourseBuilder = () => {
     }));
     
     const newGroup: TestQuestionsGroup = {
+      title: `Test Questions ${questionGroups.length + 1}`,
       order_index: newOrderIndex,
       questions: newQuestions
     };
@@ -260,6 +262,15 @@ const CourseBuilder = () => {
     updatedGroups[groupIndex].questions[questionIndex] = {
       ...updatedGroups[groupIndex].questions[questionIndex],
       ...updates
+    };
+    setQuestionGroups(updatedGroups);
+  };
+
+  const updateQuestionGroupTitle = (groupIndex: number, title: string) => {
+    const updatedGroups = [...questionGroups];
+    updatedGroups[groupIndex] = {
+      ...updatedGroups[groupIndex],
+      title
     };
     setQuestionGroups(updatedGroups);
   };
@@ -328,7 +339,7 @@ const CourseBuilder = () => {
         type: 'questions' as const,
         index: idx,
         orderIndex: group.order_index,
-        title: `Test Questions (${group.questions.length})`
+        title: group.title || `Test Questions (${group.questions.length})`
       });
     });
     
@@ -802,12 +813,25 @@ const CourseBuilder = () => {
                 ) : currentItemType === 'questions' && questionGroups[currentItemIndex] ? (
                   <>
                     <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle>Test Questions ({questionGroups[currentItemIndex].questions.length})</CardTitle>
-                        <Button onClick={() => addQuestionToGroup(currentItemIndex)} size="sm">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add More Questions
-                        </Button>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 mr-4">
+                            <Label>Group Title</Label>
+                            <Input
+                              value={questionGroups[currentItemIndex].title || ''}
+                              onChange={(e) => updateQuestionGroupTitle(currentItemIndex, e.target.value)}
+                              placeholder="e.g., Module 1 Assessment"
+                              className="mt-1"
+                            />
+                          </div>
+                          <Button onClick={() => addQuestionToGroup(currentItemIndex)} size="sm" className="mt-6">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add More Questions
+                          </Button>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {questionGroups[currentItemIndex].questions.length} question{questionGroups[currentItemIndex].questions.length !== 1 ? 's' : ''}
+                        </p>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-6">
