@@ -739,155 +739,149 @@ const CourseBuilder = () => {
                   <>
                     <CardHeader>
                       <div className="flex items-center justify-between">
-                        <CardTitle>Test Questions</CardTitle>
-                        <div className="flex items-center gap-2">
-                          <Select
-                            value={currentItemIndex.toString()}
-                            onValueChange={(value) => setCurrentItemIndex(parseInt(value))}
-                          >
-                            <SelectTrigger className="w-[200px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {testQuestions.map((_, idx) => (
-                                <SelectItem key={idx} value={idx.toString()}>
-                                  Question {idx + 1}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteTestQuestion(currentItemIndex)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <CardTitle>Test Questions ({testQuestions.length})</CardTitle>
+                        <Button onClick={addTestQuestion} size="sm">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add More Questions
+                        </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      {testQuestions[currentItemIndex] && (
-                        <>
-                          <div className="space-y-2">
-                            <Label>Question</Label>
-                            <Input
-                              value={testQuestions[currentItemIndex]?.question_text}
-                              onChange={(e) =>
-                                updateTestQuestion(currentItemIndex, { question_text: e.target.value })
-                              }
-                              placeholder="Enter question"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <Input
-                              value={testQuestions[currentItemIndex]?.option_a}
-                              onChange={(e) =>
-                                updateTestQuestion(currentItemIndex, { option_a: e.target.value })
-                              }
-                              placeholder="Option A"
-                            />
-                            <Input
-                              value={testQuestions[currentItemIndex]?.option_b}
-                              onChange={(e) =>
-                                updateTestQuestion(currentItemIndex, { option_b: e.target.value })
-                              }
-                              placeholder="Option B"
-                            />
-                            <Input
-                              value={testQuestions[currentItemIndex]?.option_c}
-                              onChange={(e) =>
-                                updateTestQuestion(currentItemIndex, { option_c: e.target.value })
-                              }
-                              placeholder="Option C"
-                            />
-                            <Input
-                              value={testQuestions[currentItemIndex]?.option_d}
-                              onChange={(e) =>
-                                updateTestQuestion(currentItemIndex, { option_d: e.target.value })
-                              }
-                              placeholder="Option D"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                              <Label>Correct Answer</Label>
-                              <Select
-                                value={testQuestions[currentItemIndex]?.correct_answer}
-                                onValueChange={(value) =>
-                                  updateTestQuestion(currentItemIndex, { correct_answer: value })
-                                }
+                    <CardContent className="space-y-6">
+                      {testQuestions.map((question, idx) => (
+                        <Card key={idx} className="relative">
+                          <CardHeader className="pb-4">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-base">Question {idx + 1}</CardTitle>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteTestQuestion(idx)}
                               >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="A">Option A</SelectItem>
-                                  <SelectItem value="B">Option B</SelectItem>
-                                  <SelectItem value="C">Option C</SelectItem>
-                                  <SelectItem value="D">Option D</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Question</Label>
+                              <Input
+                                value={question.question_text}
+                                onChange={(e) =>
+                                  updateTestQuestion(idx, { question_text: e.target.value })
+                                }
+                                placeholder="Enter question"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <Input
+                                value={question.option_a}
+                                onChange={(e) =>
+                                  updateTestQuestion(idx, { option_a: e.target.value })
+                                }
+                                placeholder="Option A"
+                              />
+                              <Input
+                                value={question.option_b}
+                                onChange={(e) =>
+                                  updateTestQuestion(idx, { option_b: e.target.value })
+                                }
+                                placeholder="Option B"
+                              />
+                              <Input
+                                value={question.option_c}
+                                onChange={(e) =>
+                                  updateTestQuestion(idx, { option_c: e.target.value })
+                                }
+                                placeholder="Option C"
+                              />
+                              <Input
+                                value={question.option_d}
+                                onChange={(e) =>
+                                  updateTestQuestion(idx, { option_d: e.target.value })
+                                }
+                                placeholder="Option D"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-2">
+                                <Label>Correct Answer</Label>
+                                <Select
+                                  value={question.correct_answer}
+                                  onValueChange={(value) =>
+                                    updateTestQuestion(idx, { correct_answer: value })
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="A">Option A</SelectItem>
+                                    <SelectItem value="B">Option B</SelectItem>
+                                    <SelectItem value="C">Option C</SelectItem>
+                                    <SelectItem value="D">Option D</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label>Image (Optional)</Label>
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    
+                                    setUploading(true);
+                                    try {
+                                      const fileExt = file.name.split('.').pop();
+                                      const fileName = `${Math.random()}.${fileExt}`;
+                                      const filePath = `question-images/${fileName}`;
+
+                                      const { error: uploadError } = await supabase.storage
+                                        .from('course-materials')
+                                        .upload(filePath, file);
+
+                                      if (uploadError) throw uploadError;
+
+                                      const { data } = supabase.storage
+                                        .from('course-materials')
+                                        .getPublicUrl(filePath);
+
+                                      updateTestQuestion(idx, { image_url: data.publicUrl });
+                                    } catch (error) {
+                                      console.error('Upload error:', error);
+                                    } finally {
+                                      setUploading(false);
+                                    }
+                                  }}
+                                />
+                                {question.image_url && (
+                                  <img 
+                                    src={question.image_url} 
+                                    alt="" 
+                                    className="max-w-xs rounded mt-2" 
+                                  />
+                                )}
+                              </div>
                             </div>
 
                             <div className="space-y-2">
-                              <Label>Image (Optional)</Label>
-                              <Input
-                                type="file"
-                                accept="image/*"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  
-                                  setUploading(true);
-                                  try {
-                                    const fileExt = file.name.split('.').pop();
-                                    const fileName = `${Math.random()}.${fileExt}`;
-                                    const filePath = `question-images/${fileName}`;
-
-                                    const { error: uploadError } = await supabase.storage
-                                      .from('course-materials')
-                                      .upload(filePath, file);
-
-                                    if (uploadError) throw uploadError;
-
-                                    const { data } = supabase.storage
-                                      .from('course-materials')
-                                      .getPublicUrl(filePath);
-
-                                    updateTestQuestion(currentItemIndex, { image_url: data.publicUrl });
-                                  } catch (error) {
-                                    console.error('Upload error:', error);
-                                  } finally {
-                                    setUploading(false);
-                                  }
-                                }}
+                              <Label>Explanation (Optional)</Label>
+                              <Textarea
+                                value={question.explanation || ""}
+                                onChange={(e) =>
+                                  updateTestQuestion(idx, { explanation: e.target.value })
+                                }
+                                placeholder="Explain the correct answer"
+                                rows={2}
                               />
-                              {testQuestions[currentItemIndex]?.image_url && (
-                                <img 
-                                  src={testQuestions[currentItemIndex].image_url} 
-                                  alt="" 
-                                  className="max-w-xs rounded mt-2" 
-                                />
-                              )}
                             </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Explanation (Optional)</Label>
-                            <Textarea
-                              value={testQuestions[currentItemIndex]?.explanation || ""}
-                              onChange={(e) =>
-                                updateTestQuestion(currentItemIndex, { explanation: e.target.value })
-                              }
-                              placeholder="Explain the correct answer"
-                              rows={2}
-                            />
-                          </div>
-                        </>
-                      )}
+                          </CardContent>
+                        </Card>
+                      ))}
                     </CardContent>
                   </>
                 ) : null}
