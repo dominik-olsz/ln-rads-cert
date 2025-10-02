@@ -26,6 +26,18 @@ interface CourseMaterial {
   explanation: string | null;
 }
 
+interface TestQuestion {
+  id: string;
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_answer: string;
+  explanation: string | null;
+  image_url: string | null;
+}
+
 const Training = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
@@ -33,6 +45,7 @@ const Training = () => {
   const [currentLesson, setCurrentLesson] = useState(0);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [materials, setMaterials] = useState<{ [lessonId: string]: CourseMaterial[] }>({});
+  const [questions, setQuestions] = useState<{ [lessonId: string]: TestQuestion[] }>({});
   const [loading, setLoading] = useState(true);
   const [userProgress, setUserProgress] = useState<Set<string>>(new Set());
   const [hasPurchased, setHasPurchased] = useState(false);
@@ -92,6 +105,27 @@ const Training = () => {
         });
         setMaterials(groupedMaterials);
 
+        // Fetch all test questions for this course (lesson-specific only)
+        const { data: questionsData, error: questionsError } = await supabase
+          .from('test_questions')
+          .select('*')
+          .eq('course_id', courseId)
+          .not('lesson_id', 'is', null);
+
+        if (questionsError) throw questionsError;
+
+        // Group questions by lesson_id
+        const groupedQuestions: { [lessonId: string]: TestQuestion[] } = {};
+        questionsData?.forEach((question) => {
+          if (question.lesson_id) {
+            if (!groupedQuestions[question.lesson_id]) {
+              groupedQuestions[question.lesson_id] = [];
+            }
+            groupedQuestions[question.lesson_id].push(question);
+          }
+        });
+        setQuestions(groupedQuestions);
+
         // Fetch user progress
         const { data: progressData } = await supabase
           .from('user_progress')
@@ -119,6 +153,25 @@ const Training = () => {
   const lesson = lessons[currentLesson];
   const progress = lessons.length > 0 ? ((currentLesson + 1) / lessons.length) * 100 : 0;
   const lessonMaterials = lesson ? materials[lesson.id] || [] : [];
+  const lessonQuestions = lesson ? questions[lesson.id] || [] : [];
+
+  // Convert YouTube URLs to embed format
+  const getYouTubeEmbedUrl = (url: string) => {
+    if (!url) return null;
+    
+    // Already an embed URL
+    if (url.includes('youtube.com/embed/')) return url;
+    
+    // Convert youtube.com/watch?v= to embed
+    const watchMatch = url.match(/youtube\.com\/watch\?v=([^&]+)/);
+    if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}`;
+    
+    // Convert youtu.be/ to embed
+    const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+    if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`;
+    
+    return url;
+  };
 
   const markLessonComplete = async () => {
     if (!lesson || !user) return;
@@ -207,7 +260,7 @@ const Training = () => {
                   <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-4">
                     <iframe
                       className="w-full h-full"
-                      src={lesson.content_url}
+                      src={getYouTubeEmbedUrl(lesson.content_url) || lesson.content_url}
                       title={lesson.title}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
@@ -272,15 +325,41 @@ const Training = () => {
                   </div>
                 )}
 
-                {!userProgress.has(lesson.id) && (
-                  <Button 
-                    onClick={markLessonComplete}
-                    className="mt-4"
-                    variant="outline"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Mark as Complete
-                  </Button>
+                {/* Display test questions for this lesson */}
+                {lessonQuestions.length > 0 && (
+                  <div className="space-y-4 mt-6">
+                    <h3 className="font-semibold text-lg">Practice Questions</h3>
+                    {lessonQuestions.map((question, index) => (
+                      <div key={question.id} className="border rounded-lg p-4">
+                        <div className="space-y-3">
+                          <h4 className="font-medium">Question {index + 1}: {question.question_text}</h4>
+                          {question.image_url && (
+                            <img 
+                              src={question.image_url} 
+                              alt="Question"
+                              className="w-full max-h-[300px] object-contain rounded-lg"
+                            />
+                          )}
+                          <div className="space-y-2">
+                            <div className="p-2 rounded bg-muted/50">A. {question.option_a}</div>
+                            <div className="p-2 rounded bg-muted/50">B. {question.option_b}</div>
+                            <div className="p-2 rounded bg-muted/50">C. {question.option_c}</div>
+                            <div className="p-2 rounded bg-muted/50">D. {question.option_d}</div>
+                          </div>
+                          {question.explanation && (
+                            <div className="pt-3 border-t">
+                              <p className="text-sm text-muted-foreground">
+                                <strong>Correct Answer:</strong> {question.correct_answer}
+                              </p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                <strong>Explanation:</strong> {question.explanation}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
