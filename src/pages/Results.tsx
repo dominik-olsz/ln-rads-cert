@@ -3,7 +3,7 @@ import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Award, Download, Mail, CheckCircle, XCircle } from "lucide-react";
+import { Award, Download, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -11,70 +11,85 @@ import { useToast } from "@/hooks/use-toast";
 const Results = () => {
   const [searchParams] = useSearchParams();
   const score = parseFloat(searchParams.get("score") || "0");
-  const passed = score >= 80;
+  const passed = searchParams.get("passed") === "true";
+  const attemptId = searchParams.get("attemptId");
+  const courseId = searchParams.get("courseId");
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [certificateId, setCertificateId] = useState<string | null>(null);
+  const [generatingCert, setGeneratingCert] = useState(false);
 
   useEffect(() => {
     if (!user) {
       navigate("/auth");
       return;
     }
+  }, [user, navigate]);
 
-    const saveTestAttempt = async () => {
-      try {
-        // Save test attempt
-        const { data: testData, error: testError } = await supabase
-          .from('test_attempts')
-          .insert({
-            user_id: user.id,
-            course_id: '00000000-0000-0000-0000-000000000001', // Mock course ID
-            score: Math.round(score),
-            total_questions: 100,
-            passed
-          })
-          .select()
-          .single();
+  const generateCertificate = async () => {
+    if (!attemptId || !passed) return;
 
-        if (testError) throw testError;
+    setGeneratingCert(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-certificate', {
+        body: { attemptId }
+      });
 
-        // If passed, generate certificate
-        if (passed && testData) {
-          const certificateNumber = `LNRADS-${Date.now()}-${user.id.slice(0, 8)}`;
-          
-          const { data: certData, error: certError } = await supabase
-            .from('certificates')
-            .insert({
-              user_id: user.id,
-              course_id: '00000000-0000-0000-0000-000000000001',
-              test_attempt_id: testData.id,
-              certificate_number: certificateNumber
-            })
-            .select()
-            .single();
+      if (error) throw error;
 
-          if (certError && certError.code !== '23505') { // Ignore duplicate error
-            throw certError;
-          }
+      setCertificateId(data.certificateId);
+      
+      toast({
+        title: 'Certificate Generated!',
+        description: 'Your certificate is ready to download',
+      });
+    } catch (error) {
+      console.error('Error generating certificate:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate certificate',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingCert(false);
+    }
+  };
 
-          if (certData) {
-            setCertificateId(certData.id);
-          }
-        }
-      } catch (error: any) {
-        console.error('Error saving test attempt:', error);
-        toast({
-          title: "Error",
-          description: "Failed to save test results",
-          variant: "destructive"
-        });
-      }
-    };
+  const downloadCertificate = async () => {
+    if (!attemptId) return;
 
-    saveTestAttempt();
-  }, [user, score, passed, navigate, toast]);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-certificate', {
+        body: { attemptId }
+      });
+
+      if (error) throw error;
+
+      // Create HTML file and download
+      const blob = new Blob([data.html], { type: 'text/html' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `LN-RADS-Certificate-${data.certificateNumber}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: 'Success',
+        description: 'Certificate downloaded successfully',
+      });
+    } catch (error) {
+      console.error('Error downloading certificate:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to download certificate',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -120,32 +135,36 @@ const Results = () => {
                   </div>
                   
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button className="gap-2" disabled={!certificateId}>
-                      <Download className="h-4 w-4" />
-                      Download Certificate
-                    </Button>
-                    <Button variant="outline" className="gap-2" disabled={!certificateId}>
-                      <Mail className="h-4 w-4" />
-                      Email Certificate
-                    </Button>
+                    {!certificateId ? (
+                      <Button 
+                        className="gap-2" 
+                        onClick={generateCertificate}
+                        disabled={generatingCert}
+                      >
+                        <Award className="h-4 w-4" />
+                        {generatingCert ? 'Generating...' : 'Generate Certificate'}
+                      </Button>
+                    ) : (
+                      <Button 
+                        className="gap-2"
+                        onClick={downloadCertificate}
+                      >
+                        <Download className="h-4 w-4" />
+                        Download Certificate
+                      </Button>
+                    )}
                   </div>
-                  
-                  {certificateId && (
-                    <p className="text-sm text-muted-foreground">
-                      Certificate ID: {certificateId}
-                    </p>
-                  )}
                 </div>
               )}
 
-              {!passed && (
+              {!passed && courseId && (
                 <div className="space-y-4">
-                  <Link to="/test">
+                  <Link to={`/certification-test?courseId=${courseId}`}>
                     <Button size="lg">
                       Retake Test
                     </Button>
                   </Link>
-                  <Link to="/training/1" className="block">
+                  <Link to={`/training/${courseId}`} className="block">
                     <Button variant="outline" size="lg" className="w-full">
                       Review Course Material
                     </Button>
