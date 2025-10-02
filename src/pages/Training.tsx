@@ -106,8 +106,10 @@ const Training = () => {
         setMaterials(groupedMaterials);
 
         // Fetch all test questions via backend function (avoid RLS restrictions)
+        const { data: { session } } = await supabase.auth.getSession();
         const { data: fnRes, error: fnError } = await supabase.functions.invoke('get-test-questions', {
-          body: { courseId }
+          body: { courseId },
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
         });
 
         if (fnError) throw fnError;

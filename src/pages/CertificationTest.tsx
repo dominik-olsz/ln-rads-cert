@@ -114,7 +114,8 @@ const CertificationTest = () => {
       setHasPurchased(true);
 
       const { data, error } = await supabase.functions.invoke('get-test-questions', {
-        body: { courseId }
+        body: { courseId },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       });
 
       if (error) throw error;
