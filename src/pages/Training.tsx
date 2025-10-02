@@ -446,7 +446,7 @@ const Training = () => {
                         )}
                         <div className="flex-1">
                           <span className="text-xs text-muted-foreground block">
-                            {item.type === 'lesson' ? 'Lesson' : 'Test Question'}
+                            {item.type === 'lesson' ? 'Lesson' : 'Course Test'}
                           </span>
                           <span className="text-sm font-medium line-clamp-1">{item.title}</span>
                         </div>
