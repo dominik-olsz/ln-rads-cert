@@ -222,6 +222,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          certificate_name: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
@@ -229,6 +230,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          certificate_name?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
@@ -236,6 +238,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          certificate_name?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
@@ -246,32 +249,38 @@ export type Database = {
       }
       test_attempts: {
         Row: {
+          answers: Json | null
           completed_at: string | null
           course_id: string
           id: string
           passed: boolean
           score: number
           started_at: string | null
+          time_per_question: Json | null
           total_questions: number
           user_id: string
         }
         Insert: {
+          answers?: Json | null
           completed_at?: string | null
           course_id: string
           id?: string
           passed: boolean
           score: number
           started_at?: string | null
+          time_per_question?: Json | null
           total_questions?: number
           user_id: string
         }
         Update: {
+          answers?: Json | null
           completed_at?: string | null
           course_id?: string
           id?: string
           passed?: boolean
           score?: number
           started_at?: string | null
+          time_per_question?: Json | null
           total_questions?: number
           user_id?: string
         }

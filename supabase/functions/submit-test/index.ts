@@ -34,7 +34,7 @@ serve(async (req) => {
       );
     }
 
-    const { courseId, answers } = await req.json();
+    const { courseId, answers, timePerQuestion } = await req.json();
 
     if (!courseId || !answers) {
       return new Response(
@@ -73,7 +73,7 @@ serve(async (req) => {
     });
 
     const score = Math.round((correctCount / totalQuestions) * 100);
-    const passed = score >= 70; // 70% passing grade
+    const passed = score >= 80; // 80% passing grade
 
     // Record test attempt
     const { data: testAttempt, error: attemptError } = await supabaseClient
@@ -84,6 +84,8 @@ serve(async (req) => {
         score,
         passed,
         total_questions: totalQuestions,
+        answers: answers,
+        time_per_question: timePerQuestion || {}
       })
       .select()
       .single();
@@ -102,7 +104,7 @@ serve(async (req) => {
         passed, 
         correctCount, 
         totalQuestions,
-        testAttemptId: testAttempt.id
+        attemptId: testAttempt.id
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
