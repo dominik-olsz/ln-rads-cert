@@ -196,7 +196,7 @@ function generateCertificateHTML(
     }
     body {
       font-family: 'Georgia', serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: white;
       width: 210mm;
       height: 297mm;
       display: flex;
