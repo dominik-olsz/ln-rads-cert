@@ -18,12 +18,18 @@ interface Lesson {
   order_index: number;
 }
 
+interface TestQuestionGroup {
+  id: string;
+  title: string;
+  questions: TestQuestion[];
+}
+
 interface CourseItem {
   id: string;
-  type: 'lesson' | 'question';
+  type: 'lesson' | 'questionGroup';
   title: string;
   order_index: number;
-  data: Lesson | TestQuestion;
+  data: Lesson | TestQuestionGroup;
 }
 
 interface CourseMaterial {
@@ -44,6 +50,8 @@ interface TestQuestion {
   correct_answer: string;
   explanation: string | null;
   image_url: string | null;
+  group_title: string | null;
+  order_index: number;
 }
 
 const Training = () => {
@@ -51,6 +59,7 @@ const Training = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [currentItem, setCurrentItem] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [courseItems, setCourseItems] = useState<CourseItem[]>([]);
   const [materials, setMaterials] = useState<{ [lessonId: string]: CourseMaterial[] }>({});
   const [loading, setLoading] = useState(true);
@@ -112,16 +121,30 @@ const Training = () => {
           console.error('Failed to fetch course test questions via function:', e);
         }
 
-        // Append questions after lessons
-        items.push(
-          ...questionsData.map((question: any, index: number) => ({
-            id: question.id,
-            type: 'question' as const,
-            title: question.question_text || `Question ${index + 1}`,
-            order_index: (lessonsData?.length || 0) + index,
-            data: question,
-          }))
-        );
+        // Group questions by group_title
+        const questionGroups: { [key: string]: TestQuestion[] } = {};
+        questionsData.forEach((question: any) => {
+          const groupTitle = question.group_title || 'Test Questions';
+          if (!questionGroups[groupTitle]) {
+            questionGroups[groupTitle] = [];
+          }
+          questionGroups[groupTitle].push(question);
+        });
+
+        // Append question groups after lessons
+        Object.entries(questionGroups).forEach(([groupTitle, questions], groupIndex) => {
+          items.push({
+            id: `group-${groupIndex}`,
+            type: 'questionGroup' as const,
+            title: groupTitle,
+            order_index: (lessonsData?.length || 0) + groupIndex,
+            data: {
+              id: `group-${groupIndex}`,
+              title: groupTitle,
+              questions: questions.sort((a, b) => a.order_index - b.order_index),
+            },
+          });
+        });
 
         setCourseItems(items);
 
@@ -241,14 +264,41 @@ const Training = () => {
     if (currentCourseItem?.type === 'lesson' && !userProgress.has(currentCourseItem.id)) {
       await markLessonComplete();
     }
+    
+    // If we're in a question group, try to move to next question in the group first
+    if (currentCourseItem?.type === 'questionGroup') {
+      const group = currentCourseItem.data as TestQuestionGroup;
+      if (currentQuestionIndex < group.questions.length - 1) {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+        return;
+      }
+    }
+    
+    // Move to next item and reset question index
     if (currentItem < courseItems.length - 1) {
       setCurrentItem(currentItem + 1);
+      setCurrentQuestionIndex(0);
     }
   };
 
   const handlePrevious = () => {
+    // If we're in a question group, try to move to previous question in the group first
+    if (currentCourseItem?.type === 'questionGroup' && currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+      return;
+    }
+    
+    // Move to previous item
     if (currentItem > 0) {
+      const prevItem = courseItems[currentItem - 1];
       setCurrentItem(currentItem - 1);
+      // If previous item is a question group, go to its last question
+      if (prevItem.type === 'questionGroup') {
+        const group = prevItem.data as TestQuestionGroup;
+        setCurrentQuestionIndex(group.questions.length - 1);
+      } else {
+        setCurrentQuestionIndex(0);
+      }
     }
   };
 
@@ -366,12 +416,14 @@ const Training = () => {
                       </div>
                     )}
                   </>
-                ) : currentCourseItem?.type === 'question' ? (
+                ) : currentCourseItem?.type === 'questionGroup' ? (
                   <>
-                    <h2 className="text-xl font-bold mb-4">Course Test Question</h2>
                     {(() => {
-                      const q = currentCourseItem.data as TestQuestion;
-                      const selected = selectedAnswers[currentCourseItem.id];
+                      const group = currentCourseItem.data as TestQuestionGroup;
+                      const q = group.questions[currentQuestionIndex];
+                      const selected = selectedAnswers[q.id];
+                      
+                      if (!q) return null;
 
                       const normalizeLetter = (val?: string | null) => {
                         if (!val) return '';
@@ -397,6 +449,12 @@ const Training = () => {
                       ] as const;
                       return (
                         <div className="space-y-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold">{currentCourseItem.title}</h2>
+                            <span className="text-sm text-muted-foreground">
+                              Question {currentQuestionIndex + 1} of {group.questions.length}
+                            </span>
+                          </div>
                           {q.image_url && (
                             <img 
                               src={q.image_url!} 
@@ -430,7 +488,7 @@ const Training = () => {
                                   key={o.key}
                                   role="radio"
                                   aria-checked={isSelected}
-                                  onClick={() => setSelectedAnswers(prev => ({ ...prev, [currentCourseItem.id]: o.key as 'A' | 'B' | 'C' | 'D' }))}
+                                  onClick={() => setSelectedAnswers(prev => ({ ...prev, [q.id]: o.key as 'A' | 'B' | 'C' | 'D' }))}
                                   className={buttonClass}
                                 >
                                   <span className="font-medium mr-1">{o.key}:</span> {o.text}
