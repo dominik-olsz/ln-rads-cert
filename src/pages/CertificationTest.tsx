@@ -451,9 +451,19 @@ const CertificationTest = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Submit test error:', error);
+        throw error;
+      }
+
+      if (!data) {
+        console.error('No data returned from submit-test');
+        throw new Error('No response data from server');
+      }
 
       const { score, passed, attemptId } = data;
+      
+      console.log('Test submitted successfully:', { score, passed, attemptId });
       
       toast({
         title: passed ? "Congratulations!" : "Test Complete",
@@ -464,11 +474,14 @@ const CertificationTest = () => {
       });
 
       navigate(`/results?score=${score}&passed=${passed}&isCertification=true&attemptId=${attemptId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting test:', error);
+      
+      const errorMessage = error?.message || error?.details || 'Failed to submit test. Please try again.';
+      
       toast({
         title: "Error",
-        description: "Failed to submit test. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

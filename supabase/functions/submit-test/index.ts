@@ -36,7 +36,15 @@ serve(async (req) => {
 
     const { courseId, answers, timePerQuestion, isCertificationTest, progressId } = await req.json();
 
+    console.log('Submit test request:', { 
+      isCertificationTest, 
+      progressId, 
+      courseId,
+      answersCount: Object.keys(answers || {}).length 
+    });
+
     if (!answers) {
+      console.error('No answers provided');
       return new Response(
         JSON.stringify({ error: 'Answers are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -53,6 +61,16 @@ serve(async (req) => {
     let error;
 
     if (isCertificationTest) {
+      console.log('Processing certification test, progressId:', progressId);
+      
+      if (!progressId) {
+        console.error('No progressId provided for certification test');
+        return new Response(
+          JSON.stringify({ error: 'Progress ID is required for certification tests' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // For certification tests, get questions from the progress record
       const { data: progressData, error: progressError } = await supabaseAdmin
         .from('certification_test_progress')
@@ -63,7 +81,7 @@ serve(async (req) => {
       if (progressError) {
         console.error('Error fetching progress:', progressError);
         return new Response(
-          JSON.stringify({ error: 'Failed to fetch test progress' }),
+          JSON.stringify({ error: 'Failed to fetch test progress', details: progressError.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -72,11 +90,17 @@ serve(async (req) => {
       const savedQuestions = progressData.questions as any[];
       const questionIds = savedQuestions.map((q: any) => q.id);
 
+      console.log('Fetching correct answers for', questionIds.length, 'questions');
+
       // Fetch correct answers for these questions
       const { data: questionsData, error: questionsError } = await supabaseAdmin
         .from('test_questions')
         .select('id, correct_answer')
         .in('id', questionIds);
+
+      if (questionsError) {
+        console.error('Error fetching questions:', questionsError);
+      }
 
       questions = questionsData;
       error = questionsError;
@@ -119,6 +143,8 @@ serve(async (req) => {
     const score = Math.round((correctCount / totalQuestions) * 100);
     const passed = score >= 80; // 80% passing grade
 
+    console.log('Test results:', { score, passed, correctCount, totalQuestions });
+
     // Record test attempt
     const testAttemptData: any = {
       user_id: user.id,
@@ -134,6 +160,8 @@ serve(async (req) => {
       testAttemptData.course_id = courseId;
     }
 
+    console.log('Creating test attempt record...');
+
     const { data: testAttempt, error: attemptError } = await supabaseClient
       .from('test_attempts')
       .insert(testAttemptData)
@@ -143,21 +171,30 @@ serve(async (req) => {
     if (attemptError) {
       console.error('Error recording test attempt:', attemptError);
       return new Response(
-        JSON.stringify({ error: 'Failed to record test attempt' }),
+        JSON.stringify({ error: 'Failed to record test attempt', details: attemptError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('Test attempt recorded, ID:', testAttempt.id);
+
     // If certification test, mark progress as completed
     if (isCertificationTest && progressId) {
-      await supabaseAdmin
+      console.log('Marking progress as completed...');
+      const { error: updateError } = await supabaseAdmin
         .from('certification_test_progress')
         .update({
           is_completed: true,
           test_attempt_id: testAttempt.id
         })
         .eq('id', progressId);
+
+      if (updateError) {
+        console.error('Error updating progress:', updateError);
+      }
     }
+
+    console.log('Returning success response');
 
     return new Response(
       JSON.stringify({ 
@@ -172,8 +209,12 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in submit-test function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error('Error details:', { message: errorMessage, stack: errorStack });
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: errorMessage, details: errorStack }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
