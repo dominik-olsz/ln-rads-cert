@@ -203,7 +203,7 @@ const Training = () => {
               <CardContent className="pt-6">
                 <h2 className="text-xl font-bold mb-4">{lesson.title}</h2>
                 
-                {lesson.content_type === "video" && lesson.content_url && (
+                {(lesson.content_type === "video" || lesson.content_type === "mixed") && lesson.content_url && (
                   <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-4">
                     <iframe
                       className="w-full h-full"
@@ -225,7 +225,7 @@ const Training = () => {
                   </div>
                 )}
 
-                {lesson.content_type === "text" && lesson.content_text && (
+                {(lesson.content_type === "text" || lesson.content_type === "mixed") && lesson.content_text && (
                   <div className="prose prose-sm max-w-none mb-4" dangerouslySetInnerHTML={{ __html: lesson.content_text }} />
                 )}
 
