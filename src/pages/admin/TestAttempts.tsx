@@ -83,7 +83,7 @@ const AdminTestAttempts = () => {
   }, []);
 
   const resetUserAttempts = async (userId: string, userName: string) => {
-    if (!confirm(`Are you sure you want to reset all certification attempts for ${userName}? This will delete their test attempts and allow them to retake the certification test.`)) {
+    if (!confirm(`Are you sure you want to reset all certification attempts for ${userName}? This will delete their test attempts, certificates, and allow them to retake the certification test.`)) {
       return;
     }
 
@@ -96,6 +96,14 @@ const AdminTestAttempts = () => {
 
       if (progressError) throw progressError;
 
+      // Delete certificates associated with certification test attempts for this user
+      const { error: certsError } = await supabase
+        .from('certificates')
+        .delete()
+        .eq('user_id', userId);
+
+      if (certsError) throw certsError;
+
       // Then delete all certification test attempts for this user
       const { error: attemptsError } = await supabase
         .from('test_attempts')
@@ -107,7 +115,7 @@ const AdminTestAttempts = () => {
 
       toast({
         title: 'Success',
-        description: `Certification attempts reset for ${userName}`,
+        description: `Certification attempts and certificates reset for ${userName}`,
       });
 
       fetchAttempts();
