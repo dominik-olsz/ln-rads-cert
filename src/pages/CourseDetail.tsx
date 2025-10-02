@@ -26,12 +26,26 @@ interface Lesson {
   order_index: number;
 }
 
+interface TestQuestionGroup {
+  id: string;
+  title: string;
+  questions: any[];
+}
+
+interface CourseItem {
+  id: string;
+  type: 'lesson' | 'questionGroup';
+  title: string;
+  order_index: number;
+  data: Lesson | TestQuestionGroup;
+}
+
 const CourseDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [courseItems, setCourseItems] = useState<CourseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasPurchased, setHasPurchased] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
@@ -58,16 +72,57 @@ const CourseDetail = () => {
           .order('order_index');
 
         if (lessonsError) throw lessonsError;
-        setLessons(lessonsData || []);
 
-        // Fetch course questions count
+        // Fetch course questions via edge function
         const { data: questionsData } = await supabase.functions.invoke('get-test-questions', {
           body: { courseId: id },
         });
 
-        if (questionsData?.questions) {
-          setCourseQuestionsCount(questionsData.questions.length);
-        }
+        const questions = questionsData?.questions || [];
+        setCourseQuestionsCount(questions.length);
+
+        // Group questions by group_title and order_index
+        const questionGroupsMap: Map<string, { title: string; orderIndex: number; questions: any[] }> = new Map();
+        
+        questions.forEach((question: any) => {
+          const groupTitle = question.group_title || 'Test Questions';
+          const orderIndex = question.order_index || 0;
+          
+          if (!questionGroupsMap.has(groupTitle)) {
+            questionGroupsMap.set(groupTitle, {
+              title: groupTitle,
+              orderIndex: orderIndex,
+              questions: []
+            });
+          }
+          questionGroupsMap.get(groupTitle)!.questions.push(question);
+        });
+
+        // Convert lessons to items
+        const lessonItems: CourseItem[] = (lessonsData || []).map((lesson) => ({
+          id: lesson.id,
+          type: 'lesson' as const,
+          title: lesson.title,
+          order_index: lesson.order_index,
+          data: lesson,
+        }));
+
+        // Convert question groups to items
+        const questionGroupItems: CourseItem[] = Array.from(questionGroupsMap.values()).map((group, idx) => ({
+          id: `group-${idx}`,
+          type: 'questionGroup' as const,
+          title: `${group.title} (${group.questions.length})`,
+          order_index: group.orderIndex,
+          data: {
+            id: `group-${idx}`,
+            title: group.title,
+            questions: group.questions,
+          },
+        }));
+
+        // Combine and sort by order_index
+        const allItems = [...lessonItems, ...questionGroupItems].sort((a, b) => a.order_index - b.order_index);
+        setCourseItems(allItems);
 
         // Check if user has purchased this course
         if (user) {
@@ -218,25 +273,25 @@ const CourseDetail = () => {
                 <CardContent className="pt-6">
                   <h2 className="text-2xl font-bold mb-4">Course Content</h2>
                   <div className="space-y-3">
-                    {lessons.length > 0 ? (
-                      lessons.map((lesson) => (
+                    {courseItems.length > 0 ? (
+                      courseItems.map((item, index) => (
                         <div
-                          key={lesson.id}
+                          key={item.id}
                           className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
                         >
                           <div className="flex items-start gap-3">
                             <PlayCircle className="h-5 w-5 text-primary mt-0.5" />
                             <div>
-                              <h3 className="font-semibold">{lesson.title}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                Lesson {lesson.order_index + 1}
+                              <p className="text-xs text-muted-foreground mb-1">
+                                {item.type === 'lesson' ? 'Lesson' : 'Course Test'}
                               </p>
+                              <h3 className="font-semibold">{item.title}</h3>
                             </div>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground">No lessons available yet</p>
+                      <p className="text-sm text-muted-foreground">No content available yet</p>
                     )}
                   </div>
                 </CardContent>
