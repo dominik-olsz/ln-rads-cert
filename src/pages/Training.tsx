@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -65,6 +65,7 @@ const Training = () => {
   const [userProgress, setUserProgress] = useState<Set<string>>(new Set());
   const [hasPurchased, setHasPurchased] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({});
+  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   useEffect(() => {
     if (!user) {
       toast.error('Please sign in to access training');
@@ -194,6 +195,29 @@ const Training = () => {
         if (progressData) {
           setUserProgress(new Set(progressData.map(p => p.lesson_id).filter(Boolean)));
         }
+
+        // Fetch user's last position in this course
+        const { data: courseProgress } = await supabase
+          .from('course_progress')
+          .select('last_item_index')
+          .eq('course_id', courseId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (courseProgress && courseProgress.last_item_index < allItems.length) {
+          setCurrentItem(courseProgress.last_item_index);
+        }
+
+        // Fetch user's bookmarks
+        const { data: bookmarksData } = await supabase
+          .from('course_bookmarks')
+          .select('item_id')
+          .eq('course_id', courseId)
+          .eq('user_id', user.id);
+
+        if (bookmarksData) {
+          setBookmarks(new Set(bookmarksData.map(b => b.item_id)));
+        }
       } catch (error) {
         console.error('Error fetching training data:', error);
         toast.error('Failed to load training content');
@@ -275,18 +299,87 @@ const Training = () => {
     }
   };
 
+  const updateCourseProgress = async (itemIndex: number) => {
+    if (!user || !courseId) return;
+
+    try {
+      const { error } = await supabase
+        .from('course_progress')
+        .upsert({
+          user_id: user.id,
+          course_id: courseId,
+          last_item_index: itemIndex,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,course_id'
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating course progress:', error);
+    }
+  };
+
+  const toggleBookmark = async (item: CourseItem) => {
+    if (!user || !courseId) return;
+
+    const isBookmarked = bookmarks.has(item.id);
+
+    try {
+      if (isBookmarked) {
+        const { error } = await supabase
+          .from('course_bookmarks')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('course_id', courseId)
+          .eq('item_id', item.id);
+
+        if (error) throw error;
+
+        setBookmarks(prev => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+        toast.success('Bookmark removed');
+      } else {
+        const { error } = await supabase
+          .from('course_bookmarks')
+          .insert({
+            user_id: user.id,
+            course_id: courseId,
+            item_id: item.id,
+            item_type: item.type,
+            item_title: item.title,
+          });
+
+        if (error) throw error;
+
+        setBookmarks(prev => new Set(prev).add(item.id));
+        toast.success('Bookmark added');
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      toast.error('Failed to update bookmark');
+    }
+  };
+
   const handleNext = async () => {
     if (currentCourseItem?.type === 'lesson' && !userProgress.has(currentCourseItem.id)) {
       await markLessonComplete();
     }
     if (currentItem < courseItems.length - 1) {
-      setCurrentItem(currentItem + 1);
+      const nextIndex = currentItem + 1;
+      setCurrentItem(nextIndex);
+      await updateCourseProgress(nextIndex);
     }
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = async () => {
     if (currentItem > 0) {
-      setCurrentItem(currentItem - 1);
+      const prevIndex = currentItem - 1;
+      setCurrentItem(prevIndex);
+      await updateCourseProgress(prevIndex);
     }
   };
 
@@ -549,7 +642,10 @@ const Training = () => {
                   {courseItems.map((item, index) => (
                     <button
                       key={item.id}
-                      onClick={() => setCurrentItem(index)}
+                      onClick={async () => {
+                        setCurrentItem(index);
+                        await updateCourseProgress(index);
+                      }}
                       className={`w-full text-left p-3 rounded-lg border transition-colors ${
                         index === currentItem
                           ? "bg-primary text-primary-foreground"
@@ -568,6 +664,22 @@ const Training = () => {
                           </span>
                           <span className="text-sm font-medium line-clamp-1">{item.title}</span>
                         </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleBookmark(item);
+                          }}
+                          className="p-1 hover:bg-background/10 rounded transition-colors"
+                          aria-label={bookmarks.has(item.id) ? "Remove bookmark" : "Add bookmark"}
+                        >
+                          <Star
+                            className={`h-4 w-4 ${
+                              bookmarks.has(item.id)
+                                ? "fill-current text-yellow-500"
+                                : "text-muted-foreground"
+                            }`}
+                          />
+                        </button>
                       </div>
                     </button>
                   ))}
