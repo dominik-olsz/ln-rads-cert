@@ -13,7 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
   ArrowLeft, Plus, Trash2, Upload, Video, FileText, 
-  GripVertical, Save 
+  GripVertical, Save, PlayCircle, CheckCircle, BookOpen, 
+  FileQuestion, Award 
 } from "lucide-react";
 import {
   Dialog,
@@ -977,76 +978,108 @@ const CourseBuilder = () => {
           </TabsContent>
 
           <TabsContent value="preview">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-6">
-                  {heroImage && (
-                    <div className="aspect-video rounded-lg overflow-hidden">
-                      <img src={heroImage} alt={title} className="w-full h-full object-cover" />
+            <div className="grid lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-6">
+                <div>
+                  <h1 className="text-4xl font-bold mb-4">{title || "Untitled Course"}</h1>
+                  <p className="text-lg text-muted-foreground mb-6">{description}</p>
+                  
+                  <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5" />
+                      <span>{lessons.length} lessons</span>
                     </div>
-                  )}
-
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-3xl font-bold">{title || "Untitled Course"}</h2>
-                    </div>
-                    <p className="text-muted-foreground">{description}</p>
-                  </div>
-
-                  <div className="flex gap-6 text-sm text-muted-foreground">
-                    <span>Price: €{price}</span>
-                    <span>Lessons: {lessons.length}</span>
-                  </div>
-
-                  {courseIncludes && (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">This course includes:</h3>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{courseIncludes}</p>
-                    </div>
-                  )}
-
-                  {whatYouLearn && (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">What You'll Learn:</h3>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{whatYouLearn}</p>
-                    </div>
-                  )}
-
-                  <div className="space-y-4">
-                    <h3 className="text-xl font-semibold">Course Content</h3>
-                    {lessons?.map((lesson, index) => (
-                      <div key={index} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold">
-                            Lesson {index + 1}: {lesson.title}
-                          </h4>
-                          <span className="text-sm text-muted-foreground">{lesson.duration}</span>
-                        </div>
-                        {lesson.content_url && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                            <Video className="h-4 w-4" />
-                            <span>Video included</span>
-                          </div>
-                        )}
+                    {questionGroups.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <FileQuestion className="h-5 w-5" />
+                        <span>{questionGroups.reduce((acc, g) => acc + g.questions.length, 0)} course questions</span>
                       </div>
-                    ))}
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Award className="h-5 w-5" />
+                      <span>Certificate included</span>
+                    </div>
                   </div>
+                </div>
 
-                  {questionGroups && questionGroups.length > 0 && (
-                    <div className="space-y-2">
-                      <h3 className="font-semibold">Course Test Questions</h3>
-                      <div className="flex gap-2">
-                        {questionGroups.map((group, idx) => (
-                          <Badge key={idx} variant="secondary">
-                            Group {idx + 1}: {group.questions.length} questions
-                          </Badge>
+                {heroImage && (
+                  <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                    <img
+                      src={heroImage}
+                      alt={title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <h2 className="text-2xl font-bold mb-4">Course Content</h2>
+                    <div className="space-y-3">
+                      {getDisplayItems().length > 0 ? (
+                        getDisplayItems().map((item, index) => (
+                          <div
+                            key={`${item.type}-${item.index}`}
+                            className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="flex items-start gap-3">
+                              <PlayCircle className="h-5 w-5 text-primary mt-0.5" />
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  {item.type === 'lesson' ? 'Lesson' : 'Course Test'}
+                                </p>
+                                <h3 className="font-semibold">{item.title}</h3>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No content available yet</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {whatYouLearn && (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <h2 className="text-2xl font-bold mb-4">What You'll Learn</h2>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {whatYouLearn.split('\n').filter(Boolean).map((item, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5 text-accent flex-shrink-0" />
+                            <span className="text-sm">{item}</span>
+                          </div>
                         ))}
                       </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              <div className="lg:col-span-1">
+                <Card className="sticky top-20">
+                  <CardContent className="pt-6 space-y-6">
+                    <div>
+                      <div className="text-4xl font-bold text-primary mb-2">€{price}</div>
+                      <p className="text-sm text-muted-foreground">One-time payment · Lifetime access</p>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+
+                    {courseIncludes && (
+                      <div className="border-t pt-6 space-y-3">
+                        <h3 className="font-semibold mb-3">This course includes:</h3>
+                        {courseIncludes.split('\n').filter(Boolean).map((item, index) => (
+                          <div key={index} className="flex items-center gap-2 text-sm">
+                            <CheckCircle className="h-4 w-4 text-accent flex-shrink-0" />
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
