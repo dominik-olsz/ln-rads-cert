@@ -10,6 +10,7 @@ interface CourseCardProps {
   description: string;
   price: number;
   totalLessons: number;
+  useCases?: number;
   imageUrl?: string;
 }
 
@@ -19,6 +20,7 @@ const CourseCard = ({
   description,
   price,
   totalLessons,
+  useCases = 0,
   imageUrl = "/placeholder.svg",
 }: CourseCardProps) => {
   return (
@@ -47,6 +49,10 @@ const CourseCard = ({
           <div className="flex items-center gap-1">
             <Clock className="h-4 w-4" />
             <span>{totalLessons} lessons</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Users className="h-4 w-4" />
+            <span>{useCases} use cases</span>
           </div>
           <div className="flex items-center gap-1">
             <Award className="h-4 w-4" />
