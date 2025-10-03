@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Clock, Users, BookOpen, Award, Video, Image as ImageIcon, FileQuestion } from "lucide-react";
+import lnRadsFlowchart from "@/assets/ln-rads-flowchart.png";
 const Index = () => {
   return <div className="min-h-screen bg-background">
       <Navbar />
@@ -68,6 +69,14 @@ const Index = () => {
                     </div>
                   </div>
                   
+                </div>
+                
+                <div className="mt-8 pt-8 border-t">
+                  <img 
+                    src={lnRadsFlowchart} 
+                    alt="LN-RADS Classification Flowchart" 
+                    className="w-full rounded-lg shadow-md"
+                  />
                 </div>
               </CardContent>
             </Card>
