@@ -65,7 +65,7 @@ const Navbar = () => {
               <span className="text-sm text-muted-foreground hidden md:inline">
                 {user.email}
               </span>
-              <Button variant="ghost" onClick={signOut} className="hidden md:inline-flex">
+              <Button variant="outline" onClick={signOut} className="hidden md:inline-flex">
                 Sign Out
               </Button>
               <Sheet>
