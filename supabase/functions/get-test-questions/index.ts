@@ -12,18 +12,32 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     );
 
-    // Public function: authentication not required
-    // (We still create a client in case we want to tailor results by user in the future)
+    // Verify user is authenticated
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
 
     const { courseId, testType } = await req.json();
@@ -36,10 +50,25 @@ serve(async (req) => {
 
     let query = supabaseAdmin
       .from('test_questions')
-      .select('id, lesson_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, image_url, created_at, test_type, group_title, order_index');
+      .select('id, lesson_id, question_text, option_a, option_b, option_c, option_d, image_url, created_at, test_type, group_title, order_index');
 
     // For certification tests, fetch all certification questions regardless of course
     if (testType === 'certification') {
+      // Check if user has already completed a certification test
+      const { data: existingProgress } = await supabaseAdmin
+        .from('certification_test_progress')
+        .select('is_completed')
+        .eq('user_id', user.id)
+        .eq('is_completed', true)
+        .maybeSingle();
+
+      if (existingProgress) {
+        return new Response(
+          JSON.stringify({ error: 'Certification test already completed. Retakes are not allowed.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       query = query.eq('test_type', 'certification').is('course_id', null);
     } else {
       // For course tests, fetch questions for specific course
@@ -57,21 +86,19 @@ serve(async (req) => {
     if (error) {
       console.error('Error fetching questions:', error);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch questions' }),
+        JSON.stringify({ error: 'Failed to retrieve test questions' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Return questions WITHOUT correct_answer and explanation
     return new Response(
       JSON.stringify({ questions }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error in get-test-questions function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'An error occurred while processing your request' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
