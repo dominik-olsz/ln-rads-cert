@@ -40,23 +40,7 @@ const Courses = () => {
 
       if (coursesError) throw coursesError;
 
-      // Fetch test questions count for each course
-      const coursesWithCounts = await Promise.all(
-        (coursesData || []).map(async (course) => {
-          const { count } = await supabase
-            .from('test_questions')
-            .select('*', { count: 'exact', head: true })
-            .eq('course_id', course.id)
-            .is('lesson_id', null);
-          
-          return {
-            ...course,
-            test_questions_count: count || 0
-          };
-        })
-      );
-
-      setCourses(coursesWithCounts);
+      setCourses(coursesData || []);
     } catch (error: any) {
       toast({
         title: "Error",

@@ -295,6 +295,7 @@ export type Database = {
           hero_image: string | null
           id: string
           price: number | null
+          test_questions_count: number
           title: string
           total_lessons: number
           updated_at: string | null
@@ -308,6 +309,7 @@ export type Database = {
           hero_image?: string | null
           id?: string
           price?: number | null
+          test_questions_count?: number
           title: string
           total_lessons?: number
           updated_at?: string | null
@@ -321,6 +323,7 @@ export type Database = {
           hero_image?: string | null
           id?: string
           price?: number | null
+          test_questions_count?: number
           title?: string
           total_lessons?: number
           updated_at?: string | null
