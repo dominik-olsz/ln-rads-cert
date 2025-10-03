@@ -116,7 +116,7 @@ const Results = () => {
                 <p className="text-muted-foreground">
                   {passed
                     ? "You have successfully completed the certification test"
-                    : "You need 80% or higher to pass. You can retake the test."}
+                    : "You need 80% or higher to pass. You can't retake the test."}
                 </p>
               </div>
 
