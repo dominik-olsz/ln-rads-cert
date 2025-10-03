@@ -255,8 +255,8 @@ const CourseDetail = () => {
                   )}
                   {course.grants_certification_access && (
                     <div className="flex items-center gap-2">
-                      <Award className="h-5 w-5 text-accent" />
-                      <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-accent/30">
+                      <Award className="h-5 w-5 text-primary" />
+                      <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/30 font-semibold">
                         Certification Test Access Included
                       </Badge>
                     </div>
