@@ -4,6 +4,12 @@ import { useAuth } from "@/hooks/useAuth";
 import lnradsLogo from "@/assets/lnrads-logo.jpg";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Menu } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -59,9 +65,39 @@ const Navbar = () => {
               <span className="text-sm text-muted-foreground hidden md:inline">
                 {user.email}
               </span>
-              <Button variant="ghost" onClick={signOut}>
+              <Button variant="ghost" onClick={signOut} className="hidden md:inline-flex">
                 Sign Out
               </Button>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="md:hidden">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-64">
+                  <div className="flex flex-col gap-4 mt-8">
+                    <div className="text-sm text-muted-foreground border-b pb-3">
+                      {user.email}
+                    </div>
+                    <Link to="/courses" className="text-sm font-medium hover:text-primary transition-colors">
+                      Courses
+                    </Link>
+                    {!isAdmin && (
+                      <Link to="/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
+                        My Dashboard
+                      </Link>
+                    )}
+                    {isAdmin && (
+                      <Link to="/admin/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
+                        Admin
+                      </Link>
+                    )}
+                    <Button variant="ghost" onClick={signOut} className="justify-start">
+                      Sign Out
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </>
           ) : (
             <>
