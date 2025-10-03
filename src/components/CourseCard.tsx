@@ -56,10 +56,12 @@ const CourseCard = ({
             <Users className="h-4 w-4" />
             <span>{useCases} Use Cases</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Award className="h-4 w-4" />
-            <span>Certificate</span>
-          </div>
+          {grantsCertification && (
+            <div className="flex items-center gap-1">
+              <Award className="h-4 w-4" />
+              <span>Certificate</span>
+            </div>
+          )}
         </div>
         
         {grantsCertification && (
