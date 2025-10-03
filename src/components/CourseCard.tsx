@@ -12,6 +12,7 @@ interface CourseCardProps {
   totalLessons: number;
   useCases?: number;
   imageUrl?: string;
+  grantsCertification?: boolean;
 }
 
 const CourseCard = ({
@@ -22,6 +23,7 @@ const CourseCard = ({
   totalLessons,
   useCases = 0,
   imageUrl = "/placeholder.svg",
+  grantsCertification = false,
 }: CourseCardProps) => {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
@@ -59,6 +61,15 @@ const CourseCard = ({
             <span>Certificate</span>
           </div>
         </div>
+        
+        {grantsCertification && (
+          <div className="mt-3 pt-3 border-t">
+            <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-accent/30">
+              <Award className="h-3 w-3 mr-1" />
+              Includes Certification Test Access
+            </Badge>
+          </div>
+        )}
       </CardContent>
       
       <CardFooter>

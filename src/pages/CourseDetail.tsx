@@ -18,6 +18,7 @@ interface Course {
   hero_image: string | null;
   course_includes: string | null;
   what_you_learn: string | null;
+  grants_certification_access: boolean;
 }
 
 interface Lesson {
@@ -252,10 +253,14 @@ const CourseDetail = () => {
                       <span>{courseQuestionsCount} course use cases</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2">
-                    <Award className="h-5 w-5" />
-                    <span>Certificate included</span>
-                  </div>
+                  {course.grants_certification_access && (
+                    <div className="flex items-center gap-2">
+                      <Award className="h-5 w-5 text-accent" />
+                      <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-accent/30">
+                        Certification Test Access Included
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               </div>
 
