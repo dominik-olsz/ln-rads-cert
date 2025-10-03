@@ -58,18 +58,24 @@ const CertificationTest = () => {
 
   const checkExistingAttemptAndFetchQuestions = async () => {
     try {
-      // Check if user has purchased any course
+      // Check if user has purchased a course that grants certification access
       const { data: purchases, error: purchaseError } = await supabase
         .from('course_purchases')
-        .select('id')
-        .eq('user_id', user?.id);
+        .select(`
+          id,
+          courses!inner (
+            grants_certification_access
+          )
+        `)
+        .eq('user_id', user?.id)
+        .eq('courses.grants_certification_access', true);
 
       if (purchaseError) throw purchaseError;
 
       if (!purchases || purchases.length === 0) {
         toast({
           title: "Purchase Required",
-          description: "You must purchase a course before taking the certification test",
+          description: "You must purchase a course that grants certification access before taking this test",
           variant: "destructive",
         });
         setHasPurchased(false);

@@ -291,6 +291,7 @@ export type Database = {
           course_includes: string | null
           created_at: string | null
           description: string
+          grants_certification_access: boolean
           hero_image: string | null
           id: string
           price: number | null
@@ -303,6 +304,7 @@ export type Database = {
           course_includes?: string | null
           created_at?: string | null
           description: string
+          grants_certification_access?: boolean
           hero_image?: string | null
           id?: string
           price?: number | null
@@ -315,6 +317,7 @@ export type Database = {
           course_includes?: string | null
           created_at?: string | null
           description?: string
+          grants_certification_access?: boolean
           hero_image?: string | null
           id?: string
           price?: number | null

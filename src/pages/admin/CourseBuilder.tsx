@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -71,6 +72,7 @@ const CourseBuilder = () => {
   const [heroImage, setHeroImage] = useState<string | null>(null);
   const [courseIncludes, setCourseIncludes] = useState("");
   const [whatYouLearn, setWhatYouLearn] = useState("");
+  const [grantsCertificationAccess, setGrantsCertificationAccess] = useState(false);
 
   // Lessons and Test Questions Groups
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -105,6 +107,7 @@ const CourseBuilder = () => {
       setHeroImage(courseData.hero_image);
       setCourseIncludes(courseData.course_includes || "");
       setWhatYouLearn(courseData.what_you_learn || "");
+      setGrantsCertificationAccess(courseData.grants_certification_access || false);
 
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
@@ -423,7 +426,8 @@ const CourseBuilder = () => {
             hero_image: heroImage,
             total_lessons: lessons.length,
             course_includes: courseIncludes,
-            what_you_learn: whatYouLearn
+            what_you_learn: whatYouLearn,
+            grants_certification_access: grantsCertificationAccess
           })
           .select()
           .single();
@@ -440,7 +444,8 @@ const CourseBuilder = () => {
             hero_image: heroImage,
             total_lessons: lessons.length,
             course_includes: courseIncludes,
-            what_you_learn: whatYouLearn
+            what_you_learn: whatYouLearn,
+            grants_certification_access: grantsCertificationAccess
           })
           .eq('id', courseId);
 
@@ -674,6 +679,25 @@ const CourseBuilder = () => {
                     placeholder="Key learning outcomes..."
                     rows={3}
                   />
+                </div>
+
+                <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/30">
+                  <Checkbox 
+                    id="certificationAccess" 
+                    checked={grantsCertificationAccess}
+                    onCheckedChange={(checked) => setGrantsCertificationAccess(checked as boolean)}
+                  />
+                  <div className="space-y-1">
+                    <Label 
+                      htmlFor="certificationAccess" 
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      Grants Certification Test Access
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      When enabled, purchasing this course will grant users access to the Certification Test
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
