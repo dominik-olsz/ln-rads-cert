@@ -16,6 +16,7 @@ interface Course {
   total_lessons: number;
   course_includes?: string;
   what_you_learn?: string;
+  test_questions_count?: number;
 }
 
 const Courses = () => {
@@ -31,14 +32,30 @@ const Courses = () => {
 
   const fetchCourses = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (coursesError) throw coursesError;
 
-      setCourses(data || []);
+      // Fetch test questions count for each course
+      const coursesWithCounts = await Promise.all(
+        (coursesData || []).map(async (course) => {
+          const { count } = await supabase
+            .from('test_questions')
+            .select('*', { count: 'exact', head: true })
+            .eq('course_id', course.id)
+            .is('lesson_id', null);
+          
+          return {
+            ...course,
+            test_questions_count: count || 0
+          };
+        })
+      );
+
+      setCourses(coursesWithCounts);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -106,6 +123,7 @@ const Courses = () => {
                   description={course.description}
                   price={course.price}
                   totalLessons={course.total_lessons}
+                  useCases={course.test_questions_count || 0}
                   imageUrl={course.hero_image || "/placeholder.svg"}
                 />
               ))}
