@@ -92,7 +92,7 @@ const Navbar = () => {
                         Admin
                       </Link>
                     )}
-                    <Button variant="ghost" onClick={signOut} className="justify-start">
+                    <Button variant="outline" onClick={signOut} className="justify-center border-2 mt-4">
                       Sign Out
                     </Button>
                   </div>
