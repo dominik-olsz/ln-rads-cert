@@ -347,15 +347,17 @@ const CourseDetail = () => {
                           <PlayCircle className="h-5 w-5 mr-2" />
                           Start Training
                         </Button>
-                        <Button 
-                          className="w-full" 
-                          size="lg"
-                          variant="outline"
-                          onClick={handleStartCertification}
-                        >
-                          <Award className="h-5 w-5 mr-2" />
-                          Take Certification Test
-                        </Button>
+                        {course.grants_certification_access && (
+                          <Button 
+                            className="w-full" 
+                            size="lg"
+                            variant="outline"
+                            onClick={handleStartCertification}
+                          >
+                            <Award className="h-5 w-5 mr-2" />
+                            Take Certification Test
+                          </Button>
+                        )}
                       </>
                     )}
                   </div>
