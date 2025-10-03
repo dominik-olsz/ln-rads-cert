@@ -66,7 +66,7 @@ const CourseCard = ({
         
         {grantsCertification && (
           <div className="mt-3 pt-3 border-t">
-            <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-accent/30">
+            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/30 font-semibold">
               <Award className="h-3 w-3 mr-1" />
               Includes Certification Test Access
             </Badge>
