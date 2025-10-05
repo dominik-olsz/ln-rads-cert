@@ -328,7 +328,7 @@ const CourseDetail = () => {
 
             {/* Pricing card - third on mobile, right sidebar on desktop */}
             <div className="lg:col-span-1 order-3 lg:order-2 lg:row-span-4">
-              <Card className="sticky top-20">
+              <Card className="lg:sticky lg:top-20">
                 <CardContent className="pt-6 space-y-6">
                   <div>
                     <div className="text-4xl font-bold text-primary mb-2">€{course.price}</div>
