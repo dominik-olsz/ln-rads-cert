@@ -76,7 +76,7 @@ const CourseDetail = () => {
 
         // Fetch course questions via edge function
         const { data: questionsData } = await supabase.functions.invoke('get-test-questions', {
-          body: { courseId: id },
+          body: { courseId: id, testType: 'course' },
         });
 
         const questions = questionsData?.questions || [];
