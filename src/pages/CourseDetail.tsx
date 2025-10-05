@@ -274,6 +274,65 @@ const CourseDetail = () => {
                 </div>
               )}
 
+              {/* Pricing card for mobile - shown only on mobile after hero image */}
+              <div className="lg:hidden">
+                <Card>
+                  <CardContent className="pt-6 space-y-6">
+                    <div>
+                      <div className="text-4xl font-bold text-primary mb-2">€{course.price}</div>
+                      <p className="text-sm text-muted-foreground">One-time payment · Lifetime access</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {!hasPurchased ? (
+                        <Button 
+                          className="w-full" 
+                          size="lg"
+                          onClick={handleBuyCourse}
+                          disabled={purchasing}
+                        >
+                          {purchasing ? 'Processing...' : 'Buy Course'}
+                        </Button>
+                      ) : (
+                        <>
+                          <Button 
+                            className="w-full" 
+                            size="lg"
+                            onClick={handleStartTraining}
+                          >
+                            <PlayCircle className="h-5 w-5 mr-2" />
+                            Start Training
+                          </Button>
+                          {course.grants_certification_access && (
+                            <Button 
+                              className="w-full" 
+                              size="lg"
+                              variant="outline"
+                              onClick={handleStartCertification}
+                            >
+                              <Award className="h-5 w-5 mr-2" />
+                              Take Certification Test
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {courseIncludesList.length > 0 && (
+                      <div className="border-t pt-6 space-y-3">
+                        <h3 className="font-semibold mb-3">This course includes:</h3>
+                        {courseIncludesList.map((item, index) => (
+                          <div key={index} className="flex items-center gap-2 text-sm">
+                            <CheckCircle className="h-4 w-4 text-accent flex-shrink-0" />
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
               <Card>
                 <CardContent className="pt-6">
                   <h2 className="text-2xl font-bold mb-4">Course Content</h2>
@@ -320,7 +379,8 @@ const CourseDetail = () => {
             </div>
 
             <div className="lg:col-span-1 order-1 lg:order-2">
-              <Card className="sticky top-20">
+              {/* Pricing card for desktop - hidden on mobile */}
+              <Card className="sticky top-20 hidden lg:block">
                 <CardContent className="pt-6 space-y-6">
                   <div>
                     <div className="text-4xl font-bold text-primary mb-2">€{course.price}</div>
