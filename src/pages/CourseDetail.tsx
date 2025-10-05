@@ -240,7 +240,6 @@ const CourseDetail = () => {
             <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
               <div>
                 <h1 className="text-4xl font-bold mb-4">{course.title}</h1>
-                <p className="text-lg text-muted-foreground mb-6">{course.description}</p>
                 
                 <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
@@ -273,6 +272,8 @@ const CourseDetail = () => {
                   />
                 </div>
               )}
+
+              <p className="text-lg text-muted-foreground">{course.description}</p>
 
               {/* Pricing card for mobile - shown only on mobile after hero image */}
               <div className="lg:hidden">
