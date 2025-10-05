@@ -237,7 +237,7 @@ const CourseDetail = () => {
       <section className="py-12">
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
               <div>
                 <h1 className="text-4xl font-bold mb-4">{course.title}</h1>
                 <p className="text-lg text-muted-foreground mb-6">{course.description}</p>
@@ -319,7 +319,7 @@ const CourseDetail = () => {
               )}
             </div>
 
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 order-1 lg:order-2">
               <Card className="sticky top-20">
                 <CardContent className="pt-6 space-y-6">
                   <div>
