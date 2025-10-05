@@ -237,7 +237,8 @@ const CourseDetail = () => {
       <section className="py-12">
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
+            {/* Title and stats - always first */}
+            <div className="lg:col-span-2 order-1">
               <div>
                 <h1 className="text-4xl font-bold mb-4">{course.title}</h1>
                 <p className="text-lg text-muted-foreground mb-6">{course.description}</p>
@@ -263,8 +264,11 @@ const CourseDetail = () => {
                   )}
                 </div>
               </div>
+            </div>
 
-              {course.hero_image && (
+            {/* Hero image - second on mobile */}
+            {course.hero_image && (
+              <div className="lg:col-span-2 order-2">
                 <div className="aspect-video bg-muted rounded-lg overflow-hidden">
                   <img
                     src={course.hero_image}
@@ -272,8 +276,11 @@ const CourseDetail = () => {
                     className="w-full h-full object-cover"
                   />
                 </div>
-              )}
+              </div>
+            )}
 
+            {/* Course content - fourth on mobile */}
+            <div className="lg:col-span-2 order-4 lg:order-1 space-y-6">
               <Card>
                 <CardContent className="pt-6">
                   <h2 className="text-2xl font-bold mb-4">Course Content</h2>
@@ -319,7 +326,8 @@ const CourseDetail = () => {
               )}
             </div>
 
-            <div className="lg:col-span-1 order-1 lg:order-2">
+            {/* Pricing card - third on mobile, right sidebar on desktop */}
+            <div className="lg:col-span-1 order-3 lg:order-2 lg:row-span-4">
               <Card className="sticky top-20">
                 <CardContent className="pt-6 space-y-6">
                   <div>
