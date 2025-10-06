@@ -43,9 +43,10 @@ const CourseCard = ({
       </CardHeader>
       
       <CardContent>
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-          {description}
-        </p>
+        <div 
+          className="text-sm text-muted-foreground line-clamp-2 mb-4 prose prose-sm max-w-none"
+          dangerouslySetInnerHTML={{ __html: description }}
+        />
         
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
