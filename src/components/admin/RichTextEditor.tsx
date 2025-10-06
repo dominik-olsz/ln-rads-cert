@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface RichTextEditorProps {
   content: string;
@@ -19,7 +19,7 @@ interface RichTextEditorProps {
 
 const RichTextEditor = ({ content, onChange, placeholder = "Start writing..." }: RichTextEditorProps) => {
   const [uploading, setUploading] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const lastAppliedFromProps = useRef<string | null>(null);
   const { toast } = useToast();
 
   const editor = useEditor({
@@ -36,7 +36,9 @@ const RichTextEditor = ({ content, onChange, placeholder = "Start writing..." }:
     ],
     content,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      const html = editor.getHTML();
+      lastAppliedFromProps.current = html;
+      onChange(html);
     },
     editorProps: {
       attributes: {
@@ -72,13 +74,16 @@ const RichTextEditor = ({ content, onChange, placeholder = "Start writing..." }:
     },
   });
 
-  // Update editor content when the content prop changes (only on initial load or external updates)
+  // Sync editor when external content prop changes (e.g., after fetch),
+  // but avoid overriding current editor state
   useEffect(() => {
-    if (editor && !isInitialized) {
+    if (!editor) return;
+    const current = editor.getHTML();
+    if (content && content !== lastAppliedFromProps.current && content !== current) {
       editor.commands.setContent(content);
-      setIsInitialized(true);
+      lastAppliedFromProps.current = content;
     }
-  }, [content, editor, isInitialized]);
+  }, [content, editor]);
 
   const uploadAndInsertImage = async (file: File) => {
     setUploading(true);
