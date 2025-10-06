@@ -639,12 +639,10 @@ const CourseBuilder = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                  <RichTextEditor
+                    content={description}
+                    onChange={setDescription}
                     placeholder="Describe what students will learn..."
-                    rows={4}
                   />
                 </div>
 
