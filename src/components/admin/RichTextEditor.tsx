@@ -19,6 +19,7 @@ interface RichTextEditorProps {
 
 const RichTextEditor = ({ content, onChange, placeholder = "Start writing..." }: RichTextEditorProps) => {
   const [uploading, setUploading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
 
   const editor = useEditor({
@@ -71,12 +72,13 @@ const RichTextEditor = ({ content, onChange, placeholder = "Start writing..." }:
     },
   });
 
-  // Update editor content when the content prop changes
+  // Update editor content when the content prop changes (only on initial load or external updates)
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
+    if (editor && !isInitialized) {
       editor.commands.setContent(content);
+      setIsInitialized(true);
     }
-  }, [content, editor]);
+  }, [content, editor, isInitialized]);
 
   const uploadAndInsertImage = async (file: File) => {
     setUploading(true);
