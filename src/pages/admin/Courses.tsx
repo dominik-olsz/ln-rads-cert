@@ -106,7 +106,7 @@ const AdminCourses = () => {
               </CardHeader>
               <CardContent>
                 <div 
-                  className="text-sm text-muted-foreground mb-4 prose prose-sm max-w-none"
+                  className="text-sm text-muted-foreground mb-4 prose prose-sm max-w-none line-clamp-2"
                   dangerouslySetInnerHTML={{ __html: course.description }}
                 />
                 <div className="flex justify-between items-center text-sm mb-4">
