@@ -273,11 +273,6 @@ const CourseDetail = () => {
                 </div>
               )}
 
-              <div 
-                className="text-lg text-muted-foreground prose prose-lg max-w-none"
-                dangerouslySetInnerHTML={{ __html: course.description }}
-              />
-
               {/* Pricing card for mobile - shown only on mobile after hero image */}
               <div className="lg:hidden">
                 <Card>
@@ -337,6 +332,10 @@ const CourseDetail = () => {
                 </Card>
               </div>
 
+              <div 
+                className="text-lg text-muted-foreground prose prose-lg max-w-none"
+                dangerouslySetInnerHTML={{ __html: course.description }}
+              />
               <Card>
                 <CardContent className="pt-6">
                   <h2 className="text-2xl font-bold mb-4">Course Content</h2>
