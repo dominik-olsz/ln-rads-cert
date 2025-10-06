@@ -1004,7 +1004,6 @@ const CourseBuilder = () => {
               <div className="lg:col-span-2 space-y-6">
                 <div>
                   <h1 className="text-4xl font-bold mb-4">{title || "Untitled Course"}</h1>
-                  <p className="text-lg text-muted-foreground mb-6">{description}</p>
                   
                   <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
@@ -1033,6 +1032,11 @@ const CourseBuilder = () => {
                     />
                   </div>
                 )}
+
+                <div 
+                  className="text-lg text-muted-foreground prose prose-lg max-w-none"
+                  dangerouslySetInnerHTML={{ __html: description }}
+                />
 
                 <Card>
                   <CardContent className="pt-6">
