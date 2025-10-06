@@ -273,7 +273,10 @@ const CourseDetail = () => {
                 </div>
               )}
 
-              <p className="text-lg text-muted-foreground">{course.description}</p>
+              <div 
+                className="text-lg text-muted-foreground prose prose-lg max-w-none"
+                dangerouslySetInnerHTML={{ __html: course.description }}
+              />
 
               {/* Pricing card for mobile - shown only on mobile after hero image */}
               <div className="lg:hidden">
