@@ -105,9 +105,10 @@ const AdminCourses = () => {
                 <CardTitle>{course.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {course.description}
-                </p>
+                <div 
+                  className="text-sm text-muted-foreground mb-4 prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: course.description }}
+                />
                 <div className="flex justify-between items-center text-sm mb-4">
                   <span>{course.total_lessons} lessons</span>
                   <span>€{course.price || 0}</span>
