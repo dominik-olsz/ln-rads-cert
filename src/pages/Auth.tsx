@@ -114,6 +114,29 @@ const Auth = () => {
           Continue with Google
         </Button>
 
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full gap-2"
+          disabled={isLoading}
+          onClick={async () => {
+            setIsLoading(true);
+            const result = await lovable.auth.signInWithOAuth("apple", {
+              redirect_uri: window.location.origin,
+            });
+            if (result.error) {
+              setIsLoading(false);
+              toast({ title: "Error", description: result.error.message, variant: "destructive" });
+              return;
+            }
+            if (result.redirected) return;
+            navigate("/");
+          }}
+        >
+          <AppleIcon />
+          Continue with Apple
+        </Button>
+
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t" />
