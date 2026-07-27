@@ -20,6 +20,12 @@ const GoogleIcon = () => (
   </svg>
 );
 
+const AppleIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M16.365 1.43c0 1.14-.42 2.24-1.18 3.05-.82.88-2.13 1.56-3.22 1.47-.14-1.1.42-2.26 1.16-3.03.83-.87 2.24-1.5 3.24-1.49zM20.5 17.42c-.55 1.27-.81 1.84-1.52 2.96-.99 1.57-2.39 3.52-4.12 3.54-1.54.02-1.94-1-4.03-1-2.09.01-2.53 1.02-4.07 1-1.73-.02-3.06-1.78-4.05-3.34C.06 16.4-.24 11.5 1.62 8.89c1.32-1.85 3.4-2.94 5.36-2.94 1.99 0 3.24 1.09 4.89 1.09 1.6 0 2.57-1.09 4.88-1.09 1.74 0 3.59.95 4.91 2.58-4.31 2.36-3.61 8.52-1.16 8.89z"/>
+  </svg>
+);
+
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -112,6 +118,29 @@ const Auth = () => {
         >
           <GoogleIcon />
           Continue with Google
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full gap-2"
+          disabled={isLoading}
+          onClick={async () => {
+            setIsLoading(true);
+            const result = await lovable.auth.signInWithOAuth("apple", {
+              redirect_uri: window.location.origin,
+            });
+            if (result.error) {
+              setIsLoading(false);
+              toast({ title: "Error", description: result.error.message, variant: "destructive" });
+              return;
+            }
+            if (result.redirected) return;
+            navigate("/");
+          }}
+        >
+          <AppleIcon />
+          Continue with Apple
         </Button>
 
         <div className="relative">
