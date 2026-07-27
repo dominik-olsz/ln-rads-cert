@@ -34,6 +34,8 @@ const Auth = () => {
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
   const [signUpName, setSignUpName] = useState("");
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -43,6 +45,21 @@ const Auth = () => {
       navigate("/");
     }
   }, [user, navigate]);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setIsLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Check your email", description: "We sent you a link to reset your password." });
+      setShowForgot(false);
+    }
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,40 +179,90 @@ const Auth = () => {
 
           <TabsContent value="signin">
             <Card>
-              <CardHeader>
-                <CardTitle>Sign In</CardTitle>
-                <CardDescription>Enter your credentials to access your account</CardDescription>
-              </CardHeader>
-              <form onSubmit={handleSignIn}>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="name@example.com"
-                      value={signInEmail}
-                      onChange={(e) => setSignInEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      value={signInPassword}
-                      onChange={(e) => setSignInPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </CardFooter>
-              </form>
+              {showForgot ? (
+                <>
+                  <CardHeader>
+                    <CardTitle>Reset password</CardTitle>
+                    <CardDescription>Enter your email and we'll send you a reset link.</CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleForgotPassword}>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="forgot-email">Email</Label>
+                        <Input
+                          id="forgot-email"
+                          type="email"
+                          placeholder="name@example.com"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex flex-col gap-2">
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? "Sending..." : "Send reset link"}
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => setShowForgot(false)}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Back to sign in
+                      </button>
+                    </CardFooter>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <CardHeader>
+                    <CardTitle>Sign In</CardTitle>
+                    <CardDescription>Enter your credentials to access your account</CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleSignIn}>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signin-email">Email</Label>
+                        <Input
+                          id="signin-email"
+                          type="email"
+                          placeholder="name@example.com"
+                          value={signInEmail}
+                          onChange={(e) => setSignInEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="signin-password">Password</Label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setForgotEmail(signInEmail);
+                              setShowForgot(true);
+                            }}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            Forgot password?
+                          </button>
+                        </div>
+                        <Input
+                          id="signin-password"
+                          type="password"
+                          value={signInPassword}
+                          onChange={(e) => setSignInPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? "Signing in..." : "Sign In"}
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </>
+              )}
             </Card>
           </TabsContent>
 
