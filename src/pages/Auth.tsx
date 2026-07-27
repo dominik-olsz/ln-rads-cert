@@ -91,6 +91,38 @@ const Auth = () => {
           <p className="text-muted-foreground">Welcome to your certification journey</p>
         </div>
 
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full gap-2"
+          disabled={isLoading}
+          onClick={async () => {
+            setIsLoading(true);
+            const result = await lovable.auth.signInWithOAuth("google", {
+              redirect_uri: window.location.origin,
+            });
+            if (result.error) {
+              setIsLoading(false);
+              toast({ title: "Error", description: result.error.message, variant: "destructive" });
+              return;
+            }
+            if (result.redirected) return;
+            navigate("/");
+          }}
+        >
+          <GoogleIcon />
+          Continue with Google
+        </Button>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">Or continue with email</span>
+          </div>
+        </div>
+
         <Tabs defaultValue="signin" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="signin">Sign In</TabsTrigger>
