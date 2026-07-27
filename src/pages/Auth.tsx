@@ -97,51 +97,53 @@ const Auth = () => {
           <p className="text-muted-foreground">Welcome to your certification journey</p>
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full gap-2"
-          disabled={isLoading}
-          onClick={async () => {
-            setIsLoading(true);
-            const result = await lovable.auth.signInWithOAuth("google", {
-              redirect_uri: window.location.origin,
-            });
-            if (result.error) {
-              setIsLoading(false);
-              toast({ title: "Error", description: result.error.message, variant: "destructive" });
-              return;
-            }
-            if (result.redirected) return;
-            navigate("/");
-          }}
-        >
-          <GoogleIcon />
-          Continue with Google
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2"
+            disabled={isLoading}
+            onClick={async () => {
+              setIsLoading(true);
+              const result = await lovable.auth.signInWithOAuth("google", {
+                redirect_uri: window.location.origin,
+              });
+              if (result.error) {
+                setIsLoading(false);
+                toast({ title: "Error", description: result.error.message, variant: "destructive" });
+                return;
+              }
+              if (result.redirected) return;
+              navigate("/");
+            }}
+          >
+            <GoogleIcon />
+            Continue with Google
+          </Button>
 
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full gap-2"
-          disabled={isLoading}
-          onClick={async () => {
-            setIsLoading(true);
-            const result = await lovable.auth.signInWithOAuth("apple", {
-              redirect_uri: window.location.origin,
-            });
-            if (result.error) {
-              setIsLoading(false);
-              toast({ title: "Error", description: result.error.message, variant: "destructive" });
-              return;
-            }
-            if (result.redirected) return;
-            navigate("/");
-          }}
-        >
-          <AppleIcon />
-          Continue with Apple
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2"
+            disabled={isLoading}
+            onClick={async () => {
+              setIsLoading(true);
+              const result = await lovable.auth.signInWithOAuth("apple", {
+                redirect_uri: window.location.origin,
+              });
+              if (result.error) {
+                setIsLoading(false);
+                toast({ title: "Error", description: result.error.message, variant: "destructive" });
+                return;
+              }
+              if (result.redirected) return;
+              navigate("/");
+            }}
+          >
+            <AppleIcon />
+            Continue with Apple
+          </Button>
+        </div>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
