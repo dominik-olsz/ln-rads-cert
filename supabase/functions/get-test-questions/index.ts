@@ -96,8 +96,13 @@ serve(async (req) => {
       );
     }
 
+    // Strip answer/explanation for certification tests to prevent cheating
+    const safeQuestions = testType === 'certification'
+      ? (questions || []).map(({ correct_answer, explanation, ...rest }: any) => rest)
+      : questions;
+
     return new Response(
-      JSON.stringify({ questions }),
+      JSON.stringify({ questions: safeQuestions }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
