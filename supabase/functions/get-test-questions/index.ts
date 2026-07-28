@@ -55,7 +55,7 @@ serve(async (req) => {
 
     let query = supabaseAdmin
       .from('test_questions')
-      .select('id, lesson_id, question_text, option_a, option_b, option_c, option_d, image_url, created_at, test_type, group_title, order_index');
+      .select('id, lesson_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, image_url, created_at, test_type, group_title, order_index');
 
     // For certification tests, fetch all certification questions regardless of course
     if (testType === 'certification') {
