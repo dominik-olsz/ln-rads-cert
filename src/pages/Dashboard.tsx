@@ -321,7 +321,7 @@ export default function Dashboard() {
                       )}
                       <CardHeader>
                         <CardTitle>{course.title}</CardTitle>
-                        <CardDescription>{course.description}</CardDescription>
+                        <CardDescription>{course.description?.replace(/<[^>]*>/g, '')}</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div>
