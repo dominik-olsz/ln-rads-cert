@@ -1,0 +1,1 @@
+UPDATE courses SET description = '<p>Master LN-RADS certification with comprehensive training, practical use cases, and official certification exam access.</p>' WHERE id = 'e946f917-2e54-4bec-8b5c-43c1fb182177';
