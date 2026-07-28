@@ -275,7 +275,7 @@ export default function Dashboard() {
         <h1 className="text-4xl font-bold mb-8">My Dashboard</h1>
 
         <Tabs defaultValue="courses" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto mb-8">
             <TabsTrigger value="courses">
               <BookOpen className="w-4 h-4 mr-2" />
               My Courses
