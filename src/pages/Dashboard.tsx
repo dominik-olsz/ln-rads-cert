@@ -86,7 +86,7 @@ export default function Dashboard() {
 
           // Get total test question groups count (course-level questions only)
           const { data: questions } = await supabase.functions.invoke('get-test-questions', {
-            body: { courseId: purchase.course_id },
+            body: { courseId: purchase.course_id, testType: 'course' },
           });
 
           // Group questions by group_title to count unique groups
