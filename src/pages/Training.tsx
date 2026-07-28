@@ -115,7 +115,7 @@ const Training = () => {
         let questionsData: any[] = [];
         try {
           const { data: fnData, error: fnError } = await supabase.functions.invoke('get-test-questions', {
-            body: { courseId },
+            body: { courseId, testType: 'course' },
           });
           if (fnError) throw fnError as any;
           questionsData = fnData?.questions || [];
