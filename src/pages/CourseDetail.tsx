@@ -158,26 +158,21 @@ const CourseDetail = () => {
 
     setPurchasing(true);
     try {
-      const { error } = await supabase
-        .from('course_purchases')
-        .insert({
-          user_id: user.id,
-          course_id: id,
-          amount_paid: course?.price || 0,
-          payment_status: 'completed'
-        });
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { courseId: id },
+      });
 
       if (error) throw error;
+      if (!data?.url) throw new Error(data?.error || 'Could not start checkout');
 
-      setHasPurchased(true);
-      toast.success('Course purchased successfully!');
+      window.location.href = data.url;
     } catch (error: any) {
-      console.error('Error purchasing course:', error);
-      toast.error(error.message || 'Failed to purchase course');
-    } finally {
+      console.error('Error starting checkout:', error);
+      toast.error(error.message || 'Failed to start checkout');
       setPurchasing(false);
     }
   };
+
 
   const handleStartTraining = () => {
     if (!user) {
