@@ -24,6 +24,7 @@ import CourseBuilder from "./pages/admin/CourseBuilder";
 import AdminCertificates from "./pages/admin/Certificates";
 import Dashboard from "./pages/Dashboard";
 import ResetPassword from "./pages/ResetPassword";
+import PaymentSuccess from "./pages/PaymentSuccess";
 
 
 
@@ -39,6 +40,7 @@ const App = () => (
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/course/:id" element={<CourseDetail />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/training/:courseId" element={<Training />} />
         <Route path="/test" element={<Test />} />
         <Route path="/certification-test" element={<CertificationTest />} />
