@@ -864,6 +864,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_course_outline: {
+        Args: { _course_id: string }
+        Returns: {
+          content_type: string
+          duration: string
+          id: string
+          is_free: boolean
+          order_index: number
+          title: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
