@@ -1,6 +1,6 @@
 // Course Builder with Drag & Drop Ordering
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useBlocker } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -707,7 +707,7 @@ const CourseBuilder = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <AlertDialog open={pendingNavigation !== null} onOpenChange={(open) => !open && setPendingNavigation(null)}>
+      <AlertDialog open={blocker.state === "blocked"} onOpenChange={(open) => !open && cancelLeave()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Save changes before leaving?</AlertDialogTitle>
@@ -716,7 +716,7 @@ const CourseBuilder = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <Button variant="ghost" onClick={() => setPendingNavigation(null)}>Cancel</Button>
+            <Button variant="ghost" onClick={cancelLeave}>Cancel</Button>
             <Button variant="outline" onClick={discardAndLeave}>Discard changes</Button>
             <Button onClick={saveAndLeave} disabled={saving}>
               {saving ? "Saving..." : "Save & leave"}
@@ -762,7 +762,7 @@ const CourseBuilder = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => requestNavigation('/admin/courses')}>
+            <Button variant="ghost" onClick={() => navigate('/admin/courses')}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
