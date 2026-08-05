@@ -355,17 +355,21 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="tests">
-            {purchasedCourses.length === 0 ? (
+            {purchasedCourses.filter((c) => c.certification_enabled).length === 0 ? (
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-center text-muted-foreground">
-                    Purchase a course to access certification tests.
+                    {purchasedCourses.length === 0
+                      ? 'Purchase a course to access certification tests.'
+                      : 'None of your courses include a certification test.'}
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {purchasedCourses.map((course) => (
+                {purchasedCourses
+                  .filter((course) => course.certification_enabled)
+                  .map((course) => (
                   <Card key={course.id}>
                     <CardHeader>
                       <CardTitle>{course.title}</CardTitle>
@@ -386,6 +390,7 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+
           </TabsContent>
 
           <TabsContent value="certificates">
