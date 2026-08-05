@@ -20,7 +20,7 @@ serve(async (req) => {
     return new Response("Not configured", { status: 500, headers: corsHeaders });
   }
 
-  const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+  const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
   const signature = req.headers.get("stripe-signature");
   const rawBody = await req.text();
 
