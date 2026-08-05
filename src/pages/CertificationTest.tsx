@@ -552,7 +552,9 @@ const CertificationTest = () => {
     );
   }
 
-  if (hasExistingAttempt) {
+  if (gate !== 'open' || hasExistingAttempt) {
+    const attemptsLeft = Math.max(0, MAX_ATTEMPTS - attemptsUsed);
+
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -560,11 +562,62 @@ const CertificationTest = () => {
           <div className="max-w-2xl mx-auto">
             <Card>
               <CardContent className="pt-6 space-y-6 text-center">
-                <h1 className="text-2xl font-bold">Test Already Completed</h1>
-                <p className="text-muted-foreground">
-                  You have already taken this certification test. Each user gets only one attempt.
-                </p>
-                <Button onClick={() => navigate("/dashboard")}>
+                {gate === 'passed' && (
+                  <>
+                    <h1 className="text-2xl font-bold">Certification Passed</h1>
+                    <p className="text-muted-foreground">
+                      You have already passed the certification test. Your certificate is
+                      available in your dashboard.
+                    </p>
+                  </>
+                )}
+
+                {gate === 'exhausted' && (
+                  <>
+                    <h1 className="text-2xl font-bold">No Attempts Left</h1>
+                    <p className="text-muted-foreground">
+                      You have used all {MAX_ATTEMPTS} attempts
+                      {lastScore !== null ? ` (last score: ${lastScore}%)` : ''}. To request a
+                      reset, please contact the administrator at{' '}
+                      <a className="underline font-medium" href={`mailto:${SUPPORT_EMAIL}`}>
+                        {SUPPORT_EMAIL}
+                      </a>
+                      .
+                    </p>
+                  </>
+                )}
+
+                {gate === 'payment_required' && (
+                  <>
+                    <h1 className="text-2xl font-bold">Retake Required</h1>
+                    <p className="text-muted-foreground">
+                      You did not pass
+                      {lastScore !== null ? ` (score: ${lastScore}%)` : ''}. Your first attempt
+                      was included with your course. You have {attemptsLeft} of {MAX_ATTEMPTS}{' '}
+                      attempts left, and each retake costs{' '}
+                      <span className="font-semibold text-foreground">
+                        €{(retakePrice / 100).toFixed(2)}
+                      </span>
+                      .
+                    </p>
+                    <Button onClick={handlePayForRetake} disabled={payLoading} className="w-full">
+                      {payLoading
+                        ? 'Redirecting to checkout…'
+                        : `Pay €${(retakePrice / 100).toFixed(2)} & retake`}
+                    </Button>
+                  </>
+                )}
+
+                {gate === 'open' && (
+                  <>
+                    <h1 className="text-2xl font-bold">Test Already Completed</h1>
+                    <p className="text-muted-foreground">
+                      You have already taken this certification test.
+                    </p>
+                  </>
+                )}
+
+                <Button variant="outline" onClick={() => navigate("/dashboard")}>
                   Return to Dashboard
                 </Button>
               </CardContent>
@@ -574,6 +627,7 @@ const CertificationTest = () => {
       </div>
     );
   }
+
 
   if (!hasPurchased) {
     return (
