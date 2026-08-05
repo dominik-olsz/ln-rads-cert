@@ -595,8 +595,8 @@ const Training = () => {
                                 <div role="radiogroup" className="space-y-2">
                                   {options.map((o) => {
                                     const isSelected = selected === o.key;
-                                    const isCorrectOption = o.key === correctLetter;
-                                    const showFeedback = selected !== undefined;
+                                    const isCorrectOption = correctLetter !== '' && o.key === correctLetter;
+                                    const showFeedback = !!feedback;
                                     
                                     let buttonClass = 'border rounded-lg p-3 w-full text-left transition-colors ';
                                     if (isSelected) {
@@ -619,7 +619,7 @@ const Training = () => {
                                         key={o.key}
                                         role="radio"
                                         aria-checked={isSelected}
-                                        onClick={() => setSelectedAnswers(prev => ({ ...prev, [q.id]: o.key as 'A' | 'B' | 'C' | 'D' }))}
+                                        onClick={() => handleSelectAnswer(q.id, o.key as 'A' | 'B' | 'C' | 'D')}
                                         className={buttonClass}
                                       >
                                         <span className="font-medium mr-1">{o.key}:</span> {o.text}
@@ -628,7 +628,7 @@ const Training = () => {
                                   })}
                                 </div>
                                 
-                                {selected && (
+                                {selected && feedback && (
                                   <div className={`rounded-lg p-4 mt-4 ${
                                     isCorrect 
                                       ? 'bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800' 
@@ -637,11 +637,12 @@ const Training = () => {
                                     <p className="font-semibold mb-2">
                                       {isCorrect ? '✓ Correct!' : '✗ Incorrect.'} Correct Answer: {correctLetter}
                                     </p>
-                                    {q.explanation && (
-                                      <p className="text-sm">{q.explanation}</p>
+                                    {feedback.explanation && (
+                                      <p className="text-sm">{feedback.explanation}</p>
                                     )}
                                   </div>
                                 )}
+
                               </div>
                             );
                           })}
