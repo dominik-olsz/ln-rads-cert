@@ -80,9 +80,25 @@ const PaymentSuccess = () => {
                 <CheckCircle className="h-10 w-10 text-accent mx-auto" />
                 <h1 className="text-2xl font-bold">Payment successful</h1>
                 <p className="text-muted-foreground text-sm">
-                  Your course is unlocked. Enjoy your training!
+                  {isRetake
+                    ? "Your retake is unlocked. Good luck with the exam!"
+                    : "Your course is unlocked. Enjoy your training!"}
                 </p>
                 <div className="flex flex-col gap-2 pt-2">
+                  <Button
+                    onClick={() =>
+                      navigate(isRetake ? "/certification-test" : `/training/${courseId}`)
+                    }
+                  >
+                    {isRetake ? "Start certification test" : "Start training"}
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link to="/dashboard">Go to dashboard</Link>
+                  </Button>
+                </div>
+              </>
+            )}
+
                   <Button onClick={() => navigate(`/training/${courseId}`)}>
                     Start training
                   </Button>
