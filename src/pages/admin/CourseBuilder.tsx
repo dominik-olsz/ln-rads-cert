@@ -36,6 +36,7 @@ interface Lesson {
   content_url?: string;
   content_text: string;
   duration?: string;
+  is_free?: boolean;
 }
 
 interface TestQuestion {
@@ -55,8 +56,10 @@ interface TestQuestionsGroup {
   id?: string;
   title?: string;
   order_index: number;
+  is_free?: boolean;
   questions: TestQuestion[];
 }
+
 
 const CourseBuilder = () => {
   const { courseId } = useParams();
@@ -73,6 +76,16 @@ const CourseBuilder = () => {
   const [courseIncludes, setCourseIncludes] = useState("");
   const [whatYouLearn, setWhatYouLearn] = useState("");
   const [grantsCertificationAccess, setGrantsCertificationAccess] = useState(false);
+
+  // Certification test configuration
+  const [certificationEnabled, setCertificationEnabled] = useState(false);
+  const [certificationMode, setCertificationMode] = useState<'custom' | 'random'>('random');
+  const [certificationQuestionCount, setCertificationQuestionCount] = useState<number>(0);
+  const [attemptsIncluded, setAttemptsIncluded] = useState(1);
+  const [attemptsTotal, setAttemptsTotal] = useState(3);
+  const [courseRetakePrice, setCourseRetakePrice] = useState(69);
+  const [certQuestions, setCertQuestions] = useState<TestQuestion[]>([]);
+
 
   // Lessons and Test Questions Groups
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -108,6 +121,12 @@ const CourseBuilder = () => {
       setCourseIncludes(courseData.course_includes || "");
       setWhatYouLearn(courseData.what_you_learn || "");
       setGrantsCertificationAccess(courseData.grants_certification_access || false);
+      setCertificationEnabled(courseData.certification_enabled || false);
+      setCertificationMode((courseData.certification_mode === 'custom' ? 'custom' : 'random'));
+      setCertificationQuestionCount(courseData.certification_question_count ?? 0);
+      setAttemptsIncluded(courseData.attempts_included ?? 1);
+      setAttemptsTotal(courseData.attempts_total ?? 3);
+      setCourseRetakePrice(courseData.retake_price ?? 69);
 
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
@@ -126,6 +145,13 @@ const CourseBuilder = () => {
 
       if (questionsError) throw questionsError;
 
+      const { data: certQuestionsData } = await supabase
+        .from('test_questions')
+        .select('*')
+        .eq('course_id', courseId)
+        .eq('test_type', 'certification')
+        .order('order_index');
+
       const lessonsWithoutQuestions = lessonsData.map(lesson => ({
         id: lesson.id,
         title: lesson.title,
@@ -133,7 +159,8 @@ const CourseBuilder = () => {
         content_type: lesson.content_type,
         content_url: lesson.content_url,
         content_text: lesson.content_text || "",
-        duration: lesson.duration
+        duration: lesson.duration,
+        is_free: lesson.is_free || false
       }));
 
       // Group questions by order_index to recreate question groups
@@ -142,6 +169,7 @@ const CourseBuilder = () => {
         if (!acc[order]) {
           acc[order] = {
             title: q.group_title || null,
+            is_free: q.is_free || false,
             questions: []
           };
         }
@@ -150,16 +178,19 @@ const CourseBuilder = () => {
           order_index: q.order_index ?? 999
         });
         return acc;
-      }, {} as Record<number, { title: string | null, questions: TestQuestion[] }>);
+      }, {} as Record<number, { title: string | null, is_free: boolean, questions: TestQuestion[] }>);
 
       const groups: TestQuestionsGroup[] = Object.entries(questionsByOrder).map(([order, data]) => ({
         order_index: parseInt(order),
         title: data.title || undefined,
+        is_free: data.is_free,
         questions: data.questions
       }));
 
       setLessons(lessonsWithoutQuestions);
       setQuestionGroups(groups);
+      setCertQuestions((certQuestionsData || []) as TestQuestion[]);
+
     } catch (error: any) {
       toast({
         title: "Error",
