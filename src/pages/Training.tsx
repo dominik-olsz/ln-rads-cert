@@ -447,7 +447,19 @@ const Training = () => {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardContent className="pt-6">
-                {currentCourseItem?.type === 'lesson' ? (
+                {currentCourseItem?.locked ? (
+                  <div className="text-center py-12 space-y-4">
+                    <Lock className="h-10 w-10 text-muted-foreground mx-auto" />
+                    <h2 className="text-xl font-bold">{currentCourseItem.title}</h2>
+                    <p className="text-muted-foreground">
+                      This part of the course is available after purchase.
+                    </p>
+                    <Button onClick={() => navigate(`/course/${courseId}`)}>
+                      Get full access
+                    </Button>
+                  </div>
+                ) : currentCourseItem?.type === 'lesson' ? (
+
                   <>
                     <h2 className="text-xl font-bold mb-4">{currentCourseItem.title}</h2>
                     
