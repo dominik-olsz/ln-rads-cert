@@ -89,8 +89,13 @@ const PaymentSuccess = () => {
                 <div className="flex flex-col gap-2 pt-2">
                   <Button
                     onClick={() =>
-                      navigate(isRetake ? "/certification-test" : `/training/${courseId}`)
+                      navigate(
+                        isRetake
+                          ? `/certification-test?courseId=${courseId ?? ""}`
+                          : `/training/${courseId}`
+                      )
                     }
+
                   >
                     {isRetake ? "Start certification test" : "Start training"}
                   </Button>
