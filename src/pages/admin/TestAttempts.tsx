@@ -96,7 +96,7 @@ const AdminTestAttempts = () => {
 
   useEffect(() => {
     fetchAttempts();
-    fetchRetakePrice();
+    
   }, []);
 
 
