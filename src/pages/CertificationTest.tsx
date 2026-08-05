@@ -28,6 +28,11 @@ interface QuestionAnswer {
   locked: boolean;
 }
 
+const MAX_ATTEMPTS = 3;
+const SUPPORT_EMAIL = 'cert@lnrads.com';
+
+type Gate = 'open' | 'passed' | 'exhausted' | 'payment_required';
+
 const CertificationTest = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -46,6 +51,12 @@ const CertificationTest = () => {
   const [showWelcome, setShowWelcome] = useState(true);
   const [progressId, setProgressId] = useState<string | null>(null);
   const [hasExistingAttempt, setHasExistingAttempt] = useState(false);
+  const [gate, setGate] = useState<Gate>('open');
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
+  const [lastScore, setLastScore] = useState<number | null>(null);
+  const [retakePrice, setRetakePrice] = useState<number>(6900);
+  const [payLoading, setPayLoading] = useState(false);
+
 
   useEffect(() => {
     if (!user) {
