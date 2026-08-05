@@ -62,7 +62,7 @@ const AdminDashboard = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link to="/admin/users">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader>
