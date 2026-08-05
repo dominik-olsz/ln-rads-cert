@@ -104,11 +104,63 @@ const CourseBuilder = () => {
   const [numQuestionsToAdd, setNumQuestionsToAdd] = useState(1);
   const [draggedItem, setDraggedItem] = useState<{type: 'lesson' | 'questions', index: number} | null>(null);
 
+  // Unsaved changes tracking
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+
+  const currentSnapshot = useMemo(() => JSON.stringify({
+    title, description, price, heroImage, courseIncludes, whatYouLearn,
+    certificationEnabled, certificationMode, certificationQuestionCount,
+    attemptsIncluded, attemptsTotal, courseRetakePrice,
+    certQuestions, lessons, questionGroups,
+  }), [title, description, price, heroImage, courseIncludes, whatYouLearn,
+    certificationEnabled, certificationMode, certificationQuestionCount,
+    attemptsIncluded, attemptsTotal, courseRetakePrice,
+    certQuestions, lessons, questionGroups]);
+
+  const isDirty = savedSnapshot !== null && savedSnapshot !== currentSnapshot;
+
   useEffect(() => {
     if (courseId && courseId !== "new") {
       fetchCourse();
+    } else {
+      setSavedSnapshot(currentSnapshot);
     }
   }, [courseId]);
+
+  // Warn on browser refresh / close / external navigation
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  const requestNavigation = (path: string) => {
+    if (isDirty) {
+      setPendingNavigation(path);
+    } else {
+      navigate(path);
+    }
+  };
+
+  const discardAndLeave = () => {
+    const path = pendingNavigation;
+    setPendingNavigation(null);
+    setSavedSnapshot(currentSnapshot);
+    if (path) navigate(path);
+  };
+
+  const saveAndLeave = async () => {
+    const path = pendingNavigation;
+    const ok = await saveCourse();
+    setPendingNavigation(null);
+    if (ok && path) navigate(path);
+  };
+
 
   const fetchCourse = async () => {
     if (!courseId || courseId === "new") return;
