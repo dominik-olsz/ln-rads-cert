@@ -257,6 +257,7 @@ const CourseBuilder = () => {
       setLessons(lessonsWithoutQuestions);
       setQuestionGroups(groups);
       setCertQuestions((certQuestionsData || []) as TestQuestion[]);
+      setBaselineArmed(true);
 
     } catch (error: any) {
       toast({
@@ -530,14 +531,14 @@ const CourseBuilder = () => {
     setCertQuestions(certQuestions.filter((_, i) => i !== index));
   };
 
-  const saveCourse = async () => {
+  const saveCourse = async (): Promise<boolean> => {
     if (!title.trim()) {
       toast({
         title: "Error",
         description: "Please enter a course title",
         variant: "destructive"
       });
-      return;
+      return false;
     }
 
     if (randomCountInvalid) {
@@ -546,7 +547,7 @@ const CourseBuilder = () => {
         description: `This course has ${coursePoolSize} question${coursePoolSize === 1 ? '' : 's'}. Set the certification test length between 1 and ${coursePoolSize}, or add more course questions.`,
         variant: "destructive"
       });
-      return;
+      return false;
     }
 
     setSaving(true);
@@ -686,12 +687,15 @@ const CourseBuilder = () => {
         title: "Success",
         description: "Course saved successfully"
       });
+      setBaselineArmed(true);
+      return true;
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to save course",
         variant: "destructive"
       });
+      return false;
     } finally {
       setSaving(false);
     }
@@ -737,7 +741,7 @@ const CourseBuilder = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate('/admin/courses')}>
+            <Button variant="ghost" onClick={() => requestNavigation('/admin/courses')}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
