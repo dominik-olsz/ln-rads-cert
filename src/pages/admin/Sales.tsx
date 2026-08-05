@@ -581,8 +581,8 @@ const AdminSales = () => {
               Issue refund
             </Button>
           </DialogFooter>
-        </DialogFooter>
         </DialogContent>
+
       </Dialog>
     </div>
   );
