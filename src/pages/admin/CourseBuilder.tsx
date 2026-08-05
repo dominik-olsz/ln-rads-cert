@@ -705,6 +705,26 @@ const CourseBuilder = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+
+      <AlertDialog open={pendingNavigation !== null} onOpenChange={(open) => !open && setPendingNavigation(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save changes before leaving?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes to this course. Do you want to save them before leaving the page?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button variant="ghost" onClick={() => setPendingNavigation(null)}>Cancel</Button>
+            <Button variant="outline" onClick={discardAndLeave}>Discard changes</Button>
+            <Button onClick={saveAndLeave} disabled={saving}>
+              {saving ? "Saving..." : "Save & leave"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+      </AlertDialog>
+
       
       <Dialog open={showAddQuestionsDialog} onOpenChange={setShowAddQuestionsDialog}>
         <DialogContent>
