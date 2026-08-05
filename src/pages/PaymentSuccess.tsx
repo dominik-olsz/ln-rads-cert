@@ -99,15 +99,7 @@ const PaymentSuccess = () => {
               </>
             )}
 
-                  <Button onClick={() => navigate(`/training/${courseId}`)}>
-                    Start training
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link to="/dashboard">Go to dashboard</Link>
-                  </Button>
-                </div>
-              </>
-            )}
+
 
             {status === "timeout" && (
               <>
