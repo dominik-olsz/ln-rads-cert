@@ -430,6 +430,29 @@ const CertificationTest = () => {
     }
   };
 
+  const handlePayForRetake = async () => {
+    setPayLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { type: 'certification_retake' },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (!data?.url) throw new Error('Could not start checkout');
+
+      window.location.href = data.url;
+    } catch (error: any) {
+      toast({
+        title: 'Payment failed',
+        description: error.message || 'Could not start checkout',
+        variant: 'destructive',
+      });
+      setPayLoading(false);
+    }
+  };
+
+
   const handleStartTest = async () => {
     // Create progress record
     try {
