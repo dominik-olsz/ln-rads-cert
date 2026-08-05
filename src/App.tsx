@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -25,38 +25,35 @@ import Dashboard from "./pages/Dashboard";
 import ResetPassword from "./pages/ResetPassword";
 import PaymentSuccess from "./pages/PaymentSuccess";
 
-
+const router = createBrowserRouter([
+  { path: "/", element: <Index /> },
+  { path: "/auth", element: <Auth /> },
+  { path: "/reset-password", element: <ResetPassword /> },
+  { path: "/dashboard", element: <Dashboard /> },
+  { path: "/courses", element: <Courses /> },
+  { path: "/course/:id", element: <CourseDetail /> },
+  { path: "/payment-success", element: <PaymentSuccess /> },
+  { path: "/training/:courseId", element: <Training /> },
+  { path: "/test", element: <Test /> },
+  { path: "/certification-test", element: <CertificationTest /> },
+  { path: "/results", element: <Results /> },
+  { path: "/faq", element: <FAQ /> },
+  { path: "/admin/dashboard", element: <AdminRoute><AdminDashboard /></AdminRoute> },
+  { path: "/admin/users", element: <AdminRoute><AdminUsers /></AdminRoute> },
+  { path: "/admin/courses", element: <AdminRoute><AdminCourses /></AdminRoute> },
+  { path: "/admin/courses/:courseId", element: <AdminRoute><CourseBuilder /></AdminRoute> },
+  { path: "/admin/test-attempts", element: <AdminRoute><AdminTestAttempts /></AdminRoute> },
+  { path: "/admin/certificates", element: <AdminRoute><AdminCertificates /></AdminRoute> },
+  // ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE
+  { path: "*", element: <NotFound /> },
+]);
 
 const App = () => (
   <AuthProvider>
     <Toaster />
     <Sonner />
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/courses" element={<Courses />} />
-        <Route path="/course/:id" element={<CourseDetail />} />
-        <Route path="/payment-success" element={<PaymentSuccess />} />
-        <Route path="/training/:courseId" element={<Training />} />
-        <Route path="/test" element={<Test />} />
-        <Route path="/certification-test" element={<CertificationTest />} />
-        <Route path="/results" element={<Results />} />
-        <Route path="/faq" element={<FAQ />} />
-        <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-        <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-        <Route path="/admin/courses" element={<AdminRoute><AdminCourses /></AdminRoute>} />
-        <Route path="/admin/courses/:courseId" element={<AdminRoute><CourseBuilder /></AdminRoute>} />
-        <Route path="/admin/test-attempts" element={<AdminRoute><AdminTestAttempts /></AdminRoute>} />
-        <Route path="/admin/certificates" element={<AdminRoute><AdminCertificates /></AdminRoute>} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <RouterProvider router={router} />
   </AuthProvider>
 );
 
 export default App;
-
