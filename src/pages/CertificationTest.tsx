@@ -78,11 +78,11 @@ const CertificationTest = () => {
         .select(`
           id,
           courses!inner (
-            grants_certification_access
+            certification_enabled
           )
         `)
         .eq('user_id', user?.id)
-        .eq('courses.grants_certification_access', true);
+        .eq('courses.certification_enabled', true);
 
       if (purchaseError) throw purchaseError;
 
