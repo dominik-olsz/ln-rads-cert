@@ -34,8 +34,12 @@ const Auth = () => {
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
   const [signUpName, setSignUpName] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState(false);
+  const [confirmationSentTo, setConfirmationSentTo] = useState<string | null>(null);
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [activeTab, setActiveTab] = useState("signin");
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -45,6 +49,21 @@ const Auth = () => {
       navigate("/");
     }
   }, [user, navigate]);
+
+  const friendlyError = (message: string) => {
+    const m = message.toLowerCase();
+    if (m.includes("already registered") || m.includes("already been registered")) {
+      return "An account with this email already exists. Try signing in, or reset your password.";
+    }
+    if (m.includes("email not confirmed")) {
+      return "Please confirm your email address first. Check your inbox for the confirmation link.";
+    }
+    if (m.includes("invalid login credentials")) {
+      return "Incorrect email or password.";
+    }
+    return message;
+  };
+
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
