@@ -92,7 +92,7 @@ const AdminSales = () => {
     if (error) {
       toast({ title: 'Could not load sales', description: error.message, variant: 'destructive' });
     } else {
-      setInvoices((data ?? []) as Invoice[]);
+      setInvoices((data ?? []) as unknown as Invoice[]);
     }
     setLoading(false);
   };
