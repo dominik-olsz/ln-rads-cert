@@ -75,7 +75,7 @@ const CourseBuilder = () => {
   const [heroImage, setHeroImage] = useState<string | null>(null);
   const [courseIncludes, setCourseIncludes] = useState("");
   const [whatYouLearn, setWhatYouLearn] = useState("");
-  const [grantsCertificationAccess, setGrantsCertificationAccess] = useState(false);
+  
 
   // Certification test configuration
   const [certificationEnabled, setCertificationEnabled] = useState(false);
@@ -120,7 +120,6 @@ const CourseBuilder = () => {
       setHeroImage(courseData.hero_image);
       setCourseIncludes(courseData.course_includes || "");
       setWhatYouLearn(courseData.what_you_learn || "");
-      setGrantsCertificationAccess(courseData.grants_certification_access || false);
       setCertificationEnabled(courseData.certification_enabled || false);
       setCertificationMode((courseData.certification_mode === 'custom' ? 'custom' : 'random'));
       setCertificationQuestionCount(courseData.certification_question_count ?? 0);
@@ -494,7 +493,6 @@ const CourseBuilder = () => {
         total_lessons: lessons.length,
         course_includes: courseIncludes,
         what_you_learn: whatYouLearn,
-        grants_certification_access: grantsCertificationAccess,
         certification_enabled: certificationEnabled,
         certification_mode: certificationMode,
         certification_question_count:
@@ -783,25 +781,6 @@ const CourseBuilder = () => {
                     placeholder="Key learning outcomes..."
                     rows={3}
                   />
-                </div>
-
-                <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/30">
-                  <Checkbox 
-                    id="certificationAccess" 
-                    checked={grantsCertificationAccess}
-                    onCheckedChange={(checked) => setGrantsCertificationAccess(checked as boolean)}
-                  />
-                  <div className="space-y-1">
-                    <Label 
-                      htmlFor="certificationAccess" 
-                      className="text-sm font-medium cursor-pointer"
-                    >
-                      Grants Certification Test Access
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      When enabled, purchasing this course will grant users access to the Certification Test
-                    </p>
-                  </div>
                 </div>
 
                 <div className={`p-4 border rounded-lg space-y-4 ${!certificationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
