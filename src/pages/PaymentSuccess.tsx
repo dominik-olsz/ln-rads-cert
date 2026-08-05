@@ -29,6 +29,7 @@ const PaymentSuccess = () => {
         ? await supabase
             .from("certification_retake_purchases")
             .select("id")
+            .eq("user_id", user.id)
             .is("consumed_at", null)
             .limit(1)
             .maybeSingle()
@@ -38,6 +39,7 @@ const PaymentSuccess = () => {
             .eq("user_id", user.id)
             .eq("course_id", courseId as string)
             .maybeSingle();
+
 
       if (cancelled) return;
 

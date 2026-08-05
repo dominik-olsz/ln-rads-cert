@@ -59,9 +59,11 @@ serve(async (req) => {
           .from("certification_retake_purchases")
           .insert({
             user_id: userId,
+            course_id: courseId ?? null,
             amount_paid: session.amount_total ?? 0,
             stripe_session_id: session.id,
           });
+
 
         if (retakeError && retakeError.code !== "23505") {
           console.error("Failed to record retake purchase:", retakeError);
