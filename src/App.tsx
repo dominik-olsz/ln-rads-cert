@@ -21,6 +21,8 @@ import AdminCourses from "./pages/admin/Courses";
 import AdminTestAttempts from "./pages/admin/TestAttempts";
 import CourseBuilder from "./pages/admin/CourseBuilder";
 import AdminCertificates from "./pages/admin/Certificates";
+import AdminSales from "./pages/admin/Sales";
+
 import Dashboard from "./pages/Dashboard";
 import ResetPassword from "./pages/ResetPassword";
 import PaymentSuccess from "./pages/PaymentSuccess";
