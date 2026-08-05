@@ -452,13 +452,23 @@ const Training = () => {
                     <Lock className="h-10 w-10 text-muted-foreground mx-auto" />
                     <h2 className="text-xl font-bold">{currentCourseItem.title}</h2>
                     <p className="text-muted-foreground">
-                      This part of the course is available after purchase.
+                      {user
+                        ? 'This part of the course is available after purchase.'
+                        : 'This part of the course is available after purchase. Sign in to buy the full course.'}
                     </p>
-                    <Button onClick={() => navigate(`/course/${courseId}`)}>
-                      Get full access
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                      <Button onClick={() => navigate(`/course/${courseId}`)}>
+                        Get full access
+                      </Button>
+                      {!user && (
+                        <Button variant="outline" onClick={() => navigate('/auth')}>
+                          Sign in
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ) : currentCourseItem?.type === 'lesson' ? (
+
 
                   <>
                     <h2 className="text-xl font-bold mb-4">{currentCourseItem.title}</h2>

@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, CheckCircle, PlayCircle, BookOpen, FileQuestion } from "lucide-react";
+import { Award, CheckCircle, PlayCircle, BookOpen, FileQuestion, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -38,8 +38,10 @@ interface CourseItem {
   type: 'lesson' | 'questionGroup';
   title: string;
   order_index: number;
+  isFree?: boolean;
   data: Lesson | TestQuestionGroup;
 }
+
 
 const CourseDetail = () => {
   const { id } = useParams();
@@ -68,7 +70,7 @@ const CourseDetail = () => {
         // Fetch lessons
         const { data: lessonsData, error: lessonsError } = await supabase
           .from('lessons')
-          .select('id, title, order_index')
+          .select('id, title, order_index, is_free')
           .eq('course_id', id)
           .order('order_index');
 
@@ -80,7 +82,12 @@ const CourseDetail = () => {
         });
 
         const questions = questionsData?.questions || [];
-        setCourseQuestionsCount(questions.length);
+        const purchasedFromFn = !!questionsData?.purchased;
+        const lockedGroups = questionsData?.lockedGroups || [];
+        setCourseQuestionsCount(
+          questions.length +
+            lockedGroups.reduce((sum: number, g: any) => sum + (g.count || 0), 0)
+        );
 
         // Group questions by group_title and order_index
         const questionGroupsMap: Map<string, { title: string; orderIndex: number; questions: any[] }> = new Map();
@@ -100,20 +107,22 @@ const CourseDetail = () => {
         });
 
         // Convert lessons to items
-        const lessonItems: CourseItem[] = (lessonsData || []).map((lesson) => ({
+        const lessonItems: CourseItem[] = (lessonsData || []).map((lesson: any) => ({
           id: lesson.id,
           type: 'lesson' as const,
           title: lesson.title,
           order_index: lesson.order_index,
+          isFree: !!lesson.is_free,
           data: lesson,
         }));
 
-        // Convert question groups to items
+        // Convert question groups to items (returned groups are free when not purchased)
         const questionGroupItems: CourseItem[] = Array.from(questionGroupsMap.values()).map((group, idx) => ({
           id: `group-${idx}`,
           type: 'questionGroup' as const,
           title: `${group.title} (${group.questions.length})`,
           order_index: group.orderIndex,
+          isFree: !purchasedFromFn,
           data: {
             id: `group-${idx}`,
             title: group.title,
@@ -121,9 +130,26 @@ const CourseDetail = () => {
           },
         }));
 
+        // Locked question groups (metadata only, for visitors without access)
+        const lockedGroupItems: CourseItem[] = lockedGroups.map((group: any, idx: number) => ({
+          id: `locked-group-${idx}`,
+          type: 'questionGroup' as const,
+          title: `${group.group_title || 'Test Questions'} (${group.count})`,
+          order_index: group.order_index ?? 999,
+          isFree: false,
+          data: {
+            id: `locked-group-${idx}`,
+            title: group.group_title || 'Test Questions',
+            questions: [],
+          },
+        }));
+
         // Combine and sort by order_index
-        const allItems = [...lessonItems, ...questionGroupItems].sort((a, b) => a.order_index - b.order_index);
+        const allItems = [...lessonItems, ...questionGroupItems, ...lockedGroupItems].sort(
+          (a, b) => a.order_index - b.order_index
+        );
         setCourseItems(allItems);
+
 
         // Check if user has purchased this course
         if (user) {
@@ -173,19 +199,24 @@ const CourseDetail = () => {
     }
   };
 
+  const hasFreePreview = courseItems.some((item) => item.isFree);
+
+
+
 
   const handleStartTraining = () => {
-    if (!user) {
-      toast.error('Please sign in to start training');
-      navigate('/auth');
-      return;
-    }
     if (!hasPurchased) {
-      toast.error('Please purchase this course first');
+      if (!hasFreePreview) {
+        toast.error('Please purchase this course first');
+        return;
+      }
+      // Visitors and non-buyers can browse the free preview content
+      navigate(`/training/${id}`);
       return;
     }
     navigate(`/training/${id}`);
   };
+
 
   const handleStartCertification = () => {
     if (!user) {
@@ -279,15 +310,29 @@ const CourseDetail = () => {
 
                     <div className="space-y-3">
                       {!hasPurchased ? (
-                        <Button 
-                          className="w-full" 
-                          size="lg"
-                          onClick={handleBuyCourse}
-                          disabled={purchasing}
-                        >
-                          {purchasing ? 'Processing...' : 'Buy Course'}
-                        </Button>
+                        <>
+                          <Button 
+                            className="w-full" 
+                            size="lg"
+                            onClick={handleBuyCourse}
+                            disabled={purchasing}
+                          >
+                            {purchasing ? 'Processing...' : 'Buy Course'}
+                          </Button>
+                          {hasFreePreview && (
+                            <Button
+                              className="w-full"
+                              size="lg"
+                              variant="outline"
+                              onClick={handleStartTraining}
+                            >
+                              <PlayCircle className="h-5 w-5 mr-2" />
+                              Preview free content
+                            </Button>
+                          )}
+                        </>
                       ) : (
+
                         <>
                           <Button 
                             className="w-full" 
@@ -342,7 +387,11 @@ const CourseDetail = () => {
                           className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
                         >
                           <div className="flex items-start gap-3">
-                            <PlayCircle className="h-5 w-5 text-primary mt-0.5" />
+                            {!hasPurchased && !item.isFree ? (
+                              <Lock className="h-5 w-5 text-muted-foreground mt-0.5" />
+                            ) : (
+                              <PlayCircle className="h-5 w-5 text-primary mt-0.5" />
+                            )}
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">
                                 {item.type === 'lesson' ? 'Lesson' : 'Course Test'}
@@ -350,8 +399,14 @@ const CourseDetail = () => {
                               <h3 className="font-semibold">{item.title}</h3>
                             </div>
                           </div>
+                          {!hasPurchased && item.isFree && (
+                            <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/30">
+                              Free preview
+                            </Badge>
+                          )}
                         </div>
                       ))
+
                     ) : (
                       <p className="text-sm text-muted-foreground">No content available yet</p>
                     )}
@@ -387,15 +442,29 @@ const CourseDetail = () => {
 
                   <div className="space-y-3">
                     {!hasPurchased ? (
-                      <Button 
-                        className="w-full" 
-                        size="lg"
-                        onClick={handleBuyCourse}
-                        disabled={purchasing}
-                      >
-                        {purchasing ? 'Processing...' : 'Buy Course'}
-                      </Button>
+                      <>
+                        <Button 
+                          className="w-full" 
+                          size="lg"
+                          onClick={handleBuyCourse}
+                          disabled={purchasing}
+                        >
+                          {purchasing ? 'Processing...' : 'Buy Course'}
+                        </Button>
+                        {hasFreePreview && (
+                          <Button
+                            className="w-full"
+                            size="lg"
+                            variant="outline"
+                            onClick={handleStartTraining}
+                          >
+                            <PlayCircle className="h-5 w-5 mr-2" />
+                            Preview free content
+                          </Button>
+                        )}
+                      </>
                     ) : (
+
                       <>
                         <Button 
                           className="w-full" 
