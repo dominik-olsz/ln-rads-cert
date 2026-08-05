@@ -563,22 +563,10 @@ const Training = () => {
                           
                           {group.questions.map((q, qIndex) => {
                             const selected = selectedAnswers?.[q.id];
-                            
-                            const normalizeLetter = (val?: string | null) => {
-                              if (!val) return '';
-                              const v = String(val).trim();
-                              const first = v.charAt(0).toUpperCase();
-                              if (['A','B','C','D'].includes(first)) return first;
-                              const lower = v.toLowerCase();
-                              if (lower === (q.option_a || '').toLowerCase()) return 'A';
-                              if (lower === (q.option_b || '').toLowerCase()) return 'B';
-                              if (lower === (q.option_c || '').toLowerCase()) return 'C';
-                              if (lower === (q.option_d || '').toLowerCase()) return 'D';
-                              return first;
-                            };
+                            const feedback = answerFeedback[q.id];
+                            const correctLetter = feedback?.correctAnswer ?? '';
+                            const isCorrect = feedback?.correct ?? false;
 
-                            const correctLetter = normalizeLetter(q.correct_answer);
-                            const isCorrect = selected && correctLetter ? selected === correctLetter : false;
 
                             const options = [
                               { key: 'A', text: q.option_a },
