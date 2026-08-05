@@ -50,12 +50,17 @@ interface TestQuestion {
   option_b: string;
   option_c: string;
   option_d: string;
-  correct_answer: string;
-  explanation: string | null;
   image_url: string | null;
   group_title: string | null;
   order_index: number;
 }
+
+interface AnswerFeedback {
+  correct: boolean;
+  correctAnswer: string;
+  explanation: string | null;
+}
+
 
 const Training = () => {
   const { courseId } = useParams();
@@ -68,8 +73,33 @@ const Training = () => {
   const [userProgress, setUserProgress] = useState<Set<string>>(new Set());
   const [hasPurchased, setHasPurchased] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({});
+  const [answerFeedback, setAnswerFeedback] = useState<Record<string, AnswerFeedback>>({});
+  const [lessonContents, setLessonContents] = useState<Record<string, { content_text: string | null; content_url: string | null }>>({});
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
+
+  // Grade a practice answer server-side (the answer key is never sent to the browser)
+  const handleSelectAnswer = async (questionId: string, answer: 'A' | 'B' | 'C' | 'D') => {
+    setSelectedAnswers((prev) => ({ ...prev, [questionId]: answer }));
+    try {
+      const { data, error } = await supabase.functions.invoke('check-answer', {
+        body: { questionId, answer },
+      });
+      if (error) throw error;
+      setAnswerFeedback((prev) => ({
+        ...prev,
+        [questionId]: {
+          correct: !!data?.correct,
+          correctAnswer: String(data?.correctAnswer ?? ''),
+          explanation: data?.explanation ?? null,
+        },
+      }));
+    } catch (e) {
+      console.error('Failed to check answer:', e);
+      toast.error('Could not check your answer. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const fetchTrainingData = async () => {
       try {
@@ -86,12 +116,13 @@ const Training = () => {
         }
         setHasPurchased(purchased);
 
-        // Fetch lessons
+        // Fetch lesson outline (content itself is served by the backend)
         const { data: lessonsData, error: lessonsError } = await supabase
           .from('lessons')
-          .select('*')
+          .select('id, title, content_type, order_index, is_free, duration, course_id')
           .eq('course_id', courseId)
           .order('order_index');
+
 
         if (lessonsError) throw lessonsError;
 
@@ -257,6 +288,40 @@ const Training = () => {
   const currentCourseItem = courseItems[currentItem];
   const progress = courseItems.length > 0 ? ((currentItem + 1) / courseItems.length) * 100 : 0;
   const lessonMaterials = currentCourseItem?.type === 'lesson' ? materials[currentCourseItem.id] || [] : [];
+  const currentLessonContent =
+    currentCourseItem?.type === 'lesson' ? lessonContents[currentCourseItem.id] : undefined;
+
+  // Load lesson content from the backend (access checked server-side)
+  useEffect(() => {
+    const item = courseItems[currentItem];
+    if (!item || item.type !== 'lesson' || item.locked || lessonContents[item.id]) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-lesson-content', {
+          body: { lessonId: item.id },
+        });
+        if (error) throw error;
+        if (cancelled) return;
+        setLessonContents((prev) => ({
+          ...prev,
+          [item.id]: {
+            content_text: data?.lesson?.content_text ?? null,
+            content_url: data?.lesson?.content_url ?? null,
+          },
+        }));
+      } catch (e) {
+        console.error('Failed to load lesson content:', e);
+        if (!cancelled) toast.error('Could not load this lesson.');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentItem, courseItems, lessonContents]);
+
 
   // Convert YouTube URLs to embed format
   const getYouTubeEmbedUrl = (url: string) => {
@@ -473,11 +538,11 @@ const Training = () => {
                   <>
                     <h2 className="text-xl font-bold mb-4">{currentCourseItem.title}</h2>
                     
-                    {((currentCourseItem.data as Lesson).content_type === "video" || (currentCourseItem.data as Lesson).content_type === "mixed") && (currentCourseItem.data as Lesson).content_url && (
+                    {((currentCourseItem.data as Lesson).content_type === "video" || (currentCourseItem.data as Lesson).content_type === "mixed") && currentLessonContent?.content_url && (
                       <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-4">
                         <iframe
                           className="w-full h-full"
-                          src={getYouTubeEmbedUrl((currentCourseItem.data as Lesson).content_url!) || (currentCourseItem.data as Lesson).content_url!}
+                          src={getYouTubeEmbedUrl(currentLessonContent.content_url) || currentLessonContent.content_url}
                           title={currentCourseItem.title}
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
@@ -485,19 +550,20 @@ const Training = () => {
                       </div>
                     )}
 
-                    {(currentCourseItem.data as Lesson).content_type === "image" && (currentCourseItem.data as Lesson).content_url && (
+                    {(currentCourseItem.data as Lesson).content_type === "image" && currentLessonContent?.content_url && (
                       <div className="bg-muted rounded-lg overflow-hidden mb-4 p-4">
                         <img
-                          src={(currentCourseItem.data as Lesson).content_url!}
+                          src={currentLessonContent.content_url}
                           alt={currentCourseItem.title}
                           className="w-full max-h-[500px] object-contain"
                         />
                       </div>
                     )}
 
-                    {((currentCourseItem.data as Lesson).content_type === "text" || (currentCourseItem.data as Lesson).content_type === "mixed") && (currentCourseItem.data as Lesson).content_text && (
-                      <div className="prose prose-sm max-w-none mb-4" dangerouslySetInnerHTML={{ __html: (currentCourseItem.data as Lesson).content_text! }} />
+                    {((currentCourseItem.data as Lesson).content_type === "text" || (currentCourseItem.data as Lesson).content_type === "mixed") && currentLessonContent?.content_text && (
+                      <div className="prose prose-sm max-w-none mb-4" dangerouslySetInnerHTML={{ __html: currentLessonContent.content_text }} />
                     )}
+
 
                     {/* Display course materials for this lesson */}
                     {lessonMaterials.length > 0 && (
@@ -558,22 +624,10 @@ const Training = () => {
                           
                           {group.questions.map((q, qIndex) => {
                             const selected = selectedAnswers?.[q.id];
-                            
-                            const normalizeLetter = (val?: string | null) => {
-                              if (!val) return '';
-                              const v = String(val).trim();
-                              const first = v.charAt(0).toUpperCase();
-                              if (['A','B','C','D'].includes(first)) return first;
-                              const lower = v.toLowerCase();
-                              if (lower === (q.option_a || '').toLowerCase()) return 'A';
-                              if (lower === (q.option_b || '').toLowerCase()) return 'B';
-                              if (lower === (q.option_c || '').toLowerCase()) return 'C';
-                              if (lower === (q.option_d || '').toLowerCase()) return 'D';
-                              return first;
-                            };
+                            const feedback = answerFeedback[q.id];
+                            const correctLetter = feedback?.correctAnswer ?? '';
+                            const isCorrect = feedback?.correct ?? false;
 
-                            const correctLetter = normalizeLetter(q.correct_answer);
-                            const isCorrect = selected && correctLetter ? selected === correctLetter : false;
 
                             const options = [
                               { key: 'A', text: q.option_a },
@@ -602,8 +656,8 @@ const Training = () => {
                                 <div role="radiogroup" className="space-y-2">
                                   {options.map((o) => {
                                     const isSelected = selected === o.key;
-                                    const isCorrectOption = o.key === correctLetter;
-                                    const showFeedback = selected !== undefined;
+                                    const isCorrectOption = correctLetter !== '' && o.key === correctLetter;
+                                    const showFeedback = !!feedback;
                                     
                                     let buttonClass = 'border rounded-lg p-3 w-full text-left transition-colors ';
                                     if (isSelected) {
@@ -626,7 +680,7 @@ const Training = () => {
                                         key={o.key}
                                         role="radio"
                                         aria-checked={isSelected}
-                                        onClick={() => setSelectedAnswers(prev => ({ ...prev, [q.id]: o.key as 'A' | 'B' | 'C' | 'D' }))}
+                                        onClick={() => handleSelectAnswer(q.id, o.key as 'A' | 'B' | 'C' | 'D')}
                                         className={buttonClass}
                                       >
                                         <span className="font-medium mr-1">{o.key}:</span> {o.text}
@@ -635,7 +689,7 @@ const Training = () => {
                                   })}
                                 </div>
                                 
-                                {selected && (
+                                {selected && feedback && (
                                   <div className={`rounded-lg p-4 mt-4 ${
                                     isCorrect 
                                       ? 'bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800' 
@@ -644,11 +698,12 @@ const Training = () => {
                                     <p className="font-semibold mb-2">
                                       {isCorrect ? '✓ Correct!' : '✗ Incorrect.'} Correct Answer: {correctLetter}
                                     </p>
-                                    {q.explanation && (
-                                      <p className="text-sm">{q.explanation}</p>
+                                    {feedback.explanation && (
+                                      <p className="text-sm">{feedback.explanation}</p>
                                     )}
                                   </div>
                                 )}
+
                               </div>
                             );
                           })}

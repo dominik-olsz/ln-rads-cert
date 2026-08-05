@@ -19,16 +19,17 @@ export const useAdminAuth = () => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
+        // Server-side role check (security definer function); the client cannot
+        // influence the result, and every admin action is re-checked by RLS /
+        // edge functions.
+        const { data, error } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: 'admin',
+        });
 
         if (error) throw error;
 
-        if (data) {
+        if (data === true) {
           setIsAdmin(true);
         } else {
           navigate('/');
@@ -39,6 +40,7 @@ export const useAdminAuth = () => {
       } finally {
         setLoading(false);
       }
+
     };
 
     checkAdminRole();

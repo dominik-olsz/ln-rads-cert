@@ -76,6 +76,13 @@ serve(async (req) => {
         return json({ error: 'Failed to retrieve test questions' }, 500);
       }
 
+      // Never ship the answer key to the client; feedback is graded by the
+      // check-answer function after the learner picks an option.
+      const safeCourseQuestions = (questions ?? []).map(
+        ({ correct_answer, explanation, ...rest }: any) => rest
+      );
+
+
       // For visitors without access, also describe the locked groups so the
       // course outline can be shown without exposing question content.
       let lockedGroups: { group_title: string | null; order_index: number; count: number }[] = [];
@@ -99,7 +106,7 @@ serve(async (req) => {
         lockedGroups = Array.from(map.values()).sort((a, b) => a.order_index - b.order_index);
       }
 
-      return json({ questions: questions ?? [], purchased, lockedGroups });
+      return json({ questions: safeCourseQuestions, purchased, lockedGroups });
 
     }
 

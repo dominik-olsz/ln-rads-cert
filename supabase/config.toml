@@ -9,6 +9,13 @@ verify_jwt = true
 [functions.get-test-questions]
 verify_jwt = false
 
+[functions.get-lesson-content]
+verify_jwt = false
+
+[functions.check-answer]
+verify_jwt = false
+
+
 [functions.delete-user]
 verify_jwt = true
 
