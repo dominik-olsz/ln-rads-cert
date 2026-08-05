@@ -80,30 +80,45 @@ export type Database = {
       certification_retake_purchases: {
         Row: {
           amount_paid: number
+          buyer_email: string | null
+          buyer_name: string | null
           consumed_at: string | null
           course_id: string | null
           created_at: string
           id: string
+          refunded_amount: number
+          refunded_at: string | null
+          stripe_payment_intent_id: string | null
           stripe_session_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           amount_paid?: number
+          buyer_email?: string | null
+          buyer_name?: string | null
           consumed_at?: string | null
           course_id?: string | null
           created_at?: string
           id?: string
+          refunded_amount?: number
+          refunded_at?: string | null
+          stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           amount_paid?: number
+          buyer_email?: string | null
+          buyer_name?: string | null
           consumed_at?: string | null
           course_id?: string | null
           created_at?: string
           id?: string
+          refunded_amount?: number
+          refunded_at?: string | null
+          stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           updated_at?: string
           user_id?: string
@@ -296,28 +311,43 @@ export type Database = {
       course_purchases: {
         Row: {
           amount_paid: number
+          buyer_email: string | null
+          buyer_name: string | null
           course_id: string
           id: string
           payment_status: string
           purchased_at: string
+          refunded_amount: number
+          refunded_at: string | null
+          stripe_payment_intent_id: string | null
           stripe_session_id: string | null
           user_id: string
         }
         Insert: {
           amount_paid?: number
+          buyer_email?: string | null
+          buyer_name?: string | null
           course_id: string
           id?: string
           payment_status?: string
           purchased_at?: string
+          refunded_amount?: number
+          refunded_at?: string | null
+          stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           user_id: string
         }
         Update: {
           amount_paid?: number
+          buyer_email?: string | null
+          buyer_name?: string | null
           course_id?: string
           id?: string
           payment_status?: string
           purchased_at?: string
+          refunded_amount?: number
+          refunded_at?: string | null
+          stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           user_id?: string
         }
@@ -390,6 +420,173 @@ export type Database = {
           what_you_learn?: string | null
         }
         Relationships: []
+      }
+      invoice_counters: {
+        Row: {
+          created_at: string
+          doc_type: string
+          id: string
+          last_number: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          doc_type: string
+          id?: string
+          last_number?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          doc_type?: string
+          id?: string
+          last_number?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      invoices: {
+        Row: {
+          buyer_address_line1: string | null
+          buyer_address_line2: string | null
+          buyer_city: string | null
+          buyer_company: string | null
+          buyer_country: string | null
+          buyer_email: string | null
+          buyer_name: string | null
+          buyer_postal_code: string | null
+          buyer_vat_id: string | null
+          course_id: string | null
+          course_purchase_id: string | null
+          created_at: string
+          currency: string
+          doc_type: string
+          gross_amount: number
+          id: string
+          invoice_number: string
+          issued_at: string
+          line_items: Json
+          net_amount: number
+          notes: string | null
+          original_invoice_id: string | null
+          pdf_path: string | null
+          purchase_type: string
+          refund_reason: string | null
+          retake_purchase_id: string | null
+          reverse_charge: boolean
+          seller: Json
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+          updated_at: string
+          user_id: string | null
+          vat_amount: number
+          vat_rate: number
+        }
+        Insert: {
+          buyer_address_line1?: string | null
+          buyer_address_line2?: string | null
+          buyer_city?: string | null
+          buyer_company?: string | null
+          buyer_country?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          buyer_postal_code?: string | null
+          buyer_vat_id?: string | null
+          course_id?: string | null
+          course_purchase_id?: string | null
+          created_at?: string
+          currency?: string
+          doc_type?: string
+          gross_amount?: number
+          id?: string
+          invoice_number: string
+          issued_at?: string
+          line_items?: Json
+          net_amount?: number
+          notes?: string | null
+          original_invoice_id?: string | null
+          pdf_path?: string | null
+          purchase_type?: string
+          refund_reason?: string | null
+          retake_purchase_id?: string | null
+          reverse_charge?: boolean
+          seller?: Json
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+          vat_amount?: number
+          vat_rate?: number
+        }
+        Update: {
+          buyer_address_line1?: string | null
+          buyer_address_line2?: string | null
+          buyer_city?: string | null
+          buyer_company?: string | null
+          buyer_country?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          buyer_postal_code?: string | null
+          buyer_vat_id?: string | null
+          course_id?: string | null
+          course_purchase_id?: string | null
+          created_at?: string
+          currency?: string
+          doc_type?: string
+          gross_amount?: number
+          id?: string
+          invoice_number?: string
+          issued_at?: string
+          line_items?: Json
+          net_amount?: number
+          notes?: string | null
+          original_invoice_id?: string | null
+          pdf_path?: string | null
+          purchase_type?: string
+          refund_reason?: string | null
+          retake_purchase_id?: string | null
+          reverse_charge?: boolean
+          seller?: Json
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+          vat_amount?: number
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_course_purchase_id_fkey"
+            columns: ["course_purchase_id"]
+            isOneToOne: false
+            referencedRelation: "course_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_original_invoice_id_fkey"
+            columns: ["original_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_retake_purchase_id_fkey"
+            columns: ["retake_purchase_id"]
+            isOneToOne: false
+            referencedRelation: "certification_retake_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lessons: {
         Row: {
@@ -668,6 +865,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_invoice_number: { Args: { _doc_type: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "user"
