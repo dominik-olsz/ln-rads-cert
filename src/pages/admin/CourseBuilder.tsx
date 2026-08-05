@@ -686,11 +686,13 @@ const CourseBuilder = () => {
         </div>
 
         <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto mb-6">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="content">Course Content ({lessons?.length || 0} lessons, {questionGroups?.length || 0} question groups)</TabsTrigger>
+            <TabsTrigger value="certification">Certification Test</TabsTrigger>
             <TabsTrigger value="preview">Preview</TabsTrigger>
           </TabsList>
+
 
           <TabsContent value="basic">
             <Card>
@@ -801,6 +803,48 @@ const CourseBuilder = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="p-4 border rounded-lg space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium">Certification Attempts</h3>
+                    <p className="text-xs text-muted-foreground">
+                      How many exam attempts students get, and what extra attempts cost.
+                    </p>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="attemptsIncluded">Attempts included in price</Label>
+                      <Input
+                        id="attemptsIncluded"
+                        type="number"
+                        min="0"
+                        value={attemptsIncluded}
+                        onChange={(e) => setAttemptsIncluded(Math.max(0, Number(e.target.value)))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="attemptsTotal">Total attempts allowed</Label>
+                      <Input
+                        id="attemptsTotal"
+                        type="number"
+                        min="1"
+                        value={attemptsTotal}
+                        onChange={(e) => setAttemptsTotal(Math.max(1, Number(e.target.value)))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="retakePrice">Price per extra attempt (€)</Label>
+                      <Input
+                        id="retakePrice"
+                        type="number"
+                        min="0"
+                        value={courseRetakePrice}
+                        onChange={(e) => setCourseRetakePrice(Math.max(0, Number(e.target.value)))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
               </CardContent>
             </Card>
           </TabsContent>
