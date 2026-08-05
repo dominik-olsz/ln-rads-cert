@@ -18,7 +18,7 @@ interface Course {
   hero_image: string | null;
   course_includes: string | null;
   what_you_learn: string | null;
-  grants_certification_access: boolean;
+  certification_enabled: boolean;
 }
 
 interface Lesson {
@@ -247,7 +247,7 @@ const CourseDetail = () => {
                       <span>{courseQuestionsCount} course use cases</span>
                     </div>
                   )}
-                  {course.grants_certification_access && (
+                  {course.certification_enabled && (
                     <div className="flex items-center gap-2">
                       <Award className="h-5 w-5 text-primary" />
                       <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/30 font-semibold">
@@ -297,7 +297,7 @@ const CourseDetail = () => {
                             <PlayCircle className="h-5 w-5 mr-2" />
                             Start Training
                           </Button>
-                          {course.grants_certification_access && (
+                          {course.certification_enabled && (
                             <Button 
                               className="w-full" 
                               size="lg"
@@ -405,7 +405,7 @@ const CourseDetail = () => {
                           <PlayCircle className="h-5 w-5 mr-2" />
                           Start Training
                         </Button>
-                        {course.grants_certification_access && (
+                        {course.certification_enabled && (
                           <Button 
                             className="w-full" 
                             size="lg"
