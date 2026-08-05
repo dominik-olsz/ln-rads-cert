@@ -73,8 +73,33 @@ const Training = () => {
   const [userProgress, setUserProgress] = useState<Set<string>>(new Set());
   const [hasPurchased, setHasPurchased] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({});
+  const [answerFeedback, setAnswerFeedback] = useState<Record<string, AnswerFeedback>>({});
+  const [lessonContents, setLessonContents] = useState<Record<string, { content_text: string | null; content_url: string | null }>>({});
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
+
+  // Grade a practice answer server-side (the answer key is never sent to the browser)
+  const handleSelectAnswer = async (questionId: string, answer: 'A' | 'B' | 'C' | 'D') => {
+    setSelectedAnswers((prev) => ({ ...prev, [questionId]: answer }));
+    try {
+      const { data, error } = await supabase.functions.invoke('check-answer', {
+        body: { questionId, answer },
+      });
+      if (error) throw error;
+      setAnswerFeedback((prev) => ({
+        ...prev,
+        [questionId]: {
+          correct: !!data?.correct,
+          correctAnswer: String(data?.correctAnswer ?? ''),
+          explanation: data?.explanation ?? null,
+        },
+      }));
+    } catch (e) {
+      console.error('Failed to check answer:', e);
+      toast.error('Could not check your answer. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const fetchTrainingData = async () => {
       try {
