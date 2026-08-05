@@ -76,7 +76,10 @@ serve(async (req) => {
           price_data: {
             currency: "eur",
             unit_amount: Math.round(course.price * 100),
-            product_data: { name: course.title },
+            product_data: {
+              name: course.title,
+              tax_code: "txcd_10103001", // Digital education / online course
+            },
           },
         },
       ],
