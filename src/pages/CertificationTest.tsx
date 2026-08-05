@@ -85,7 +85,7 @@ const CertificationTest = () => {
 
       setHasPurchased(true);
 
-      // Check if user has completed certification test or has existing progress
+      // Latest progress record (used to resume an unfinished attempt)
       const { data: existingProgress, error: progressError } = await supabase
         .from('certification_test_progress')
         .select('*')
@@ -98,27 +98,58 @@ const CertificationTest = () => {
         throw progressError;
       }
 
-      // If there's a completed attempt, check if they passed or failed
-      if (existingProgress?.is_completed) {
-        const { data: attemptData } = await supabase
-          .from('test_attempts')
-          .select('passed, score')
-          .eq('id', existingProgress.test_attempt_id)
-          .maybeSingle();
+      const hasResumableAttempt = !!existingProgress && !existingProgress.is_completed;
 
-        if (attemptData) {
-          toast({
-            title: "Test Already Completed",
-            description: attemptData.passed 
-              ? `You already passed this test with ${attemptData.score}%` 
-              : `You failed this test with ${attemptData.score}%. You cannot retake it.`,
-            variant: attemptData.passed ? "default" : "destructive",
-          });
-          setHasExistingAttempt(true);
+      // How many certification attempts has this student used?
+      const { data: attemptRows } = await supabase
+        .from('test_attempts')
+        .select('id, passed, score, completed_at')
+        .eq('user_id', user?.id)
+        .eq('is_certification_test', true)
+        .order('completed_at', { ascending: false });
+
+      const used = attemptRows?.length ?? 0;
+      setAttemptsUsed(used);
+      const passedAttempt = (attemptRows ?? []).find((a) => a.passed);
+      setLastScore(attemptRows?.[0]?.score ?? null);
+
+      if (!hasResumableAttempt) {
+        if (passedAttempt) {
+          setGate('passed');
           setLoading(false);
           return;
         }
+
+        if (used >= MAX_ATTEMPTS) {
+          setGate('exhausted');
+          setLoading(false);
+          return;
+        }
+
+        if (used > 0) {
+          const { data: credit } = await supabase
+            .from('certification_retake_purchases')
+            .select('id')
+            .is('consumed_at', null)
+            .limit(1)
+            .maybeSingle();
+
+          if (!credit) {
+            const { data: setting } = await supabase
+              .from('app_settings')
+              .select('value')
+              .eq('key', 'certification_retake_price')
+              .maybeSingle();
+
+            setRetakePrice(Number(setting?.value ?? 6900));
+            setGate('payment_required');
+            setLoading(false);
+            return;
+          }
+        }
       }
+
+
 
       // If there's an incomplete attempt, resume it
       if (existingProgress && !existingProgress.is_completed) {
