@@ -46,6 +46,8 @@ const router = createBrowserRouter([
   { path: "/admin/courses/:courseId", element: <AdminRoute><CourseBuilder /></AdminRoute> },
   { path: "/admin/test-attempts", element: <AdminRoute><AdminTestAttempts /></AdminRoute> },
   { path: "/admin/certificates", element: <AdminRoute><AdminCertificates /></AdminRoute> },
+  { path: "/admin/sales", element: <AdminRoute><AdminSales /></AdminRoute> },
+
   // ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE
   { path: "*", element: <NotFound /> },
 ]);
