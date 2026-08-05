@@ -32,40 +32,9 @@ interface TestAttempt {
 const AdminTestAttempts = () => {
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [retakePrice, setRetakePrice] = useState('');
-  const [savingPrice, setSavingPrice] = useState(false);
   const { toast } = useToast();
 
-  const fetchRetakePrice = async () => {
-    const { data } = await supabase
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'certification_retake_price')
-      .maybeSingle();
 
-    setRetakePrice(((Number(data?.value ?? 6900)) / 100).toFixed(2));
-  };
-
-  const saveRetakePrice = async () => {
-    const euros = Number(retakePrice.replace(',', '.'));
-    if (!Number.isFinite(euros) || euros <= 0) {
-      toast({ title: 'Invalid price', description: 'Enter an amount greater than 0.', variant: 'destructive' });
-      return;
-    }
-
-    setSavingPrice(true);
-    const { error } = await supabase
-      .from('app_settings')
-      .update({ value: Math.round(euros * 100) as any })
-      .eq('key', 'certification_retake_price');
-    setSavingPrice(false);
-
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      return;
-    }
-    toast({ title: 'Saved', description: `Retake price set to €${euros.toFixed(2)}` });
-  };
 
 
   const fetchAttempts = async () => {
