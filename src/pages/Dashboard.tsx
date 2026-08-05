@@ -18,6 +18,8 @@ interface PurchasedCourse {
   total_items: number;
   current_item_index: number;
   purchased_at: string;
+  certification_enabled?: boolean;
+
 }
 
 interface Certificate {
