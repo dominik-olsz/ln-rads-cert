@@ -38,9 +38,86 @@ serve(async (req) => {
     if (!user) return json({ error: "Authentication required" }, 401);
 
     const body = await req.json().catch(() => ({}));
+    const purchaseType = body?.type === "certification_retake" ? "certification_retake" : "course";
     const courseId = typeof body?.courseId === "string" ? body.courseId : null;
     const origin = req.headers.get("origin") ?? "";
+
+    const stripeInit = () => new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
+
+    if (purchaseType === "certification_retake") {
+      const admin = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      );
+
+      const { data: attempts } = await admin
+        .from("test_attempts")
+        .select("id, passed")
+        .eq("user_id", user.id)
+        .eq("is_certification_test", true);
+
+      const attemptsUsed = attempts?.length ?? 0;
+
+      if ((attempts ?? []).some((a: any) => a.passed)) {
+        return json({ error: "You have already passed the certification test" }, 400);
+      }
+      if (attemptsUsed === 0) {
+        return json({ error: "Your first attempt is included — no payment needed" }, 400);
+      }
+      if (attemptsUsed >= 3) {
+        return json({ error: "No attempts left. Please contact cert@lnrads.com." }, 400);
+      }
+
+      const { data: unused } = await admin
+        .from("certification_retake_purchases")
+        .select("id")
+        .eq("user_id", user.id)
+        .is("consumed_at", null)
+        .maybeSingle();
+
+      if (unused) {
+        return json({ error: "You already have a paid retake available" }, 400);
+      }
+
+      const { data: setting } = await admin
+        .from("app_settings")
+        .select("value")
+        .eq("key", "certification_retake_price")
+        .maybeSingle();
+
+      const amount = Number(setting?.value ?? 6900);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return json({ error: "Retake price is not configured" }, 500);
+      }
+
+      const stripe = stripeInit();
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        client_reference_id: user.id,
+        customer_email: user.email ?? undefined,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: "eur",
+              unit_amount: Math.round(amount),
+              product_data: {
+                name: "Certification exam retake",
+                tax_code: "txcd_10103001",
+              },
+            },
+          },
+        ],
+        metadata: { user_id: user.id, purchase_type: "certification_retake" },
+        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=certification_retake`,
+        cancel_url: `${origin}/certification-test?payment=cancelled`,
+      });
+
+      return json({ url: session.url });
+    }
+
     if (!courseId) return json({ error: "courseId is required" }, 400);
+
 
     // Trust only the DB price
     const { data: course, error: courseError } = await supabase
