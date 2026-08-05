@@ -432,6 +432,37 @@ const CourseBuilder = () => {
     setDraggedItem(null);
   };
 
+  const coursePoolSize = questionGroups.reduce((acc, g) => acc + g.questions.length, 0);
+  const randomCountInvalid =
+    certificationEnabled &&
+    certificationMode === 'random' &&
+    (!certificationQuestionCount || certificationQuestionCount < 1 || certificationQuestionCount > coursePoolSize);
+
+  const addCertQuestion = () => {
+    setCertQuestions([
+      ...certQuestions,
+      {
+        question_text: "",
+        option_a: "",
+        option_b: "",
+        option_c: "",
+        option_d: "",
+        correct_answer: "A",
+        order_index: certQuestions.length,
+      },
+    ]);
+  };
+
+  const updateCertQuestion = (index: number, updates: Partial<TestQuestion>) => {
+    const updated = [...certQuestions];
+    updated[index] = { ...updated[index], ...updates };
+    setCertQuestions(updated);
+  };
+
+  const deleteCertQuestion = (index: number) => {
+    setCertQuestions(certQuestions.filter((_, i) => i !== index));
+  };
+
   const saveCourse = async () => {
     if (!title.trim()) {
       toast({
@@ -442,24 +473,42 @@ const CourseBuilder = () => {
       return;
     }
 
+    if (randomCountInvalid) {
+      toast({
+        title: "Not enough questions",
+        description: `This course has ${coursePoolSize} question${coursePoolSize === 1 ? '' : 's'}. Set the certification test length between 1 and ${coursePoolSize}, or add more course questions.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       let finalCourseId = courseId;
+
+      const courseFields = {
+        title,
+        description,
+        price,
+        hero_image: heroImage,
+        total_lessons: lessons.length,
+        course_includes: courseIncludes,
+        what_you_learn: whatYouLearn,
+        grants_certification_access: grantsCertificationAccess,
+        certification_enabled: certificationEnabled,
+        certification_mode: certificationMode,
+        certification_question_count:
+          certificationEnabled && certificationMode === 'random' ? certificationQuestionCount : null,
+        attempts_included: attemptsIncluded,
+        attempts_total: attemptsTotal,
+        retake_price: courseRetakePrice,
+      };
 
       // Save or update course
       if (courseId === "new" || !courseId) {
         const { data: newCourse, error: courseError } = await supabase
           .from('courses')
-          .insert({
-            title,
-            description,
-            price,
-            hero_image: heroImage,
-            total_lessons: lessons.length,
-            course_includes: courseIncludes,
-            what_you_learn: whatYouLearn,
-            grants_certification_access: grantsCertificationAccess
-          })
+          .insert(courseFields)
           .select()
           .single();
 
@@ -468,16 +517,7 @@ const CourseBuilder = () => {
       } else {
         const { error: updateError } = await supabase
           .from('courses')
-          .update({
-            title,
-            description,
-            price,
-            hero_image: heroImage,
-            total_lessons: lessons.length,
-            course_includes: courseIncludes,
-            what_you_learn: whatYouLearn,
-            grants_certification_access: grantsCertificationAccess
-          })
+          .update(courseFields)
           .eq('id', courseId);
 
         if (updateError) throw updateError;
@@ -491,7 +531,7 @@ const CourseBuilder = () => {
 
       // Save lessons
       for (const lesson of lessons) {
-        const { data: savedLesson, error: lessonError } = await supabase
+        const { error: lessonError } = await supabase
           .from('lessons')
           .insert({
             course_id: finalCourseId,
@@ -500,7 +540,8 @@ const CourseBuilder = () => {
             content_type: lesson.content_type,
             content_url: lesson.content_url,
             content_text: lesson.content_text,
-            duration: lesson.duration
+            duration: lesson.duration,
+            is_free: lesson.is_free || false
           })
           .select()
           .single();
@@ -508,16 +549,17 @@ const CourseBuilder = () => {
         if (lessonError) throw lessonError;
       }
 
+      const isValidQuestion = (q: TestQuestion) =>
+        q.question_text?.trim() &&
+        q.option_a?.trim() &&
+        q.option_b?.trim() &&
+        q.option_c?.trim() &&
+        q.option_d?.trim() &&
+        q.correct_answer;
+
       // Save course-level test questions
       for (const group of questionGroups) {
-        const validQuestions = group.questions.filter(q => 
-          q.question_text?.trim() && 
-          q.option_a?.trim() && 
-          q.option_b?.trim() && 
-          q.option_c?.trim() && 
-          q.option_d?.trim() &&
-          q.correct_answer
-        );
+        const validQuestions = group.questions.filter(isValidQuestion);
 
         if (validQuestions.length > 0) {
           const questionsToInsert = validQuestions.map((q) => ({
@@ -533,7 +575,8 @@ const CourseBuilder = () => {
             image_url: q.image_url || null,
             test_type: 'course',
             order_index: group.order_index,
-            group_title: group.title || null
+            group_title: group.title || null,
+            is_free: group.is_free || false
           }));
 
           const { error: questionsError } = await supabase
@@ -541,6 +584,35 @@ const CourseBuilder = () => {
             .insert(questionsToInsert);
 
           if (questionsError) throw questionsError;
+        }
+      }
+
+      // Save certification questions (custom mode only)
+      if (certificationEnabled && certificationMode === 'custom') {
+        const validCert = certQuestions.filter(isValidQuestion);
+
+        if (validCert.length > 0) {
+          const { error: certError } = await supabase
+            .from('test_questions')
+            .insert(
+              validCert.map((q, idx) => ({
+                course_id: finalCourseId,
+                lesson_id: null,
+                question_text: q.question_text,
+                option_a: q.option_a,
+                option_b: q.option_b,
+                option_c: q.option_c,
+                option_d: q.option_d,
+                correct_answer: q.correct_answer,
+                explanation: q.explanation || null,
+                image_url: q.image_url || null,
+                test_type: 'certification',
+                order_index: idx,
+                is_free: false
+              }))
+            );
+
+          if (certError) throw certError;
         }
       }
 
@@ -558,6 +630,7 @@ const CourseBuilder = () => {
       setSaving(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-background">
