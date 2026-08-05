@@ -62,7 +62,7 @@ const AdminDashboard = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link to="/admin/users">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader>
@@ -89,18 +89,6 @@ const AdminDashboard = () => {
             </Card>
           </Link>
 
-          <Link to="/admin/courses">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-              <CardHeader>
-                <CardTitle>Certification Test Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Set up certification tests per course in the course editor
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
         </div>
       </main>
     </div>
