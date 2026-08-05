@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          created_at: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       certificates: {
         Row: {
           certificate_number: string
@@ -55,6 +76,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      certification_retake_purchases: {
+        Row: {
+          amount_paid: number
+          consumed_at: string | null
+          created_at: string
+          id: string
+          stripe_session_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_paid?: number
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_paid?: number
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       certification_test_progress: {
         Row: {
