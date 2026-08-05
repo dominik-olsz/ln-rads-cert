@@ -300,53 +300,131 @@ const Auth = () => {
 
           <TabsContent value="signup">
             <Card>
-              <CardHeader>
-                <CardTitle>Create Account</CardTitle>
-                <CardDescription>Sign up to start your LN-RADS certification</CardDescription>
-              </CardHeader>
-              <form onSubmit={handleSignUp}>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      placeholder="John Doe"
-                      value={signUpName}
-                      onChange={(e) => setSignUpName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="name@example.com"
-                      value={signUpEmail}
-                      onChange={(e) => setSignUpEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      value={signUpPassword}
-                      onChange={(e) => setSignUpPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Creating account..." : "Create Account"}
-                  </Button>
-                </CardFooter>
-              </form>
+              {confirmationSentTo ? (
+                <>
+                  <CardHeader>
+                    <CardTitle>Check your inbox</CardTitle>
+                    <CardDescription>
+                      We sent a confirmation link to <strong>{confirmationSentTo}</strong>.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm text-muted-foreground">
+                    <p>
+                      Click the link in that email to confirm your address and activate your account.
+                      You will not be able to sign in until it is confirmed.
+                    </p>
+                    <p>
+                      The link expires after a short time. If it does not arrive within a few minutes,
+                      check your spam folder.
+                    </p>
+                  </CardContent>
+                  <CardFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setConfirmationSentTo(null);
+                        setSignInEmail(confirmationSentTo);
+                        setActiveTab("signin");
+                      }}
+                    >
+                      Back to sign in
+                    </Button>
+                  </CardFooter>
+                </>
+              ) : (
+                <>
+                  <CardHeader>
+                    <CardTitle>Create Account</CardTitle>
+                    <CardDescription>Sign up to start your LN-RADS certification</CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleSignUp}>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-name">Full Name</Label>
+                        <Input
+                          id="signup-name"
+                          type="text"
+                          placeholder="John Doe"
+                          value={signUpName}
+                          onChange={(e) => setSignUpName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-email">Email</Label>
+                        <Input
+                          id="signup-email"
+                          type="email"
+                          placeholder="name@example.com"
+                          value={signUpEmail}
+                          onChange={(e) => setSignUpEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-password">Password</Label>
+                        <Input
+                          id="signup-password"
+                          type="password"
+                          value={signUpPassword}
+                          onChange={(e) => setSignUpPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="signup-terms"
+                          checked={acceptedTerms}
+                          onCheckedChange={(checked) => {
+                            setAcceptedTerms(checked === true);
+                            if (checked === true) setTermsError(false);
+                          }}
+                          className="mt-0.5"
+                        />
+                        <Label
+                          htmlFor="signup-terms"
+                          className="text-xs font-normal leading-relaxed text-muted-foreground"
+                        >
+                          I agree to the{" "}
+                          <Link
+                            to="/privacy-policy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            Privacy Policy
+                          </Link>{" "}
+                          and the{" "}
+                          <Link
+                            to="/terms"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            Terms and Conditions
+                          </Link>
+                          .
+                        </Label>
+                      </div>
+                      {termsError && (
+                        <p className="text-xs text-destructive">
+                          You must accept the Privacy Policy and Terms and Conditions to create an account.
+                        </p>
+                      )}
+                    </CardContent>
+                    <CardFooter>
+                      <Button type="submit" className="w-full" disabled={isLoading || !acceptedTerms}>
+                        {isLoading ? "Creating account..." : "Create Account"}
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </>
+              )}
             </Card>
           </TabsContent>
+
         </Tabs>
 
 
