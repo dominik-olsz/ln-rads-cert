@@ -76,7 +76,31 @@ serve(async (req) => {
         return json({ error: 'Failed to retrieve test questions' }, 500);
       }
 
-      return json({ questions: questions ?? [], purchased });
+      // For visitors without access, also describe the locked groups so the
+      // course outline can be shown without exposing question content.
+      let lockedGroups: { group_title: string | null; order_index: number; count: number }[] = [];
+      if (!purchased) {
+        const { data: allMeta } = await supabaseAdmin
+          .from('test_questions')
+          .select('group_title, order_index, is_free')
+          .eq('course_id', courseId)
+          .eq('test_type', 'course')
+          .is('lesson_id', null);
+
+        const map = new Map<number, { group_title: string | null; order_index: number; count: number }>();
+        (allMeta ?? [])
+          .filter((q: any) => !q.is_free)
+          .forEach((q: any) => {
+            const order = q.order_index ?? 999;
+            const entry = map.get(order) ?? { group_title: q.group_title ?? null, order_index: order, count: 0 };
+            entry.count += 1;
+            map.set(order, entry);
+          });
+        lockedGroups = Array.from(map.values()).sort((a, b) => a.order_index - b.order_index);
+      }
+
+      return json({ questions: questions ?? [], purchased, lockedGroups });
+
     }
 
     // ---------- Certification test ----------
