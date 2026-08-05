@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, ClipboardCheck, Award } from 'lucide-react';
+import { Users, BookOpen, ClipboardCheck, Award, Receipt } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -89,7 +89,22 @@ const AdminDashboard = () => {
             </Card>
           </Link>
 
+          <Link to="/admin/sales">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle>Sales &amp; Invoices</CardTitle>
+                <Receipt className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  View buyers, download or print invoices, and issue refunds
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
         </div>
+
       </main>
     </div>
   );

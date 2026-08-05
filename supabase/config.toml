@@ -17,3 +17,10 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.refund-payment]
+verify_jwt = false
+
+[functions.invoice-actions]
+verify_jwt = false
+

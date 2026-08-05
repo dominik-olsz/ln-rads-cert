@@ -21,6 +21,8 @@ import AdminCourses from "./pages/admin/Courses";
 import AdminTestAttempts from "./pages/admin/TestAttempts";
 import CourseBuilder from "./pages/admin/CourseBuilder";
 import AdminCertificates from "./pages/admin/Certificates";
+import AdminSales from "./pages/admin/Sales";
+
 import Dashboard from "./pages/Dashboard";
 import ResetPassword from "./pages/ResetPassword";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -44,6 +46,8 @@ const router = createBrowserRouter([
   { path: "/admin/courses/:courseId", element: <AdminRoute><CourseBuilder /></AdminRoute> },
   { path: "/admin/test-attempts", element: <AdminRoute><AdminTestAttempts /></AdminRoute> },
   { path: "/admin/certificates", element: <AdminRoute><AdminCertificates /></AdminRoute> },
+  { path: "/admin/sales", element: <AdminRoute><AdminSales /></AdminRoute> },
+
   // ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE
   { path: "*", element: <NotFound /> },
 ]);

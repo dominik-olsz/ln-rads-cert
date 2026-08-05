@@ -106,6 +106,9 @@ serve(async (req) => {
         mode: "payment",
         client_reference_id: user.id,
         customer_email: user.email ?? undefined,
+        billing_address_collection: "required",
+        tax_id_collection: { enabled: true },
+
         line_items: [
           {
             quantity: 1,
@@ -163,7 +166,10 @@ serve(async (req) => {
       mode: "payment",
       client_reference_id: user.id,
       customer_email: user.email ?? undefined,
+      billing_address_collection: "required",
+      tax_id_collection: { enabled: true },
       line_items: [
+
         {
           quantity: 1,
           price_data: {
