@@ -954,6 +954,20 @@ const CourseBuilder = () => {
                         </div>
                       </div>
 
+                      <div className="flex items-center space-x-2 p-3 border rounded-lg bg-muted/30">
+                        <Checkbox
+                          id="lessonFree"
+                          checked={lessons[currentItemIndex]?.is_free || false}
+                          onCheckedChange={(checked) =>
+                            updateLesson(currentItemIndex, { is_free: checked as boolean })
+                          }
+                        />
+                        <Label htmlFor="lessonFree" className="text-sm cursor-pointer">
+                          Free preview — anyone can open this lesson without buying the course
+                        </Label>
+                      </div>
+
+
                       <div className="space-y-2">
                         <Label>Video URL (Optional)</Label>
                         <div className="flex gap-2">
@@ -999,9 +1013,27 @@ const CourseBuilder = () => {
                             Add More Questions
                           </Button>
                         </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="groupFree"
+                            checked={questionGroups[currentItemIndex].is_free || false}
+                            onCheckedChange={(checked) => {
+                              const updated = [...questionGroups];
+                              updated[currentItemIndex] = {
+                                ...updated[currentItemIndex],
+                                is_free: checked as boolean,
+                              };
+                              setQuestionGroups(updated);
+                            }}
+                          />
+                          <Label htmlFor="groupFree" className="text-sm cursor-pointer">
+                            Free preview — anyone can open this question group without buying the course
+                          </Label>
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {questionGroups[currentItemIndex].questions.length} question{questionGroups[currentItemIndex].questions.length !== 1 ? 's' : ''}
                         </p>
+
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-6">
