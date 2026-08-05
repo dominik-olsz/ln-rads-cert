@@ -28,6 +28,11 @@ interface QuestionAnswer {
   locked: boolean;
 }
 
+const MAX_ATTEMPTS = 3;
+const SUPPORT_EMAIL = 'cert@lnrads.com';
+
+type Gate = 'open' | 'passed' | 'exhausted' | 'payment_required';
+
 const CertificationTest = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -46,6 +51,12 @@ const CertificationTest = () => {
   const [showWelcome, setShowWelcome] = useState(true);
   const [progressId, setProgressId] = useState<string | null>(null);
   const [hasExistingAttempt, setHasExistingAttempt] = useState(false);
+  const [gate, setGate] = useState<Gate>('open');
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
+  const [lastScore, setLastScore] = useState<number | null>(null);
+  const [retakePrice, setRetakePrice] = useState<number>(6900);
+  const [payLoading, setPayLoading] = useState(false);
+
 
   useEffect(() => {
     if (!user) {
@@ -85,7 +96,7 @@ const CertificationTest = () => {
 
       setHasPurchased(true);
 
-      // Check if user has completed certification test or has existing progress
+      // Latest progress record (used to resume an unfinished attempt)
       const { data: existingProgress, error: progressError } = await supabase
         .from('certification_test_progress')
         .select('*')
@@ -98,27 +109,58 @@ const CertificationTest = () => {
         throw progressError;
       }
 
-      // If there's a completed attempt, check if they passed or failed
-      if (existingProgress?.is_completed) {
-        const { data: attemptData } = await supabase
-          .from('test_attempts')
-          .select('passed, score')
-          .eq('id', existingProgress.test_attempt_id)
-          .maybeSingle();
+      const hasResumableAttempt = !!existingProgress && !existingProgress.is_completed;
 
-        if (attemptData) {
-          toast({
-            title: "Test Already Completed",
-            description: attemptData.passed 
-              ? `You already passed this test with ${attemptData.score}%` 
-              : `You failed this test with ${attemptData.score}%. You cannot retake it.`,
-            variant: attemptData.passed ? "default" : "destructive",
-          });
-          setHasExistingAttempt(true);
+      // How many certification attempts has this student used?
+      const { data: attemptRows } = await supabase
+        .from('test_attempts')
+        .select('id, passed, score, completed_at')
+        .eq('user_id', user?.id)
+        .eq('is_certification_test', true)
+        .order('completed_at', { ascending: false });
+
+      const used = attemptRows?.length ?? 0;
+      setAttemptsUsed(used);
+      const passedAttempt = (attemptRows ?? []).find((a) => a.passed);
+      setLastScore(attemptRows?.[0]?.score ?? null);
+
+      if (!hasResumableAttempt) {
+        if (passedAttempt) {
+          setGate('passed');
           setLoading(false);
           return;
         }
+
+        if (used >= MAX_ATTEMPTS) {
+          setGate('exhausted');
+          setLoading(false);
+          return;
+        }
+
+        if (used > 0) {
+          const { data: credit } = await supabase
+            .from('certification_retake_purchases')
+            .select('id')
+            .is('consumed_at', null)
+            .limit(1)
+            .maybeSingle();
+
+          if (!credit) {
+            const { data: setting } = await supabase
+              .from('app_settings')
+              .select('value')
+              .eq('key', 'certification_retake_price')
+              .maybeSingle();
+
+            setRetakePrice(Number(setting?.value ?? 6900));
+            setGate('payment_required');
+            setLoading(false);
+            return;
+          }
+        }
       }
+
+
 
       // If there's an incomplete attempt, resume it
       if (existingProgress && !existingProgress.is_completed) {
@@ -388,6 +430,29 @@ const CertificationTest = () => {
     }
   };
 
+  const handlePayForRetake = async () => {
+    setPayLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { type: 'certification_retake' },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (!data?.url) throw new Error('Could not start checkout');
+
+      window.location.href = data.url;
+    } catch (error: any) {
+      toast({
+        title: 'Payment failed',
+        description: error.message || 'Could not start checkout',
+        variant: 'destructive',
+      });
+      setPayLoading(false);
+    }
+  };
+
+
   const handleStartTest = async () => {
     // Create progress record
     try {
@@ -510,7 +575,9 @@ const CertificationTest = () => {
     );
   }
 
-  if (hasExistingAttempt) {
+  if (gate !== 'open' || hasExistingAttempt) {
+    const attemptsLeft = Math.max(0, MAX_ATTEMPTS - attemptsUsed);
+
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -518,11 +585,62 @@ const CertificationTest = () => {
           <div className="max-w-2xl mx-auto">
             <Card>
               <CardContent className="pt-6 space-y-6 text-center">
-                <h1 className="text-2xl font-bold">Test Already Completed</h1>
-                <p className="text-muted-foreground">
-                  You have already taken this certification test. Each user gets only one attempt.
-                </p>
-                <Button onClick={() => navigate("/dashboard")}>
+                {gate === 'passed' && (
+                  <>
+                    <h1 className="text-2xl font-bold">Certification Passed</h1>
+                    <p className="text-muted-foreground">
+                      You have already passed the certification test. Your certificate is
+                      available in your dashboard.
+                    </p>
+                  </>
+                )}
+
+                {gate === 'exhausted' && (
+                  <>
+                    <h1 className="text-2xl font-bold">No Attempts Left</h1>
+                    <p className="text-muted-foreground">
+                      You have used all {MAX_ATTEMPTS} attempts
+                      {lastScore !== null ? ` (last score: ${lastScore}%)` : ''}. To request a
+                      reset, please contact the administrator at{' '}
+                      <a className="underline font-medium" href={`mailto:${SUPPORT_EMAIL}`}>
+                        {SUPPORT_EMAIL}
+                      </a>
+                      .
+                    </p>
+                  </>
+                )}
+
+                {gate === 'payment_required' && (
+                  <>
+                    <h1 className="text-2xl font-bold">Retake Required</h1>
+                    <p className="text-muted-foreground">
+                      You did not pass
+                      {lastScore !== null ? ` (score: ${lastScore}%)` : ''}. Your first attempt
+                      was included with your course. You have {attemptsLeft} of {MAX_ATTEMPTS}{' '}
+                      attempts left, and each retake costs{' '}
+                      <span className="font-semibold text-foreground">
+                        €{(retakePrice / 100).toFixed(2)}
+                      </span>
+                      .
+                    </p>
+                    <Button onClick={handlePayForRetake} disabled={payLoading} className="w-full">
+                      {payLoading
+                        ? 'Redirecting to checkout…'
+                        : `Pay €${(retakePrice / 100).toFixed(2)} & retake`}
+                    </Button>
+                  </>
+                )}
+
+                {gate === 'open' && (
+                  <>
+                    <h1 className="text-2xl font-bold">Test Already Completed</h1>
+                    <p className="text-muted-foreground">
+                      You have already taken this certification test.
+                    </p>
+                  </>
+                )}
+
+                <Button variant="outline" onClick={() => navigate("/dashboard")}>
                   Return to Dashboard
                 </Button>
               </CardContent>
@@ -532,6 +650,7 @@ const CertificationTest = () => {
       </div>
     );
   }
+
 
   if (!hasPurchased) {
     return (

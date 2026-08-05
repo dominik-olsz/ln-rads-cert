@@ -42,16 +42,45 @@ serve(async (req) => {
 
       const userId = session.metadata?.user_id ?? session.client_reference_id;
       const courseId = session.metadata?.course_id;
+      const purchaseType = session.metadata?.purchase_type ?? "course";
+
+      const admin = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      );
+
+      if (purchaseType === "certification_retake") {
+        if (!userId) {
+          console.error("Missing user_id in retake session", session.id);
+          return new Response("Missing metadata", { status: 400, headers: corsHeaders });
+        }
+
+        const { error: retakeError } = await admin
+          .from("certification_retake_purchases")
+          .insert({
+            user_id: userId,
+            amount_paid: session.amount_total ?? 0,
+            stripe_session_id: session.id,
+          });
+
+        if (retakeError && retakeError.code !== "23505") {
+          console.error("Failed to record retake purchase:", retakeError);
+          return new Response("DB error", { status: 500, headers: corsHeaders });
+        }
+
+        console.log("Retake credit recorded for", userId);
+        return new Response(JSON.stringify({ received: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       if (!userId || !courseId) {
         console.error("Missing user_id/course_id in session", session.id);
         return new Response("Missing metadata", { status: 400, headers: corsHeaders });
       }
 
-      const admin = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-      );
+
 
       const { error } = await admin.from("course_purchases").insert({
         user_id: userId,

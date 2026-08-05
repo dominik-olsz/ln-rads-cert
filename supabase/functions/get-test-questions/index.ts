@@ -59,23 +59,80 @@ serve(async (req) => {
 
     // For certification tests, fetch all certification questions regardless of course
     if (testType === 'certification') {
-      // Check if user has already completed a certification test
-      const { data: existingProgress } = await supabaseAdmin
-        .from('certification_test_progress')
-        .select('is_completed')
-        .eq('user_id', userId as string)
-        .eq('is_completed', true)
-        .maybeSingle();
+      const MAX_ATTEMPTS = 3;
 
-      if (existingProgress) {
+      const { data: attempts, error: attemptsError } = await supabaseAdmin
+        .from('test_attempts')
+        .select('id, passed')
+        .eq('user_id', userId as string)
+        .eq('is_certification_test', true);
+
+      if (attemptsError) {
+        console.error('Error fetching attempts:', attemptsError);
         return new Response(
-          JSON.stringify({ error: 'Certification test already completed. Retakes are not allowed.' }),
+          JSON.stringify({ error: 'Failed to verify attempts' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const attemptsUsed = attempts?.length ?? 0;
+
+      if ((attempts ?? []).some((a: any) => a.passed)) {
+        return new Response(
+          JSON.stringify({ error: 'You have already passed the certification test.', code: 'already_passed' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
+      if (attemptsUsed >= MAX_ATTEMPTS) {
+        return new Response(
+          JSON.stringify({
+            error: 'No attempts left. Please contact cert@lnrads.com.',
+            code: 'no_attempts_left',
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Attempts after the first one require a paid retake credit
+      if (attemptsUsed > 0) {
+        const { data: credit } = await supabaseAdmin
+          .from('certification_retake_purchases')
+          .select('id')
+          .eq('user_id', userId as string)
+          .is('consumed_at', null)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (!credit) {
+          return new Response(
+            JSON.stringify({
+              error: 'A paid retake is required before you can take the test again.',
+              code: 'retake_payment_required',
+            }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { error: consumeError } = await supabaseAdmin
+          .from('certification_retake_purchases')
+          .update({ consumed_at: new Date().toISOString() })
+          .eq('id', credit.id)
+          .is('consumed_at', null);
+
+        if (consumeError) {
+          console.error('Error consuming retake credit:', consumeError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to start retake' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
       query = query.eq('test_type', 'certification').is('course_id', null);
     } else {
+
       // For course tests, fetch questions for specific course
       if (!courseId) {
         return new Response(
