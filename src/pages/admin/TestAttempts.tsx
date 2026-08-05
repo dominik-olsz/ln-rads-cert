@@ -240,29 +240,16 @@ const AdminTestAttempts = () => {
             <CardTitle>Retake Pricing</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Each student gets 3 attempts. The first is included with the course; attempts 2
-              and 3 require this payment. After 3 failed attempts students must contact
-              cert@lnrads.com and an admin can reset their attempts below.
+            <p className="text-sm text-muted-foreground">
+              Attempt limits and retake prices are set per course in the course editor
+              (Admin → Courses → edit a course → Basic Info → Certification Attempts). When a
+              student runs out of attempts they must contact cert@lnrads.com and you can reset
+              their attempts below.
             </p>
-            <div className="flex items-end gap-3 max-w-sm">
-              <div className="flex-1">
-                <Label htmlFor="retake-price">Retake price (EUR)</Label>
-                <Input
-                  id="retake-price"
-                  type="number"
-                  min="1"
-                  step="0.01"
-                  value={retakePrice}
-                  onChange={(e) => setRetakePrice(e.target.value)}
-                />
-              </div>
-              <Button onClick={saveRetakePrice} disabled={savingPrice}>
-                {savingPrice ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
           </CardContent>
         </Card>
+
+
 
 
         <Card>
