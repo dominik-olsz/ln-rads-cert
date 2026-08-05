@@ -538,11 +538,11 @@ const Training = () => {
                   <>
                     <h2 className="text-xl font-bold mb-4">{currentCourseItem.title}</h2>
                     
-                    {((currentCourseItem.data as Lesson).content_type === "video" || (currentCourseItem.data as Lesson).content_type === "mixed") && (currentCourseItem.data as Lesson).content_url && (
+                    {((currentCourseItem.data as Lesson).content_type === "video" || (currentCourseItem.data as Lesson).content_type === "mixed") && currentLessonContent?.content_url && (
                       <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-4">
                         <iframe
                           className="w-full h-full"
-                          src={getYouTubeEmbedUrl((currentCourseItem.data as Lesson).content_url!) || (currentCourseItem.data as Lesson).content_url!}
+                          src={getYouTubeEmbedUrl(currentLessonContent.content_url) || currentLessonContent.content_url}
                           title={currentCourseItem.title}
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
@@ -550,19 +550,20 @@ const Training = () => {
                       </div>
                     )}
 
-                    {(currentCourseItem.data as Lesson).content_type === "image" && (currentCourseItem.data as Lesson).content_url && (
+                    {(currentCourseItem.data as Lesson).content_type === "image" && currentLessonContent?.content_url && (
                       <div className="bg-muted rounded-lg overflow-hidden mb-4 p-4">
                         <img
-                          src={(currentCourseItem.data as Lesson).content_url!}
+                          src={currentLessonContent.content_url}
                           alt={currentCourseItem.title}
                           className="w-full max-h-[500px] object-contain"
                         />
                       </div>
                     )}
 
-                    {((currentCourseItem.data as Lesson).content_type === "text" || (currentCourseItem.data as Lesson).content_type === "mixed") && (currentCourseItem.data as Lesson).content_text && (
-                      <div className="prose prose-sm max-w-none mb-4" dangerouslySetInnerHTML={{ __html: (currentCourseItem.data as Lesson).content_text! }} />
+                    {((currentCourseItem.data as Lesson).content_type === "text" || (currentCourseItem.data as Lesson).content_type === "mixed") && currentLessonContent?.content_text && (
+                      <div className="prose prose-sm max-w-none mb-4" dangerouslySetInnerHTML={{ __html: currentLessonContent.content_text }} />
                     )}
+
 
                     {/* Display course materials for this lesson */}
                     {lessonMaterials.length > 0 && (
