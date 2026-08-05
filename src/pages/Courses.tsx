@@ -17,7 +17,7 @@ interface Course {
   course_includes?: string;
   what_you_learn?: string;
   test_questions_count?: number;
-  grants_certification_access?: boolean;
+  certification_enabled?: boolean;
 }
 
 const Courses = () => {
@@ -110,7 +110,7 @@ const Courses = () => {
                   totalLessons={course.total_lessons}
                   useCases={course.test_questions_count || 0}
                   imageUrl={course.hero_image || "/placeholder.svg"}
-                  grantsCertification={course.grants_certification_access || false}
+                  certificationEnabled={course.certification_enabled || false}
                 />
               ))}
             </div>
