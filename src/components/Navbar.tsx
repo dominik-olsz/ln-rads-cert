@@ -104,7 +104,7 @@ const Navbar = () => {
               <Link to="/auth" className="hidden md:inline-flex">
                 <Button variant="ghost">Sign In</Button>
               </Link>
-              <Link to="/auth">
+              <Link to="/auth?tab=signup">
                 <Button>Get Started</Button>
               </Link>
             </>
