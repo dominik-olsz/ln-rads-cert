@@ -124,7 +124,9 @@ const AdminTestAttempts = () => {
 
   useEffect(() => {
     fetchAttempts();
+    fetchRetakePrice();
   }, []);
+
 
   const resetUserAttempts = async (userId: string, userName: string) => {
     if (!confirm(`Are you sure you want to reset all certification attempts for ${userName}? This will delete their test attempts, certificates, and allow them to retake the certification test.`)) {
