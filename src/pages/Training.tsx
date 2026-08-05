@@ -691,15 +691,19 @@ const Training = () => {
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        {index < currentItem && (
+                        {item.locked ? (
+                          <Lock className="h-4 w-4 flex-shrink-0" />
+                        ) : index < currentItem ? (
                           <CheckCircle className="h-4 w-4 flex-shrink-0" />
-                        )}
+                        ) : null}
                         <div className="flex-1">
                           <span className="text-xs text-muted-foreground block">
                             {item.type === 'lesson' ? 'Lesson' : 'Course Test'}
+                            {item.locked ? ' · Locked' : !hasPurchased ? ' · Free' : ''}
                           </span>
                           <span className="text-sm font-medium line-clamp-1">{item.title}</span>
                         </div>
+
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
