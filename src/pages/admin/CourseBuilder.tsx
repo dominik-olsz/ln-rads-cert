@@ -721,9 +721,9 @@ const CourseBuilder = () => {
               {saving ? "Saving..." : "Save & leave"}
             </Button>
           </AlertDialogFooter>
-        </AlertDialogFooter>
-      </AlertDialogContent>
+        </AlertDialogContent>
       </AlertDialog>
+
 
       
       <Dialog open={showAddQuestionsDialog} onOpenChange={setShowAddQuestionsDialog}>
