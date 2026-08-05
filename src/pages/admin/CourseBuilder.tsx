@@ -1179,7 +1179,208 @@ const CourseBuilder = () => {
             </div>
           </TabsContent>
 
+          <TabsContent value="certification">
+            <Card>
+              <CardHeader>
+                <CardTitle>Certification Test</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/30">
+                  <Checkbox
+                    id="certificationEnabled"
+                    checked={certificationEnabled}
+                    onCheckedChange={(checked) => setCertificationEnabled(checked as boolean)}
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="certificationEnabled" className="text-sm font-medium cursor-pointer">
+                      This course has a certification test
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      When disabled, students will not see a certification exam for this course.
+                    </p>
+                  </div>
+                </div>
+
+                {certificationEnabled && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Where do the exam questions come from?</Label>
+                      <Select
+                        value={certificationMode}
+                        onValueChange={(value) => setCertificationMode(value as 'custom' | 'random')}
+                      >
+                        <SelectTrigger className="max-w-md">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="random">Randomly selected from the course questions</SelectItem>
+                          <SelectItem value="custom">Custom certification questions</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {certificationMode === 'random' ? (
+                      <div className="space-y-2 max-w-md">
+                        <Label htmlFor="certCount">Number of questions in the exam</Label>
+                        <Input
+                          id="certCount"
+                          type="number"
+                          min="1"
+                          value={certificationQuestionCount || ''}
+                          onChange={(e) => setCertificationQuestionCount(Number(e.target.value))}
+                          placeholder="e.g., 50"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          This course currently has {coursePoolSize} question{coursePoolSize === 1 ? '' : 's'} in its pool.
+                        </p>
+                        {randomCountInvalid && (
+                          <p className="text-xs text-destructive">
+                            {certificationQuestionCount > coursePoolSize
+                              ? `Only ${coursePoolSize} question${coursePoolSize === 1 ? '' : 's'} available in this course — reduce the exam length or add more questions.`
+                              : 'Enter how many questions the exam should have.'}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground">
+                            {certQuestions.length} certification question{certQuestions.length === 1 ? '' : 's'}
+                          </p>
+                          <Button size="sm" onClick={addCertQuestion}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Question
+                          </Button>
+                        </div>
+
+                        {certQuestions.map((question, idx) => (
+                          <Card key={idx}>
+                            <CardHeader className="pb-4">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-base">Question {idx + 1}</CardTitle>
+                                <Button variant="ghost" size="sm" onClick={() => deleteCertQuestion(idx)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              <div className="space-y-2">
+                                <Label>Question</Label>
+                                <Input
+                                  value={question.question_text}
+                                  onChange={(e) => updateCertQuestion(idx, { question_text: e.target.value })}
+                                  placeholder="Enter question"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <Input
+                                  value={question.option_a}
+                                  onChange={(e) => updateCertQuestion(idx, { option_a: e.target.value })}
+                                  placeholder="Option A"
+                                />
+                                <Input
+                                  value={question.option_b}
+                                  onChange={(e) => updateCertQuestion(idx, { option_b: e.target.value })}
+                                  placeholder="Option B"
+                                />
+                                <Input
+                                  value={question.option_c}
+                                  onChange={(e) => updateCertQuestion(idx, { option_c: e.target.value })}
+                                  placeholder="Option C"
+                                />
+                                <Input
+                                  value={question.option_d}
+                                  onChange={(e) => updateCertQuestion(idx, { option_d: e.target.value })}
+                                  placeholder="Option D"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                  <Label>Correct Answer</Label>
+                                  <Select
+                                    value={question.correct_answer}
+                                    onValueChange={(value) => updateCertQuestion(idx, { correct_answer: value })}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="A">Option A</SelectItem>
+                                      <SelectItem value="B">Option B</SelectItem>
+                                      <SelectItem value="C">Option C</SelectItem>
+                                      <SelectItem value="D">Option D</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label>Image (Optional)</Label>
+                                  <Input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+
+                                      setUploading(true);
+                                      try {
+                                        const fileExt = file.name.split('.').pop();
+                                        const filePath = `question-images/${Math.random()}.${fileExt}`;
+
+                                        const { error: uploadError } = await supabase.storage
+                                          .from('course-materials')
+                                          .upload(filePath, file);
+
+                                        if (uploadError) throw uploadError;
+
+                                        const { data } = supabase.storage
+                                          .from('course-materials')
+                                          .getPublicUrl(filePath);
+
+                                        updateCertQuestion(idx, { image_url: data.publicUrl });
+                                      } catch (error) {
+                                        console.error('Upload error:', error);
+                                      } finally {
+                                        setUploading(false);
+                                      }
+                                    }}
+                                  />
+                                  {question.image_url && (
+                                    <img src={question.image_url} alt="" className="max-w-xs rounded mt-2" />
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label>Explanation (Optional)</Label>
+                                <Textarea
+                                  value={question.explanation || ""}
+                                  onChange={(e) => updateCertQuestion(idx, { explanation: e.target.value })}
+                                  placeholder="Explain the correct answer"
+                                  rows={2}
+                                />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+
+                        {certQuestions.length === 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            No certification questions yet. Add at least one question.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="preview">
+
             <div className="grid lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                 <div>
