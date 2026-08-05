@@ -381,31 +381,50 @@ const CourseDetail = () => {
                   <h2 className="text-2xl font-bold mb-4">Course Content</h2>
                   <div className="space-y-3">
                     {courseItems.length > 0 ? (
-                      courseItems.map((item, index) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-                        >
-                          <div className="flex items-start gap-3">
-                            {!hasPurchased && !item.isFree ? (
-                              <Lock className="h-5 w-5 text-muted-foreground mt-0.5" />
-                            ) : (
-                              <PlayCircle className="h-5 w-5 text-primary mt-0.5" />
-                            )}
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">
-                                {item.type === 'lesson' ? 'Lesson' : 'Course Test'}
-                              </p>
-                              <h3 className="font-semibold">{item.title}</h3>
+                      courseItems.map((item, index) => {
+                        const clickable = hasPurchased || item.isFree;
+                        return (
+                          <div
+                            key={item.id}
+                            role={clickable ? 'button' : undefined}
+                            tabIndex={clickable ? 0 : undefined}
+                            onClick={clickable ? handleStartTraining : undefined}
+                            onKeyDown={
+                              clickable
+                                ? (e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      handleStartTraining();
+                                    }
+                                  }
+                                : undefined
+                            }
+                            className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
+                              clickable ? 'hover:bg-muted/50 cursor-pointer' : 'opacity-80'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              {!hasPurchased && !item.isFree ? (
+                                <Lock className="h-5 w-5 text-muted-foreground mt-0.5" />
+                              ) : (
+                                <PlayCircle className="h-5 w-5 text-primary mt-0.5" />
+                              )}
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  {item.type === 'lesson' ? 'Lesson' : 'Course Test'}
+                                </p>
+                                <h3 className="font-semibold">{item.title}</h3>
+                              </div>
                             </div>
+                            {!hasPurchased && item.isFree && (
+                              <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/30">
+                                Free preview
+                              </Badge>
+                            )}
                           </div>
-                          {!hasPurchased && item.isFree && (
-                            <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/30">
-                              Free preview
-                            </Badge>
-                          )}
-                        </div>
-                      ))
+                        );
+                      })
+
 
                     ) : (
                       <p className="text-sm text-muted-foreground">No content available yet</p>
