@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import { buyerFromSession, createInvoice } from "../_shared/invoice.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,9 +33,30 @@ serve(async (req) => {
     return new Response("Invalid signature", { status: 400, headers: corsHeaders });
   }
 
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  );
+
+  const ok = () =>
+    new Response(JSON.stringify({ received: true }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
   try {
     if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
+      const bare = event.data.object as Stripe.Checkout.Session;
+
+      // Re-fetch with tax ids expanded so the invoice can carry the buyer's VAT ID.
+      let session = bare;
+      try {
+        session = (await stripe.checkout.sessions.retrieve(bare.id, {
+          expand: ["customer_details.tax_ids"],
+        })) as Stripe.Checkout.Session;
+      } catch (e) {
+        console.error("Could not expand session, using webhook payload:", (e as Error).message);
+      }
 
       if (session.payment_status !== "paid") {
         return new Response("ignored", { status: 200, headers: corsHeaders });
@@ -43,11 +65,13 @@ serve(async (req) => {
       const userId = session.metadata?.user_id ?? session.client_reference_id;
       const courseId = session.metadata?.course_id;
       const purchaseType = session.metadata?.purchase_type ?? "course";
-
-      const admin = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-      );
+      const paymentIntentId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent?.id ?? null;
+      const buyer = buyerFromSession(session);
+      const grossCents = session.amount_total ?? 0;
+      const currency = session.currency ?? "eur";
 
       if (purchaseType === "certification_retake") {
         if (!userId) {
@@ -55,26 +79,52 @@ serve(async (req) => {
           return new Response("Missing metadata", { status: 400, headers: corsHeaders });
         }
 
-        const { error: retakeError } = await admin
+        const { data: retakeRow, error: retakeError } = await admin
           .from("certification_retake_purchases")
           .insert({
             user_id: userId,
             course_id: courseId ?? null,
-            amount_paid: session.amount_total ?? 0,
+            amount_paid: grossCents,
             stripe_session_id: session.id,
-          });
-
+            stripe_payment_intent_id: paymentIntentId,
+            buyer_email: buyer.email,
+            buyer_name: buyer.name,
+          })
+          .select()
+          .maybeSingle();
 
         if (retakeError && retakeError.code !== "23505") {
           console.error("Failed to record retake purchase:", retakeError);
           return new Response("DB error", { status: 500, headers: corsHeaders });
         }
 
-        console.log("Retake credit recorded for", userId);
-        return new Response(JSON.stringify({ received: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        if (retakeRow) {
+          const { data: course } = await admin
+            .from("courses")
+            .select("title")
+            .eq("id", courseId ?? "")
+            .maybeSingle();
+          await createInvoice(admin, {
+            userId,
+            courseId: courseId ?? null,
+            purchaseType: "certification_retake",
+            retakePurchaseId: retakeRow.id,
+            stripeSessionId: session.id,
+            stripePaymentIntentId: paymentIntentId,
+            buyer,
+            currency,
+            grossCents,
+            lineItems: [
+              {
+                description: `Certification exam retake — ${course?.title ?? "Certification"}`,
+                quantity: 1,
+                gross: grossCents,
+              },
+            ],
+          }).catch((e) => console.error("Retake invoice failed:", e));
+        }
+
+        return ok();
       }
 
       if (!userId || !courseId) {
@@ -82,15 +132,20 @@ serve(async (req) => {
         return new Response("Missing metadata", { status: 400, headers: corsHeaders });
       }
 
-
-
-      const { error } = await admin.from("course_purchases").insert({
-        user_id: userId,
-        course_id: courseId,
-        amount_paid: Math.round((session.amount_total ?? 0) / 100),
-        payment_status: "completed",
-        stripe_session_id: session.id,
-      });
+      const { data: purchaseRow, error } = await admin
+        .from("course_purchases")
+        .insert({
+          user_id: userId,
+          course_id: courseId,
+          amount_paid: Math.round(grossCents / 100),
+          payment_status: "completed",
+          stripe_session_id: session.id,
+          stripe_payment_intent_id: paymentIntentId,
+          buyer_email: buyer.email,
+          buyer_name: buyer.name,
+        })
+        .select()
+        .maybeSingle();
 
       // Unique index on stripe_session_id makes this idempotent
       if (error && error.code !== "23505") {
@@ -98,13 +153,131 @@ serve(async (req) => {
         return new Response("DB error", { status: 500, headers: corsHeaders });
       }
 
+      if (purchaseRow) {
+        const { data: course } = await admin
+          .from("courses")
+          .select("title")
+          .eq("id", courseId)
+          .maybeSingle();
+        await createInvoice(admin, {
+          userId,
+          courseId,
+          purchaseType: "course",
+          coursePurchaseId: purchaseRow.id,
+          stripeSessionId: session.id,
+          stripePaymentIntentId: paymentIntentId,
+          buyer,
+          currency,
+          grossCents,
+          lineItems: [
+            { description: course?.title ?? "Online course", quantity: 1, gross: grossCents },
+          ],
+        }).catch((e) => console.error("Course invoice failed:", e));
+      }
+
       console.log("Purchase recorded for", userId, courseId);
+      return ok();
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    if (event.type === "charge.refunded") {
+      const charge = event.data.object as Stripe.Charge;
+      const paymentIntentId =
+        typeof charge.payment_intent === "string"
+          ? charge.payment_intent
+          : charge.payment_intent?.id ?? null;
+      if (!paymentIntentId) return ok();
+
+      const refundedCents = charge.amount_refunded ?? 0;
+
+      const { data: original } = await admin
+        .from("invoices")
+        .select("*")
+        .eq("stripe_payment_intent_id", paymentIntentId)
+        .eq("doc_type", "FV")
+        .maybeSingle();
+
+      if (!original) {
+        console.log("No invoice for refunded charge", paymentIntentId);
+        return ok();
+      }
+
+      // Amount already credited by earlier correction invoices
+      const { data: corrections } = await admin
+        .from("invoices")
+        .select("gross_amount")
+        .eq("original_invoice_id", original.id);
+      const alreadyCredited = (corrections ?? []).reduce(
+        (sum: number, c: any) => sum + Math.abs(c.gross_amount ?? 0),
+        0,
+      );
+      const delta = refundedCents - alreadyCredited;
+      if (delta <= 0) return ok();
+
+      await createInvoice(admin, {
+        docType: "FK",
+        originalInvoiceId: original.id,
+        originalInvoiceNumber: original.invoice_number,
+        userId: original.user_id,
+        courseId: original.course_id,
+        purchaseType: original.purchase_type,
+        coursePurchaseId: original.course_purchase_id,
+        retakePurchaseId: original.retake_purchase_id,
+        stripePaymentIntentId: paymentIntentId,
+        buyer: {
+          name: original.buyer_name,
+          company: original.buyer_company,
+          email: original.buyer_email,
+          address_line1: original.buyer_address_line1,
+          address_line2: original.buyer_address_line2,
+          postal_code: original.buyer_postal_code,
+          city: original.buyer_city,
+          country: original.buyer_country,
+          vat_id: original.buyer_vat_id,
+        },
+        currency: original.currency,
+        grossCents: -delta,
+        refundReason: "zwrot płatności / refund",
+        lineItems: (original.line_items ?? []).map((li: any) => ({
+          description: `Korekta / Correction — ${li.description}`,
+          quantity: li.quantity ?? 1,
+          gross: -delta,
+        })),
+      }).catch((e) => console.error("Correction invoice failed:", e));
+
+      // A full refund revokes access; a partial one only records the amount
+      const fullRefund = refundedCents >= (original.gross_amount ?? 0);
+      if (original.purchase_type === "certification_retake" && original.retake_purchase_id) {
+        if (fullRefund) {
+          await admin
+            .from("certification_retake_purchases")
+            .delete()
+            .eq("id", original.retake_purchase_id)
+            .is("consumed_at", null);
+        } else {
+          await admin
+            .from("certification_retake_purchases")
+            .update({ refunded_amount: refundedCents, refunded_at: new Date().toISOString() })
+            .eq("id", original.retake_purchase_id);
+        }
+      } else if (original.course_purchase_id) {
+        if (fullRefund) {
+          await admin.from("course_purchases").delete().eq("id", original.course_purchase_id);
+        } else {
+          await admin
+            .from("course_purchases")
+            .update({
+              refunded_amount: refundedCents,
+              refunded_at: new Date().toISOString(),
+              payment_status: "partially_refunded",
+            })
+            .eq("id", original.course_purchase_id);
+        }
+      }
+
+      return ok();
+    }
+
+    return ok();
   } catch (error) {
     console.error("stripe-webhook error:", error);
     return new Response("Server error", { status: 500, headers: corsHeaders });
