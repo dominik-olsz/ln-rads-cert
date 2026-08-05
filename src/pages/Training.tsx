@@ -288,6 +288,40 @@ const Training = () => {
   const currentCourseItem = courseItems[currentItem];
   const progress = courseItems.length > 0 ? ((currentItem + 1) / courseItems.length) * 100 : 0;
   const lessonMaterials = currentCourseItem?.type === 'lesson' ? materials[currentCourseItem.id] || [] : [];
+  const currentLessonContent =
+    currentCourseItem?.type === 'lesson' ? lessonContents[currentCourseItem.id] : undefined;
+
+  // Load lesson content from the backend (access checked server-side)
+  useEffect(() => {
+    const item = courseItems[currentItem];
+    if (!item || item.type !== 'lesson' || item.locked || lessonContents[item.id]) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-lesson-content', {
+          body: { lessonId: item.id },
+        });
+        if (error) throw error;
+        if (cancelled) return;
+        setLessonContents((prev) => ({
+          ...prev,
+          [item.id]: {
+            content_text: data?.lesson?.content_text ?? null,
+            content_url: data?.lesson?.content_url ?? null,
+          },
+        }));
+      } catch (e) {
+        console.error('Failed to load lesson content:', e);
+        if (!cancelled) toast.error('Could not load this lesson.');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentItem, courseItems, lessonContents]);
+
 
   // Convert YouTube URLs to embed format
   const getYouTubeEmbedUrl = (url: string) => {
