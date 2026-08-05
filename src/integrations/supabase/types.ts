@@ -312,6 +312,11 @@ export type Database = {
       }
       courses: {
         Row: {
+          attempts_included: number
+          attempts_total: number
+          certification_enabled: boolean
+          certification_mode: string
+          certification_question_count: number | null
           course_includes: string | null
           created_at: string | null
           description: string
@@ -319,6 +324,7 @@ export type Database = {
           hero_image: string | null
           id: string
           price: number | null
+          retake_price: number
           test_questions_count: number
           title: string
           total_lessons: number
@@ -326,6 +332,11 @@ export type Database = {
           what_you_learn: string | null
         }
         Insert: {
+          attempts_included?: number
+          attempts_total?: number
+          certification_enabled?: boolean
+          certification_mode?: string
+          certification_question_count?: number | null
           course_includes?: string | null
           created_at?: string | null
           description: string
@@ -333,6 +344,7 @@ export type Database = {
           hero_image?: string | null
           id?: string
           price?: number | null
+          retake_price?: number
           test_questions_count?: number
           title: string
           total_lessons?: number
@@ -340,6 +352,11 @@ export type Database = {
           what_you_learn?: string | null
         }
         Update: {
+          attempts_included?: number
+          attempts_total?: number
+          certification_enabled?: boolean
+          certification_mode?: string
+          certification_question_count?: number | null
           course_includes?: string | null
           created_at?: string | null
           description?: string
@@ -347,6 +364,7 @@ export type Database = {
           hero_image?: string | null
           id?: string
           price?: number | null
+          retake_price?: number
           test_questions_count?: number
           title?: string
           total_lessons?: number
@@ -364,6 +382,7 @@ export type Database = {
           created_at: string | null
           duration: string | null
           id: string
+          is_free: boolean
           order_index: number
           title: string
         }
@@ -375,6 +394,7 @@ export type Database = {
           created_at?: string | null
           duration?: string | null
           id?: string
+          is_free?: boolean
           order_index: number
           title: string
         }
@@ -386,6 +406,7 @@ export type Database = {
           created_at?: string | null
           duration?: string | null
           id?: string
+          is_free?: boolean
           order_index?: number
           title?: string
         }
@@ -485,6 +506,7 @@ export type Database = {
           group_title: string | null
           id: string
           image_url: string | null
+          is_free: boolean
           lesson_id: string | null
           option_a: string
           option_b: string
@@ -503,6 +525,7 @@ export type Database = {
           group_title?: string | null
           id?: string
           image_url?: string | null
+          is_free?: boolean
           lesson_id?: string | null
           option_a: string
           option_b: string
@@ -521,6 +544,7 @@ export type Database = {
           group_title?: string | null
           id?: string
           image_url?: string | null
+          is_free?: boolean
           lesson_id?: string | null
           option_a?: string
           option_b?: string
