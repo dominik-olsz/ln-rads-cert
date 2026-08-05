@@ -64,7 +64,7 @@ serve(async (req) => {
 
     if (existing) return json({ error: "You already own this course" }, 400);
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
