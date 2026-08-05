@@ -1,5 +1,5 @@
 // Course Builder with Drag & Drop Ordering
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import { Badge } from "@/components/ui/badge";
 
@@ -96,11 +104,71 @@ const CourseBuilder = () => {
   const [numQuestionsToAdd, setNumQuestionsToAdd] = useState(1);
   const [draggedItem, setDraggedItem] = useState<{type: 'lesson' | 'questions', index: number} | null>(null);
 
+  // Unsaved changes tracking
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const [baselineArmed, setBaselineArmed] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+
+  const currentSnapshot = useMemo(() => JSON.stringify({
+    title, description, price, heroImage, courseIncludes, whatYouLearn,
+    certificationEnabled, certificationMode, certificationQuestionCount,
+    attemptsIncluded, attemptsTotal, courseRetakePrice,
+    certQuestions, lessons, questionGroups,
+  }), [title, description, price, heroImage, courseIncludes, whatYouLearn,
+    certificationEnabled, certificationMode, certificationQuestionCount,
+    attemptsIncluded, attemptsTotal, courseRetakePrice,
+    certQuestions, lessons, questionGroups]);
+
+  const isDirty = savedSnapshot !== null && savedSnapshot !== currentSnapshot;
+
+  useEffect(() => {
+    if (baselineArmed) {
+      setSavedSnapshot(currentSnapshot);
+      setBaselineArmed(false);
+    }
+  }, [baselineArmed, currentSnapshot]);
+
   useEffect(() => {
     if (courseId && courseId !== "new") {
       fetchCourse();
+    } else {
+      setSavedSnapshot(currentSnapshot);
     }
   }, [courseId]);
+
+  // Warn on browser refresh / close / external navigation
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  const requestNavigation = (path: string) => {
+    if (isDirty) {
+      setPendingNavigation(path);
+    } else {
+      navigate(path);
+    }
+  };
+
+  const discardAndLeave = () => {
+    const path = pendingNavigation;
+    setPendingNavigation(null);
+    setSavedSnapshot(currentSnapshot);
+    if (path) navigate(path);
+  };
+
+  const saveAndLeave = async () => {
+    const path = pendingNavigation;
+    const ok = await saveCourse();
+    setPendingNavigation(null);
+    if (ok && path) navigate(path);
+  };
+
 
   const fetchCourse = async () => {
     if (!courseId || courseId === "new") return;
@@ -189,6 +257,7 @@ const CourseBuilder = () => {
       setLessons(lessonsWithoutQuestions);
       setQuestionGroups(groups);
       setCertQuestions((certQuestionsData || []) as TestQuestion[]);
+      setBaselineArmed(true);
 
     } catch (error: any) {
       toast({
@@ -462,14 +531,14 @@ const CourseBuilder = () => {
     setCertQuestions(certQuestions.filter((_, i) => i !== index));
   };
 
-  const saveCourse = async () => {
+  const saveCourse = async (): Promise<boolean> => {
     if (!title.trim()) {
       toast({
         title: "Error",
         description: "Please enter a course title",
         variant: "destructive"
       });
-      return;
+      return false;
     }
 
     if (randomCountInvalid) {
@@ -478,7 +547,7 @@ const CourseBuilder = () => {
         description: `This course has ${coursePoolSize} question${coursePoolSize === 1 ? '' : 's'}. Set the certification test length between 1 and ${coursePoolSize}, or add more course questions.`,
         variant: "destructive"
       });
-      return;
+      return false;
     }
 
     setSaving(true);
@@ -618,12 +687,15 @@ const CourseBuilder = () => {
         title: "Success",
         description: "Course saved successfully"
       });
+      setBaselineArmed(true);
+      return true;
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to save course",
         variant: "destructive"
       });
+      return false;
     } finally {
       setSaving(false);
     }
@@ -633,6 +705,26 @@ const CourseBuilder = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+
+      <AlertDialog open={pendingNavigation !== null} onOpenChange={(open) => !open && setPendingNavigation(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save changes before leaving?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes to this course. Do you want to save them before leaving the page?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button variant="ghost" onClick={() => setPendingNavigation(null)}>Cancel</Button>
+            <Button variant="outline" onClick={discardAndLeave}>Discard changes</Button>
+            <Button onClick={saveAndLeave} disabled={saving}>
+              {saving ? "Saving..." : "Save & leave"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
       
       <Dialog open={showAddQuestionsDialog} onOpenChange={setShowAddQuestionsDialog}>
         <DialogContent>
@@ -669,7 +761,7 @@ const CourseBuilder = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate('/admin/courses')}>
+            <Button variant="ghost" onClick={() => requestNavigation('/admin/courses')}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
