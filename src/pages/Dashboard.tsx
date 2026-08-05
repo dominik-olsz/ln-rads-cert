@@ -117,6 +117,8 @@ export default function Dashboard() {
             total_items: totalItems,
             current_item_index: progress?.last_item_index ?? 0,
             purchased_at: purchase.purchased_at,
+            certification_enabled: !!purchase.courses.certification_enabled,
+
           };
         })
       );
