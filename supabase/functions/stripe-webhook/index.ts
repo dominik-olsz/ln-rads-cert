@@ -81,10 +81,6 @@ serve(async (req) => {
       }
 
 
-      const admin = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-      );
 
       const { error } = await admin.from("course_purchases").insert({
         user_id: userId,
