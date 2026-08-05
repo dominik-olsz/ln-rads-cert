@@ -89,7 +89,7 @@ const Auth = () => {
     if (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: friendlyError(error.message),
         variant: "destructive"
       });
     } else {
@@ -103,23 +103,36 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!acceptedTerms) {
+      setTermsError(true);
+      return;
+    }
+    setTermsError(false);
     setIsLoading(true);
-    const { error } = await signUp(signUpEmail, signUpPassword, signUpName);
+    const { error, needsConfirmation } = await signUp(signUpEmail, signUpPassword, signUpName);
     setIsLoading(false);
-    
+
     if (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: friendlyError(error.message),
         variant: "destructive"
+      });
+    } else if (needsConfirmation) {
+      setConfirmationSentTo(signUpEmail);
+      setSignUpPassword("");
+      toast({
+        title: "Confirm your email",
+        description: "We sent a confirmation link to your inbox."
       });
     } else {
       toast({
         title: "Success",
-        description: "Account created successfully! You can now sign in."
+        description: "Account created successfully!"
       });
     }
   };
+
 
 
   return (
