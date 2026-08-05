@@ -30,8 +30,10 @@ interface CourseItem {
   type: 'lesson' | 'questionGroup';
   title: string;
   order_index: number;
+  locked?: boolean;
   data: Lesson | TestQuestionGroup;
 }
+
 
 interface CourseMaterial {
   id: string;
