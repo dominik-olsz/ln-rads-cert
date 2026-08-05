@@ -116,12 +116,13 @@ const Training = () => {
         }
         setHasPurchased(purchased);
 
-        // Fetch lessons
+        // Fetch lesson outline (content itself is served by the backend)
         const { data: lessonsData, error: lessonsError } = await supabase
           .from('lessons')
-          .select('*')
+          .select('id, title, content_type, order_index, is_free, duration, course_id')
           .eq('course_id', courseId)
           .order('order_index');
+
 
         if (lessonsError) throw lessonsError;
 
