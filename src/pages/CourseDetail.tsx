@@ -201,17 +201,18 @@ const CourseDetail = () => {
 
 
   const handleStartTraining = () => {
-    if (!user) {
-      toast.error('Please sign in to start training');
-      navigate('/auth');
-      return;
-    }
     if (!hasPurchased) {
-      toast.error('Please purchase this course first');
+      if (!hasFreePreview) {
+        toast.error('Please purchase this course first');
+        return;
+      }
+      // Visitors and non-buyers can browse the free preview content
+      navigate(`/training/${id}`);
       return;
     }
     navigate(`/training/${id}`);
   };
+
 
   const handleStartCertification = () => {
     if (!user) {
@@ -305,15 +306,29 @@ const CourseDetail = () => {
 
                     <div className="space-y-3">
                       {!hasPurchased ? (
-                        <Button 
-                          className="w-full" 
-                          size="lg"
-                          onClick={handleBuyCourse}
-                          disabled={purchasing}
-                        >
-                          {purchasing ? 'Processing...' : 'Buy Course'}
-                        </Button>
+                        <>
+                          <Button 
+                            className="w-full" 
+                            size="lg"
+                            onClick={handleBuyCourse}
+                            disabled={purchasing}
+                          >
+                            {purchasing ? 'Processing...' : 'Buy Course'}
+                          </Button>
+                          {hasFreePreview && (
+                            <Button
+                              className="w-full"
+                              size="lg"
+                              variant="outline"
+                              onClick={handleStartTraining}
+                            >
+                              <PlayCircle className="h-5 w-5 mr-2" />
+                              Preview free content
+                            </Button>
+                          )}
+                        </>
                       ) : (
+
                         <>
                           <Button 
                             className="w-full" 
@@ -368,7 +383,11 @@ const CourseDetail = () => {
                           className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
                         >
                           <div className="flex items-start gap-3">
-                            <PlayCircle className="h-5 w-5 text-primary mt-0.5" />
+                            {!hasPurchased && !item.isFree ? (
+                              <Lock className="h-5 w-5 text-muted-foreground mt-0.5" />
+                            ) : (
+                              <PlayCircle className="h-5 w-5 text-primary mt-0.5" />
+                            )}
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">
                                 {item.type === 'lesson' ? 'Lesson' : 'Course Test'}
@@ -376,8 +395,14 @@ const CourseDetail = () => {
                               <h3 className="font-semibold">{item.title}</h3>
                             </div>
                           </div>
+                          {!hasPurchased && item.isFree && (
+                            <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/30">
+                              Free preview
+                            </Badge>
+                          )}
                         </div>
                       ))
+
                     ) : (
                       <p className="text-sm text-muted-foreground">No content available yet</p>
                     )}
@@ -413,15 +438,29 @@ const CourseDetail = () => {
 
                   <div className="space-y-3">
                     {!hasPurchased ? (
-                      <Button 
-                        className="w-full" 
-                        size="lg"
-                        onClick={handleBuyCourse}
-                        disabled={purchasing}
-                      >
-                        {purchasing ? 'Processing...' : 'Buy Course'}
-                      </Button>
+                      <>
+                        <Button 
+                          className="w-full" 
+                          size="lg"
+                          onClick={handleBuyCourse}
+                          disabled={purchasing}
+                        >
+                          {purchasing ? 'Processing...' : 'Buy Course'}
+                        </Button>
+                        {hasFreePreview && (
+                          <Button
+                            className="w-full"
+                            size="lg"
+                            variant="outline"
+                            onClick={handleStartTraining}
+                          >
+                            <PlayCircle className="h-5 w-5 mr-2" />
+                            Preview free content
+                          </Button>
+                        )}
+                      </>
                     ) : (
+
                       <>
                         <Button 
                           className="w-full" 
