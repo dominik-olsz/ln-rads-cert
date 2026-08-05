@@ -106,6 +106,7 @@ const CourseBuilder = () => {
 
   // Unsaved changes tracking
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const [baselineArmed, setBaselineArmed] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   const currentSnapshot = useMemo(() => JSON.stringify({
@@ -119,6 +120,13 @@ const CourseBuilder = () => {
     certQuestions, lessons, questionGroups]);
 
   const isDirty = savedSnapshot !== null && savedSnapshot !== currentSnapshot;
+
+  useEffect(() => {
+    if (baselineArmed) {
+      setSavedSnapshot(currentSnapshot);
+      setBaselineArmed(false);
+    }
+  }, [baselineArmed, currentSnapshot]);
 
   useEffect(() => {
     if (courseId && courseId !== "new") {
