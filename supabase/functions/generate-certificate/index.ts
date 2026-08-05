@@ -64,6 +64,43 @@ serve(async (req) => {
       throw new Error('Certificate can only be generated for passed tests (80%+)');
     }
 
+    // Certificates may only be issued for real certification exams
+    if (!attempt.is_certification_test) {
+      throw new Error('Certificates are only issued for the official certification exam');
+    }
+
+    // The exam must belong to a course with certification enabled and be purchased
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    if (!attempt.course_id) {
+      throw new Error('This attempt is not linked to a certification course');
+    }
+
+    const { data: course } = await serviceClient
+      .from('courses')
+      .select('id, certification_enabled')
+      .eq('id', attempt.course_id)
+      .maybeSingle();
+
+    if (!course?.certification_enabled) {
+      throw new Error('This course does not issue certificates');
+    }
+
+    const { data: purchase } = await serviceClient
+      .from('course_purchases')
+      .select('id')
+      .eq('user_id', attempt.user_id)
+      .eq('course_id', attempt.course_id)
+      .maybeSingle();
+
+    if (!purchase) {
+      throw new Error('A course purchase is required for this certificate');
+    }
+
+
     // Get user profile (for the student, not the admin)
     const { data: profile } = await supabaseClient
       .from('profiles')

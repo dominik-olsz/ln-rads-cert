@@ -106,7 +106,7 @@ serve(async (req) => {
         lockedGroups = Array.from(map.values()).sort((a, b) => a.order_index - b.order_index);
       }
 
-      return json({ questions: questions ?? [], purchased, lockedGroups });
+      return json({ questions: safeCourseQuestions, purchased, lockedGroups });
 
     }
 
