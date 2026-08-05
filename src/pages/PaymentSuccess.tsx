@@ -12,21 +12,32 @@ const PaymentSuccess = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const courseId = searchParams.get("course_id");
+  const purchaseType = searchParams.get("type");
+  const isRetake = purchaseType === "certification_retake";
   const [status, setStatus] = useState<"pending" | "confirmed" | "timeout">("pending");
 
   useEffect(() => {
-    if (!user || !courseId) return;
+    if (!user) return;
+    if (!isRetake && !courseId) return;
     let cancelled = false;
     let attempts = 0;
 
     const poll = async () => {
       attempts += 1;
-      const { data } = await supabase
-        .from("course_purchases")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("course_id", courseId)
-        .maybeSingle();
+
+      const { data } = isRetake
+        ? await supabase
+            .from("certification_retake_purchases")
+            .select("id")
+            .is("consumed_at", null)
+            .limit(1)
+            .maybeSingle()
+        : await supabase
+            .from("course_purchases")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("course_id", courseId as string)
+            .maybeSingle();
 
       if (cancelled) return;
 
@@ -45,7 +56,8 @@ const PaymentSuccess = () => {
     return () => {
       cancelled = true;
     };
-  }, [user, courseId]);
+  }, [user, courseId, isRetake]);
+
 
   return (
     <div className="min-h-screen bg-background">
