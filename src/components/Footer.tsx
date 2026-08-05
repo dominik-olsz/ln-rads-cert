@@ -49,8 +49,15 @@ const Footer = () => {
               <li>
                 <Link to="/faq" className="hover:text-primary transition-colors">FAQ</Link>
               </li>
+              <li>
+                <Link to="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+              </li>
+              <li>
+                <Link to="/terms" className="hover:text-primary transition-colors">Terms and Conditions</Link>
+              </li>
             </ul>
           </div>
+
         </div>
         
         {/* Bottom bar */}
@@ -58,10 +65,10 @@ const Footer = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()} LN-RADS Certification. All rights reserved.</p>
             <div className="flex gap-6">
-              <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
-              <a href="#" className="hover:text-primary transition-colors">Cookie Policy</a>
+              <Link to="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-primary transition-colors">Terms and Conditions</Link>
             </div>
+
           </div>
         </div>
       </div>

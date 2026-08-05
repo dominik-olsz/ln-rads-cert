@@ -2,14 +2,21 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+export const LEGAL_VERSION = "2026-08-05";
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string
+  ) => Promise<{ error: any; needsConfirmation?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   loading: boolean;
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

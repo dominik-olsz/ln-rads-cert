@@ -26,6 +26,9 @@ import AdminSales from "./pages/admin/Sales";
 import Dashboard from "./pages/Dashboard";
 import ResetPassword from "./pages/ResetPassword";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Terms from "./pages/Terms";
+
 
 const router = createBrowserRouter([
   { path: "/", element: <Index /> },
@@ -40,6 +43,9 @@ const router = createBrowserRouter([
   { path: "/certification-test", element: <CertificationTest /> },
   { path: "/results", element: <Results /> },
   { path: "/faq", element: <FAQ /> },
+  { path: "/privacy-policy", element: <PrivacyPolicy /> },
+  { path: "/terms", element: <Terms /> },
+
   { path: "/admin/dashboard", element: <AdminRoute><AdminDashboard /></AdminRoute> },
   { path: "/admin/users", element: <AdminRoute><AdminUsers /></AdminRoute> },
   { path: "/admin/courses", element: <AdminRoute><AdminCourses /></AdminRoute> },
