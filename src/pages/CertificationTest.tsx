@@ -609,7 +609,7 @@ const CertificationTest = () => {
   }
 
   if (gate !== 'open' || hasExistingAttempt) {
-    const attemptsLeft = Math.max(0, MAX_ATTEMPTS - attemptsUsed);
+    const attemptsLeft = Math.max(0, maxAttempts - attemptsUsed);
 
     return (
       <div className="min-h-screen bg-background">
@@ -632,7 +632,7 @@ const CertificationTest = () => {
                   <>
                     <h1 className="text-2xl font-bold">No Attempts Left</h1>
                     <p className="text-muted-foreground">
-                      You have used all {MAX_ATTEMPTS} attempts
+                      You have used all {maxAttempts} attempts
                       {lastScore !== null ? ` (last score: ${lastScore}%)` : ''}. To request a
                       reset, please contact the administrator at{' '}
                       <a className="underline font-medium" href={`mailto:${SUPPORT_EMAIL}`}>
@@ -648,8 +648,8 @@ const CertificationTest = () => {
                     <h1 className="text-2xl font-bold">Retake Required</h1>
                     <p className="text-muted-foreground">
                       You did not pass
-                      {lastScore !== null ? ` (score: ${lastScore}%)` : ''}. Your first attempt
-                      was included with your course. You have {attemptsLeft} of {MAX_ATTEMPTS}{' '}
+                      {lastScore !== null ? ` (score: ${lastScore}%)` : ''}. Your first {attemptsIncluded === 1 ? 'attempt' : `${attemptsIncluded} attempts`}
+                      was included with your course. You have {attemptsLeft} of {maxAttempts}{' '}
                       attempts left, and each retake costs{' '}
                       <span className="font-semibold text-foreground">
                         €{(retakePrice / 100).toFixed(2)}
