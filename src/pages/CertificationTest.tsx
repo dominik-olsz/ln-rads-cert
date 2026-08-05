@@ -467,7 +467,7 @@ const CertificationTest = () => {
     setPayLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { type: 'certification_retake' },
+        body: { type: 'certification_retake', ...(courseId ? { courseId } : {}) },
       });
 
       if (error) throw error;
