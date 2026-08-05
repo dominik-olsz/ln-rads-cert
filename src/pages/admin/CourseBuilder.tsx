@@ -1140,6 +1140,50 @@ const CourseBuilder = () => {
                   </div>
                 </div>
 
+                <div className={`p-4 border rounded-lg space-y-4 ${!certificationEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div>
+                    <h3 className="text-sm font-medium">Certification Attempts</h3>
+                    <p className="text-xs text-muted-foreground">
+                      How many exam attempts students get, and what extra attempts cost.
+                    </p>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="attemptsIncluded">Attempts included in price</Label>
+                      <Input
+                        id="attemptsIncluded"
+                        type="number"
+                        disabled={!certificationEnabled}
+                        min="0"
+                        value={attemptsIncluded}
+                        onChange={(e) => setAttemptsIncluded(Math.max(0, Number(e.target.value)))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="attemptsTotal">Total attempts allowed</Label>
+                      <Input
+                        id="attemptsTotal"
+                        type="number"
+                        disabled={!certificationEnabled}
+                        min="1"
+                        value={attemptsTotal}
+                        onChange={(e) => setAttemptsTotal(Math.max(1, Number(e.target.value)))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="retakePrice">Price per extra attempt (€)</Label>
+                      <Input
+                        id="retakePrice"
+                        type="number"
+                        disabled={!certificationEnabled}
+                        min="0"
+                        value={courseRetakePrice}
+                        onChange={(e) => setCourseRetakePrice(Math.max(0, Number(e.target.value)))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {certificationEnabled && (
                   <>
                     <div className="space-y-2">
