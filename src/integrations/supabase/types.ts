@@ -81,6 +81,7 @@ export type Database = {
         Row: {
           amount_paid: number
           consumed_at: string | null
+          course_id: string | null
           created_at: string
           id: string
           stripe_session_id: string | null
@@ -90,6 +91,7 @@ export type Database = {
         Insert: {
           amount_paid?: number
           consumed_at?: string | null
+          course_id?: string | null
           created_at?: string
           id?: string
           stripe_session_id?: string | null
@@ -99,17 +101,27 @@ export type Database = {
         Update: {
           amount_paid?: number
           consumed_at?: string | null
+          course_id?: string | null
           created_at?: string
           id?: string
           stripe_session_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "certification_retake_purchases_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       certification_test_progress: {
         Row: {
           answers: Json
+          course_id: string | null
           current_question_index: number
           id: string
           is_completed: boolean
@@ -121,6 +133,7 @@ export type Database = {
         }
         Insert: {
           answers?: Json
+          course_id?: string | null
           current_question_index?: number
           id?: string
           is_completed?: boolean
@@ -132,6 +145,7 @@ export type Database = {
         }
         Update: {
           answers?: Json
+          course_id?: string | null
           current_question_index?: number
           id?: string
           is_completed?: boolean
@@ -142,6 +156,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "certification_test_progress_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "certification_test_progress_test_attempt_id_fkey"
             columns: ["test_attempt_id"]
