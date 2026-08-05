@@ -38,8 +38,10 @@ interface CourseItem {
   type: 'lesson' | 'questionGroup';
   title: string;
   order_index: number;
+  isFree?: boolean;
   data: Lesson | TestQuestionGroup;
 }
+
 
 const CourseDetail = () => {
   const { id } = useParams();
@@ -68,7 +70,7 @@ const CourseDetail = () => {
         // Fetch lessons
         const { data: lessonsData, error: lessonsError } = await supabase
           .from('lessons')
-          .select('id, title, order_index')
+          .select('id, title, order_index, is_free')
           .eq('course_id', id)
           .order('order_index');
 
@@ -80,7 +82,12 @@ const CourseDetail = () => {
         });
 
         const questions = questionsData?.questions || [];
-        setCourseQuestionsCount(questions.length);
+        const purchasedFromFn = !!questionsData?.purchased;
+        const lockedGroups = questionsData?.lockedGroups || [];
+        setCourseQuestionsCount(
+          questions.length +
+            lockedGroups.reduce((sum: number, g: any) => sum + (g.count || 0), 0)
+        );
 
         // Group questions by group_title and order_index
         const questionGroupsMap: Map<string, { title: string; orderIndex: number; questions: any[] }> = new Map();
@@ -100,20 +107,22 @@ const CourseDetail = () => {
         });
 
         // Convert lessons to items
-        const lessonItems: CourseItem[] = (lessonsData || []).map((lesson) => ({
+        const lessonItems: CourseItem[] = (lessonsData || []).map((lesson: any) => ({
           id: lesson.id,
           type: 'lesson' as const,
           title: lesson.title,
           order_index: lesson.order_index,
+          isFree: !!lesson.is_free,
           data: lesson,
         }));
 
-        // Convert question groups to items
+        // Convert question groups to items (returned groups are free when not purchased)
         const questionGroupItems: CourseItem[] = Array.from(questionGroupsMap.values()).map((group, idx) => ({
           id: `group-${idx}`,
           type: 'questionGroup' as const,
           title: `${group.title} (${group.questions.length})`,
           order_index: group.orderIndex,
+          isFree: !purchasedFromFn,
           data: {
             id: `group-${idx}`,
             title: group.title,
@@ -121,9 +130,26 @@ const CourseDetail = () => {
           },
         }));
 
+        // Locked question groups (metadata only, for visitors without access)
+        const lockedGroupItems: CourseItem[] = lockedGroups.map((group: any, idx: number) => ({
+          id: `locked-group-${idx}`,
+          type: 'questionGroup' as const,
+          title: `${group.group_title || 'Test Questions'} (${group.count})`,
+          order_index: group.order_index ?? 999,
+          isFree: false,
+          data: {
+            id: `locked-group-${idx}`,
+            title: group.group_title || 'Test Questions',
+            questions: [],
+          },
+        }));
+
         // Combine and sort by order_index
-        const allItems = [...lessonItems, ...questionGroupItems].sort((a, b) => a.order_index - b.order_index);
+        const allItems = [...lessonItems, ...questionGroupItems, ...lockedGroupItems].sort(
+          (a, b) => a.order_index - b.order_index
+        );
         setCourseItems(allItems);
+
 
         // Check if user has purchased this course
         if (user) {
