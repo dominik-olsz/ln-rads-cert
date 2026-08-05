@@ -68,8 +68,10 @@ export default function Dashboard() {
             id,
             title,
             description,
-            hero_image
+            hero_image,
+            certification_enabled
           )
+
         `)
         .eq("user_id", user?.id);
 
