@@ -18,7 +18,6 @@ import AdminRoute from "./components/AdminRoute";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminUsers from "./pages/admin/Users";
 import AdminCourses from "./pages/admin/Courses";
-import AdminTests from "./pages/admin/Tests";
 import AdminTestAttempts from "./pages/admin/TestAttempts";
 import CourseBuilder from "./pages/admin/CourseBuilder";
 import AdminCertificates from "./pages/admin/Certificates";
@@ -50,7 +49,6 @@ const App = () => (
         <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         <Route path="/admin/courses" element={<AdminRoute><AdminCourses /></AdminRoute>} />
         <Route path="/admin/courses/:courseId" element={<AdminRoute><CourseBuilder /></AdminRoute>} />
-        <Route path="/admin/tests" element={<AdminRoute><AdminTests /></AdminRoute>} />
         <Route path="/admin/test-attempts" element={<AdminRoute><AdminTestAttempts /></AdminRoute>} />
         <Route path="/admin/certificates" element={<AdminRoute><AdminCertificates /></AdminRoute>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
