@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, CheckCircle, Star, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Star, X, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -30,8 +30,10 @@ interface CourseItem {
   type: 'lesson' | 'questionGroup';
   title: string;
   order_index: number;
+  locked?: boolean;
   data: Lesson | TestQuestionGroup;
 }
+
 
 interface CourseMaterial {
   id: string;
@@ -69,29 +71,20 @@ const Training = () => {
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
   useEffect(() => {
-    if (!user) {
-      toast.error('Please sign in to access training');
-      navigate('/auth');
-      return;
-    }
-
     const fetchTrainingData = async () => {
       try {
-        // Check if user has purchased this course
-        const { data: purchaseData } = await supabase
-          .from('course_purchases')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('course_id', courseId)
-          .single();
-
-        if (!purchaseData) {
-          toast.error('You need to purchase this course first');
-          navigate(`/course/${courseId}`);
-          return;
+        // Purchase check (visitors can still browse free preview content)
+        let purchased = false;
+        if (user) {
+          const { data: purchaseData } = await supabase
+            .from('course_purchases')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('course_id', courseId)
+            .maybeSingle();
+          purchased = !!purchaseData;
         }
-
-        setHasPurchased(true);
+        setHasPurchased(purchased);
 
         // Fetch lessons
         const { data: lessonsData, error: lessonsError } = await supabase
@@ -102,34 +95,27 @@ const Training = () => {
 
         if (lessonsError) throw lessonsError;
 
-        // Build initial items from lessons so UI doesn't break if questions fetch fails
-        const items: CourseItem[] = (lessonsData || []).map((lesson) => ({
-          id: lesson.id,
-          type: 'lesson' as const,
-          title: lesson.title,
-          order_index: lesson.order_index,
-          data: lesson,
-        }));
-
         // Try fetching course-level test questions via backend function (bypasses RLS)
         let questionsData: any[] = [];
+        let lockedGroups: any[] = [];
         try {
           const { data: fnData, error: fnError } = await supabase.functions.invoke('get-test-questions', {
             body: { courseId, testType: 'course' },
           });
           if (fnError) throw fnError as any;
           questionsData = fnData?.questions || [];
+          lockedGroups = fnData?.lockedGroups || [];
         } catch (e) {
           console.error('Failed to fetch course test questions via function:', e);
         }
 
         // Group questions by group_title and order_index
         const questionGroupsMap: Map<string, { title: string; orderIndex: number; questions: any[] }> = new Map();
-        
+
         questionsData.forEach((question: any) => {
           const groupTitle = question.group_title || 'Test Questions';
           const orderIndex = question.order_index || 0;
-          
+
           if (!questionGroupsMap.has(groupTitle)) {
             questionGroupsMap.set(groupTitle, {
               title: groupTitle,
@@ -140,12 +126,13 @@ const Training = () => {
           questionGroupsMap.get(groupTitle)!.questions.push(question);
         });
 
-        // Convert lessons to items
-        const lessonItems: CourseItem[] = (lessonsData || []).map((lesson) => ({
+        // Convert lessons to items (locked when not free and not purchased)
+        const lessonItems: CourseItem[] = (lessonsData || []).map((lesson: any) => ({
           id: lesson.id,
           type: 'lesson' as const,
           title: lesson.title,
           order_index: lesson.order_index,
+          locked: !purchased && !lesson.is_free,
           data: lesson,
         }));
 
@@ -155,6 +142,7 @@ const Training = () => {
           type: 'questionGroup' as const,
           title: `${group.title} (${group.questions.length})`,
           order_index: group.orderIndex,
+          locked: false,
           data: {
             id: `group-${idx}`,
             title: group.title,
@@ -162,9 +150,31 @@ const Training = () => {
           },
         }));
 
+        // Locked question groups (metadata only, for visitors without access)
+        const lockedGroupItems: CourseItem[] = lockedGroups.map((group: any, idx: number) => ({
+          id: `locked-group-${idx}`,
+          type: 'questionGroup' as const,
+          title: `${group.group_title || 'Test Questions'} (${group.count})`,
+          order_index: group.order_index ?? 999,
+          locked: true,
+          data: {
+            id: `locked-group-${idx}`,
+            title: group.group_title || 'Test Questions',
+            questions: [],
+          },
+        }));
+
         // Combine and sort by order_index
-        const allItems = [...lessonItems, ...questionGroupItems].sort((a, b) => a.order_index - b.order_index);
+        const allItems = [...lessonItems, ...questionGroupItems, ...lockedGroupItems].sort(
+          (a, b) => a.order_index - b.order_index
+        );
         setCourseItems(allItems);
+
+        if (!purchased && allItems.every((item) => item.locked)) {
+          toast.error('You need to purchase this course first');
+          navigate(`/course/${courseId}`);
+          return;
+        }
 
         // Fetch all materials for this course
         const { data: materialsData, error: materialsError } = await supabase
@@ -186,6 +196,12 @@ const Training = () => {
         });
         setMaterials(groupedMaterials);
 
+        // Start on the first accessible item
+        const firstOpen = allItems.findIndex((item) => !item.locked);
+        if (firstOpen > 0) setCurrentItem(firstOpen);
+
+        if (!user) return;
+
         // Fetch user progress
         const { data: progressData } = await supabase
           .from('user_progress')
@@ -206,7 +222,11 @@ const Training = () => {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (courseProgress && courseProgress.last_item_index < allItems.length) {
+        if (
+          courseProgress &&
+          courseProgress.last_item_index < allItems.length &&
+          !allItems[courseProgress.last_item_index]?.locked
+        ) {
           setCurrentItem(courseProgress.last_item_index);
         }
 
@@ -232,6 +252,7 @@ const Training = () => {
       fetchTrainingData();
     }
   }, [courseId, user, navigate]);
+
 
   const currentCourseItem = courseItems[currentItem];
   const progress = courseItems.length > 0 ? ((currentItem + 1) / courseItems.length) * 100 : 0;
@@ -426,7 +447,19 @@ const Training = () => {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardContent className="pt-6">
-                {currentCourseItem?.type === 'lesson' ? (
+                {currentCourseItem?.locked ? (
+                  <div className="text-center py-12 space-y-4">
+                    <Lock className="h-10 w-10 text-muted-foreground mx-auto" />
+                    <h2 className="text-xl font-bold">{currentCourseItem.title}</h2>
+                    <p className="text-muted-foreground">
+                      This part of the course is available after purchase.
+                    </p>
+                    <Button onClick={() => navigate(`/course/${courseId}`)}>
+                      Get full access
+                    </Button>
+                  </div>
+                ) : currentCourseItem?.type === 'lesson' ? (
+
                   <>
                     <h2 className="text-xl font-bold mb-4">{currentCourseItem.title}</h2>
                     
@@ -658,15 +691,19 @@ const Training = () => {
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        {index < currentItem && (
+                        {item.locked ? (
+                          <Lock className="h-4 w-4 flex-shrink-0" />
+                        ) : index < currentItem ? (
                           <CheckCircle className="h-4 w-4 flex-shrink-0" />
-                        )}
+                        ) : null}
                         <div className="flex-1">
                           <span className="text-xs text-muted-foreground block">
                             {item.type === 'lesson' ? 'Lesson' : 'Course Test'}
+                            {item.locked ? ' · Locked' : !hasPurchased ? ' · Free' : ''}
                           </span>
                           <span className="text-sm font-medium line-clamp-1">{item.title}</span>
                         </div>
+
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

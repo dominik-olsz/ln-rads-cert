@@ -81,6 +81,7 @@ export type Database = {
         Row: {
           amount_paid: number
           consumed_at: string | null
+          course_id: string | null
           created_at: string
           id: string
           stripe_session_id: string | null
@@ -90,6 +91,7 @@ export type Database = {
         Insert: {
           amount_paid?: number
           consumed_at?: string | null
+          course_id?: string | null
           created_at?: string
           id?: string
           stripe_session_id?: string | null
@@ -99,17 +101,27 @@ export type Database = {
         Update: {
           amount_paid?: number
           consumed_at?: string | null
+          course_id?: string | null
           created_at?: string
           id?: string
           stripe_session_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "certification_retake_purchases_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       certification_test_progress: {
         Row: {
           answers: Json
+          course_id: string | null
           current_question_index: number
           id: string
           is_completed: boolean
@@ -121,6 +133,7 @@ export type Database = {
         }
         Insert: {
           answers?: Json
+          course_id?: string | null
           current_question_index?: number
           id?: string
           is_completed?: boolean
@@ -132,6 +145,7 @@ export type Database = {
         }
         Update: {
           answers?: Json
+          course_id?: string | null
           current_question_index?: number
           id?: string
           is_completed?: boolean
@@ -142,6 +156,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "certification_test_progress_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "certification_test_progress_test_attempt_id_fkey"
             columns: ["test_attempt_id"]
@@ -312,6 +333,11 @@ export type Database = {
       }
       courses: {
         Row: {
+          attempts_included: number
+          attempts_total: number
+          certification_enabled: boolean
+          certification_mode: string
+          certification_question_count: number | null
           course_includes: string | null
           created_at: string | null
           description: string
@@ -319,6 +345,7 @@ export type Database = {
           hero_image: string | null
           id: string
           price: number | null
+          retake_price: number
           test_questions_count: number
           title: string
           total_lessons: number
@@ -326,6 +353,11 @@ export type Database = {
           what_you_learn: string | null
         }
         Insert: {
+          attempts_included?: number
+          attempts_total?: number
+          certification_enabled?: boolean
+          certification_mode?: string
+          certification_question_count?: number | null
           course_includes?: string | null
           created_at?: string | null
           description: string
@@ -333,6 +365,7 @@ export type Database = {
           hero_image?: string | null
           id?: string
           price?: number | null
+          retake_price?: number
           test_questions_count?: number
           title: string
           total_lessons?: number
@@ -340,6 +373,11 @@ export type Database = {
           what_you_learn?: string | null
         }
         Update: {
+          attempts_included?: number
+          attempts_total?: number
+          certification_enabled?: boolean
+          certification_mode?: string
+          certification_question_count?: number | null
           course_includes?: string | null
           created_at?: string | null
           description?: string
@@ -347,6 +385,7 @@ export type Database = {
           hero_image?: string | null
           id?: string
           price?: number | null
+          retake_price?: number
           test_questions_count?: number
           title?: string
           total_lessons?: number
@@ -364,6 +403,7 @@ export type Database = {
           created_at: string | null
           duration: string | null
           id: string
+          is_free: boolean
           order_index: number
           title: string
         }
@@ -375,6 +415,7 @@ export type Database = {
           created_at?: string | null
           duration?: string | null
           id?: string
+          is_free?: boolean
           order_index: number
           title: string
         }
@@ -386,6 +427,7 @@ export type Database = {
           created_at?: string | null
           duration?: string | null
           id?: string
+          is_free?: boolean
           order_index?: number
           title?: string
         }
@@ -485,6 +527,7 @@ export type Database = {
           group_title: string | null
           id: string
           image_url: string | null
+          is_free: boolean
           lesson_id: string | null
           option_a: string
           option_b: string
@@ -503,6 +546,7 @@ export type Database = {
           group_title?: string | null
           id?: string
           image_url?: string | null
+          is_free?: boolean
           lesson_id?: string | null
           option_a: string
           option_b: string
@@ -521,6 +565,7 @@ export type Database = {
           group_title?: string | null
           id?: string
           image_url?: string | null
+          is_free?: boolean
           lesson_id?: string | null
           option_a?: string
           option_b?: string

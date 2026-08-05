@@ -53,6 +53,9 @@ const CertificationTest = () => {
   const [hasExistingAttempt, setHasExistingAttempt] = useState(false);
   const [gate, setGate] = useState<Gate>('open');
   const [attemptsUsed, setAttemptsUsed] = useState(0);
+  const [maxAttempts, setMaxAttempts] = useState(MAX_ATTEMPTS);
+  const [attemptsIncluded, setAttemptsIncluded] = useState(1);
+
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [retakePrice, setRetakePrice] = useState<number>(6900);
   const [payLoading, setPayLoading] = useState(false);
@@ -97,10 +100,34 @@ const CertificationTest = () => {
       setHasPurchased(true);
 
       // Latest progress record (used to resume an unfinished attempt)
-      const { data: existingProgress, error: progressError } = await supabase
+      // Per-course certification rules (attempts + retake price)
+      let courseMaxAttempts = MAX_ATTEMPTS;
+      let courseAttemptsIncluded = 1;
+      let coursePrice = 6900;
+      if (courseId) {
+        const { data: courseSettings } = await supabase
+          .from('courses')
+          .select('attempts_total, attempts_included, retake_price')
+          .eq('id', courseId)
+          .maybeSingle();
+
+        if (courseSettings) {
+          courseMaxAttempts = courseSettings.attempts_total ?? MAX_ATTEMPTS;
+          courseAttemptsIncluded = courseSettings.attempts_included ?? 1;
+          coursePrice = (courseSettings.retake_price ?? 69) * 100;
+          setMaxAttempts(courseMaxAttempts);
+          setAttemptsIncluded(courseAttemptsIncluded);
+          setRetakePrice(coursePrice);
+        }
+      }
+
+      let progressQuery = supabase
         .from('certification_test_progress')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user?.id);
+      if (courseId) progressQuery = progressQuery.eq('course_id', courseId);
+
+      const { data: existingProgress, error: progressError } = await progressQuery
         .order('started_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -112,12 +139,14 @@ const CertificationTest = () => {
       const hasResumableAttempt = !!existingProgress && !existingProgress.is_completed;
 
       // How many certification attempts has this student used?
-      const { data: attemptRows } = await supabase
+      let attemptsQuery = supabase
         .from('test_attempts')
         .select('id, passed, score, completed_at')
         .eq('user_id', user?.id)
-        .eq('is_certification_test', true)
-        .order('completed_at', { ascending: false });
+        .eq('is_certification_test', true);
+      if (courseId) attemptsQuery = attemptsQuery.eq('course_id', courseId);
+
+      const { data: attemptRows } = await attemptsQuery.order('completed_at', { ascending: false });
 
       const used = attemptRows?.length ?? 0;
       setAttemptsUsed(used);
@@ -131,34 +160,38 @@ const CertificationTest = () => {
           return;
         }
 
-        if (used >= MAX_ATTEMPTS) {
+        if (used >= courseMaxAttempts) {
           setGate('exhausted');
           setLoading(false);
           return;
         }
 
-        if (used > 0) {
-          const { data: credit } = await supabase
+        if (used >= courseAttemptsIncluded) {
+          let creditQuery = supabase
             .from('certification_retake_purchases')
             .select('id')
-            .is('consumed_at', null)
-            .limit(1)
-            .maybeSingle();
+            .is('consumed_at', null);
+          if (courseId) creditQuery = creditQuery.eq('course_id', courseId);
+
+          const { data: credit } = await creditQuery.limit(1).maybeSingle();
 
           if (!credit) {
-            const { data: setting } = await supabase
-              .from('app_settings')
-              .select('value')
-              .eq('key', 'certification_retake_price')
-              .maybeSingle();
+            if (!courseId) {
+              const { data: setting } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', 'certification_retake_price')
+                .maybeSingle();
 
-            setRetakePrice(Number(setting?.value ?? 6900));
+              setRetakePrice(Number(setting?.value ?? 6900));
+            }
             setGate('payment_required');
             setLoading(false);
             return;
           }
         }
       }
+
 
 
 
@@ -434,7 +467,7 @@ const CertificationTest = () => {
     setPayLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { type: 'certification_retake' },
+        body: { type: 'certification_retake', ...(courseId ? { courseId } : {}) },
       });
 
       if (error) throw error;
@@ -576,7 +609,7 @@ const CertificationTest = () => {
   }
 
   if (gate !== 'open' || hasExistingAttempt) {
-    const attemptsLeft = Math.max(0, MAX_ATTEMPTS - attemptsUsed);
+    const attemptsLeft = Math.max(0, maxAttempts - attemptsUsed);
 
     return (
       <div className="min-h-screen bg-background">
@@ -599,7 +632,7 @@ const CertificationTest = () => {
                   <>
                     <h1 className="text-2xl font-bold">No Attempts Left</h1>
                     <p className="text-muted-foreground">
-                      You have used all {MAX_ATTEMPTS} attempts
+                      You have used all {maxAttempts} attempts
                       {lastScore !== null ? ` (last score: ${lastScore}%)` : ''}. To request a
                       reset, please contact the administrator at{' '}
                       <a className="underline font-medium" href={`mailto:${SUPPORT_EMAIL}`}>
@@ -615,8 +648,8 @@ const CertificationTest = () => {
                     <h1 className="text-2xl font-bold">Retake Required</h1>
                     <p className="text-muted-foreground">
                       You did not pass
-                      {lastScore !== null ? ` (score: ${lastScore}%)` : ''}. Your first attempt
-                      was included with your course. You have {attemptsLeft} of {MAX_ATTEMPTS}{' '}
+                      {lastScore !== null ? ` (score: ${lastScore}%)` : ''}. Your first {attemptsIncluded === 1 ? 'attempt' : `${attemptsIncluded} attempts`}
+                      was included with your course. You have {attemptsLeft} of {maxAttempts}{' '}
                       attempts left, and each retake costs{' '}
                       <span className="font-semibold text-foreground">
                         €{(retakePrice / 100).toFixed(2)}

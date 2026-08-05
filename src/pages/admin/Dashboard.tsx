@@ -89,14 +89,14 @@ const AdminDashboard = () => {
             </Card>
           </Link>
 
-          <Link to="/admin/tests">
+          <Link to="/admin/courses">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader>
                 <CardTitle>Certification Test Management</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Manage test questions and view test analytics
+                  Set up certification tests per course in the course editor
                 </p>
               </CardContent>
             </Card>

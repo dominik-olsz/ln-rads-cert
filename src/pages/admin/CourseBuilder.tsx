@@ -36,6 +36,7 @@ interface Lesson {
   content_url?: string;
   content_text: string;
   duration?: string;
+  is_free?: boolean;
 }
 
 interface TestQuestion {
@@ -55,8 +56,10 @@ interface TestQuestionsGroup {
   id?: string;
   title?: string;
   order_index: number;
+  is_free?: boolean;
   questions: TestQuestion[];
 }
+
 
 const CourseBuilder = () => {
   const { courseId } = useParams();
@@ -73,6 +76,16 @@ const CourseBuilder = () => {
   const [courseIncludes, setCourseIncludes] = useState("");
   const [whatYouLearn, setWhatYouLearn] = useState("");
   const [grantsCertificationAccess, setGrantsCertificationAccess] = useState(false);
+
+  // Certification test configuration
+  const [certificationEnabled, setCertificationEnabled] = useState(false);
+  const [certificationMode, setCertificationMode] = useState<'custom' | 'random'>('random');
+  const [certificationQuestionCount, setCertificationQuestionCount] = useState<number>(0);
+  const [attemptsIncluded, setAttemptsIncluded] = useState(1);
+  const [attemptsTotal, setAttemptsTotal] = useState(3);
+  const [courseRetakePrice, setCourseRetakePrice] = useState(69);
+  const [certQuestions, setCertQuestions] = useState<TestQuestion[]>([]);
+
 
   // Lessons and Test Questions Groups
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -108,6 +121,12 @@ const CourseBuilder = () => {
       setCourseIncludes(courseData.course_includes || "");
       setWhatYouLearn(courseData.what_you_learn || "");
       setGrantsCertificationAccess(courseData.grants_certification_access || false);
+      setCertificationEnabled(courseData.certification_enabled || false);
+      setCertificationMode((courseData.certification_mode === 'custom' ? 'custom' : 'random'));
+      setCertificationQuestionCount(courseData.certification_question_count ?? 0);
+      setAttemptsIncluded(courseData.attempts_included ?? 1);
+      setAttemptsTotal(courseData.attempts_total ?? 3);
+      setCourseRetakePrice(courseData.retake_price ?? 69);
 
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
@@ -126,6 +145,13 @@ const CourseBuilder = () => {
 
       if (questionsError) throw questionsError;
 
+      const { data: certQuestionsData } = await supabase
+        .from('test_questions')
+        .select('*')
+        .eq('course_id', courseId)
+        .eq('test_type', 'certification')
+        .order('order_index');
+
       const lessonsWithoutQuestions = lessonsData.map(lesson => ({
         id: lesson.id,
         title: lesson.title,
@@ -133,7 +159,8 @@ const CourseBuilder = () => {
         content_type: lesson.content_type,
         content_url: lesson.content_url,
         content_text: lesson.content_text || "",
-        duration: lesson.duration
+        duration: lesson.duration,
+        is_free: lesson.is_free || false
       }));
 
       // Group questions by order_index to recreate question groups
@@ -142,6 +169,7 @@ const CourseBuilder = () => {
         if (!acc[order]) {
           acc[order] = {
             title: q.group_title || null,
+            is_free: q.is_free || false,
             questions: []
           };
         }
@@ -150,16 +178,19 @@ const CourseBuilder = () => {
           order_index: q.order_index ?? 999
         });
         return acc;
-      }, {} as Record<number, { title: string | null, questions: TestQuestion[] }>);
+      }, {} as Record<number, { title: string | null, is_free: boolean, questions: TestQuestion[] }>);
 
       const groups: TestQuestionsGroup[] = Object.entries(questionsByOrder).map(([order, data]) => ({
         order_index: parseInt(order),
         title: data.title || undefined,
+        is_free: data.is_free,
         questions: data.questions
       }));
 
       setLessons(lessonsWithoutQuestions);
       setQuestionGroups(groups);
+      setCertQuestions((certQuestionsData || []) as TestQuestion[]);
+
     } catch (error: any) {
       toast({
         title: "Error",
@@ -401,6 +432,37 @@ const CourseBuilder = () => {
     setDraggedItem(null);
   };
 
+  const coursePoolSize = questionGroups.reduce((acc, g) => acc + g.questions.length, 0);
+  const randomCountInvalid =
+    certificationEnabled &&
+    certificationMode === 'random' &&
+    (!certificationQuestionCount || certificationQuestionCount < 1 || certificationQuestionCount > coursePoolSize);
+
+  const addCertQuestion = () => {
+    setCertQuestions([
+      ...certQuestions,
+      {
+        question_text: "",
+        option_a: "",
+        option_b: "",
+        option_c: "",
+        option_d: "",
+        correct_answer: "A",
+        order_index: certQuestions.length,
+      },
+    ]);
+  };
+
+  const updateCertQuestion = (index: number, updates: Partial<TestQuestion>) => {
+    const updated = [...certQuestions];
+    updated[index] = { ...updated[index], ...updates };
+    setCertQuestions(updated);
+  };
+
+  const deleteCertQuestion = (index: number) => {
+    setCertQuestions(certQuestions.filter((_, i) => i !== index));
+  };
+
   const saveCourse = async () => {
     if (!title.trim()) {
       toast({
@@ -411,24 +473,42 @@ const CourseBuilder = () => {
       return;
     }
 
+    if (randomCountInvalid) {
+      toast({
+        title: "Not enough questions",
+        description: `This course has ${coursePoolSize} question${coursePoolSize === 1 ? '' : 's'}. Set the certification test length between 1 and ${coursePoolSize}, or add more course questions.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       let finalCourseId = courseId;
+
+      const courseFields = {
+        title,
+        description,
+        price,
+        hero_image: heroImage,
+        total_lessons: lessons.length,
+        course_includes: courseIncludes,
+        what_you_learn: whatYouLearn,
+        grants_certification_access: grantsCertificationAccess,
+        certification_enabled: certificationEnabled,
+        certification_mode: certificationMode,
+        certification_question_count:
+          certificationEnabled && certificationMode === 'random' ? certificationQuestionCount : null,
+        attempts_included: attemptsIncluded,
+        attempts_total: attemptsTotal,
+        retake_price: courseRetakePrice,
+      };
 
       // Save or update course
       if (courseId === "new" || !courseId) {
         const { data: newCourse, error: courseError } = await supabase
           .from('courses')
-          .insert({
-            title,
-            description,
-            price,
-            hero_image: heroImage,
-            total_lessons: lessons.length,
-            course_includes: courseIncludes,
-            what_you_learn: whatYouLearn,
-            grants_certification_access: grantsCertificationAccess
-          })
+          .insert(courseFields)
           .select()
           .single();
 
@@ -437,16 +517,7 @@ const CourseBuilder = () => {
       } else {
         const { error: updateError } = await supabase
           .from('courses')
-          .update({
-            title,
-            description,
-            price,
-            hero_image: heroImage,
-            total_lessons: lessons.length,
-            course_includes: courseIncludes,
-            what_you_learn: whatYouLearn,
-            grants_certification_access: grantsCertificationAccess
-          })
+          .update(courseFields)
           .eq('id', courseId);
 
         if (updateError) throw updateError;
@@ -460,7 +531,7 @@ const CourseBuilder = () => {
 
       // Save lessons
       for (const lesson of lessons) {
-        const { data: savedLesson, error: lessonError } = await supabase
+        const { error: lessonError } = await supabase
           .from('lessons')
           .insert({
             course_id: finalCourseId,
@@ -469,7 +540,8 @@ const CourseBuilder = () => {
             content_type: lesson.content_type,
             content_url: lesson.content_url,
             content_text: lesson.content_text,
-            duration: lesson.duration
+            duration: lesson.duration,
+            is_free: lesson.is_free || false
           })
           .select()
           .single();
@@ -477,16 +549,17 @@ const CourseBuilder = () => {
         if (lessonError) throw lessonError;
       }
 
+      const isValidQuestion = (q: TestQuestion) =>
+        q.question_text?.trim() &&
+        q.option_a?.trim() &&
+        q.option_b?.trim() &&
+        q.option_c?.trim() &&
+        q.option_d?.trim() &&
+        q.correct_answer;
+
       // Save course-level test questions
       for (const group of questionGroups) {
-        const validQuestions = group.questions.filter(q => 
-          q.question_text?.trim() && 
-          q.option_a?.trim() && 
-          q.option_b?.trim() && 
-          q.option_c?.trim() && 
-          q.option_d?.trim() &&
-          q.correct_answer
-        );
+        const validQuestions = group.questions.filter(isValidQuestion);
 
         if (validQuestions.length > 0) {
           const questionsToInsert = validQuestions.map((q) => ({
@@ -502,7 +575,8 @@ const CourseBuilder = () => {
             image_url: q.image_url || null,
             test_type: 'course',
             order_index: group.order_index,
-            group_title: group.title || null
+            group_title: group.title || null,
+            is_free: group.is_free || false
           }));
 
           const { error: questionsError } = await supabase
@@ -510,6 +584,35 @@ const CourseBuilder = () => {
             .insert(questionsToInsert);
 
           if (questionsError) throw questionsError;
+        }
+      }
+
+      // Save certification questions (custom mode only)
+      if (certificationEnabled && certificationMode === 'custom') {
+        const validCert = certQuestions.filter(isValidQuestion);
+
+        if (validCert.length > 0) {
+          const { error: certError } = await supabase
+            .from('test_questions')
+            .insert(
+              validCert.map((q, idx) => ({
+                course_id: finalCourseId,
+                lesson_id: null,
+                question_text: q.question_text,
+                option_a: q.option_a,
+                option_b: q.option_b,
+                option_c: q.option_c,
+                option_d: q.option_d,
+                correct_answer: q.correct_answer,
+                explanation: q.explanation || null,
+                image_url: q.image_url || null,
+                test_type: 'certification',
+                order_index: idx,
+                is_free: false
+              }))
+            );
+
+          if (certError) throw certError;
         }
       }
 
@@ -527,6 +630,7 @@ const CourseBuilder = () => {
       setSaving(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -582,11 +686,13 @@ const CourseBuilder = () => {
         </div>
 
         <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto mb-6">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="content">Course Content ({lessons?.length || 0} lessons, {questionGroups?.length || 0} question groups)</TabsTrigger>
+            <TabsTrigger value="certification">Certification Test</TabsTrigger>
             <TabsTrigger value="preview">Preview</TabsTrigger>
           </TabsList>
+
 
           <TabsContent value="basic">
             <Card>
@@ -697,6 +803,48 @@ const CourseBuilder = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="p-4 border rounded-lg space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium">Certification Attempts</h3>
+                    <p className="text-xs text-muted-foreground">
+                      How many exam attempts students get, and what extra attempts cost.
+                    </p>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="attemptsIncluded">Attempts included in price</Label>
+                      <Input
+                        id="attemptsIncluded"
+                        type="number"
+                        min="0"
+                        value={attemptsIncluded}
+                        onChange={(e) => setAttemptsIncluded(Math.max(0, Number(e.target.value)))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="attemptsTotal">Total attempts allowed</Label>
+                      <Input
+                        id="attemptsTotal"
+                        type="number"
+                        min="1"
+                        value={attemptsTotal}
+                        onChange={(e) => setAttemptsTotal(Math.max(1, Number(e.target.value)))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="retakePrice">Price per extra attempt (€)</Label>
+                      <Input
+                        id="retakePrice"
+                        type="number"
+                        min="0"
+                        value={courseRetakePrice}
+                        onChange={(e) => setCourseRetakePrice(Math.max(0, Number(e.target.value)))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
               </CardContent>
             </Card>
           </TabsContent>
@@ -806,6 +954,20 @@ const CourseBuilder = () => {
                         </div>
                       </div>
 
+                      <div className="flex items-center space-x-2 p-3 border rounded-lg bg-muted/30">
+                        <Checkbox
+                          id="lessonFree"
+                          checked={lessons[currentItemIndex]?.is_free || false}
+                          onCheckedChange={(checked) =>
+                            updateLesson(currentItemIndex, { is_free: checked as boolean })
+                          }
+                        />
+                        <Label htmlFor="lessonFree" className="text-sm cursor-pointer">
+                          Free preview — anyone can open this lesson without buying the course
+                        </Label>
+                      </div>
+
+
                       <div className="space-y-2">
                         <Label>Video URL (Optional)</Label>
                         <div className="flex gap-2">
@@ -851,9 +1013,27 @@ const CourseBuilder = () => {
                             Add More Questions
                           </Button>
                         </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="groupFree"
+                            checked={questionGroups[currentItemIndex].is_free || false}
+                            onCheckedChange={(checked) => {
+                              const updated = [...questionGroups];
+                              updated[currentItemIndex] = {
+                                ...updated[currentItemIndex],
+                                is_free: checked as boolean,
+                              };
+                              setQuestionGroups(updated);
+                            }}
+                          />
+                          <Label htmlFor="groupFree" className="text-sm cursor-pointer">
+                            Free preview — anyone can open this question group without buying the course
+                          </Label>
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {questionGroups[currentItemIndex].questions.length} question{questionGroups[currentItemIndex].questions.length !== 1 ? 's' : ''}
                         </p>
+
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -999,7 +1179,208 @@ const CourseBuilder = () => {
             </div>
           </TabsContent>
 
+          <TabsContent value="certification">
+            <Card>
+              <CardHeader>
+                <CardTitle>Certification Test</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/30">
+                  <Checkbox
+                    id="certificationEnabled"
+                    checked={certificationEnabled}
+                    onCheckedChange={(checked) => setCertificationEnabled(checked as boolean)}
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="certificationEnabled" className="text-sm font-medium cursor-pointer">
+                      This course has a certification test
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      When disabled, students will not see a certification exam for this course.
+                    </p>
+                  </div>
+                </div>
+
+                {certificationEnabled && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Where do the exam questions come from?</Label>
+                      <Select
+                        value={certificationMode}
+                        onValueChange={(value) => setCertificationMode(value as 'custom' | 'random')}
+                      >
+                        <SelectTrigger className="max-w-md">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="random">Randomly selected from the course questions</SelectItem>
+                          <SelectItem value="custom">Custom certification questions</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {certificationMode === 'random' ? (
+                      <div className="space-y-2 max-w-md">
+                        <Label htmlFor="certCount">Number of questions in the exam</Label>
+                        <Input
+                          id="certCount"
+                          type="number"
+                          min="1"
+                          value={certificationQuestionCount || ''}
+                          onChange={(e) => setCertificationQuestionCount(Number(e.target.value))}
+                          placeholder="e.g., 50"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          This course currently has {coursePoolSize} question{coursePoolSize === 1 ? '' : 's'} in its pool.
+                        </p>
+                        {randomCountInvalid && (
+                          <p className="text-xs text-destructive">
+                            {certificationQuestionCount > coursePoolSize
+                              ? `Only ${coursePoolSize} question${coursePoolSize === 1 ? '' : 's'} available in this course — reduce the exam length or add more questions.`
+                              : 'Enter how many questions the exam should have.'}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground">
+                            {certQuestions.length} certification question{certQuestions.length === 1 ? '' : 's'}
+                          </p>
+                          <Button size="sm" onClick={addCertQuestion}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Question
+                          </Button>
+                        </div>
+
+                        {certQuestions.map((question, idx) => (
+                          <Card key={idx}>
+                            <CardHeader className="pb-4">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-base">Question {idx + 1}</CardTitle>
+                                <Button variant="ghost" size="sm" onClick={() => deleteCertQuestion(idx)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              <div className="space-y-2">
+                                <Label>Question</Label>
+                                <Input
+                                  value={question.question_text}
+                                  onChange={(e) => updateCertQuestion(idx, { question_text: e.target.value })}
+                                  placeholder="Enter question"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <Input
+                                  value={question.option_a}
+                                  onChange={(e) => updateCertQuestion(idx, { option_a: e.target.value })}
+                                  placeholder="Option A"
+                                />
+                                <Input
+                                  value={question.option_b}
+                                  onChange={(e) => updateCertQuestion(idx, { option_b: e.target.value })}
+                                  placeholder="Option B"
+                                />
+                                <Input
+                                  value={question.option_c}
+                                  onChange={(e) => updateCertQuestion(idx, { option_c: e.target.value })}
+                                  placeholder="Option C"
+                                />
+                                <Input
+                                  value={question.option_d}
+                                  onChange={(e) => updateCertQuestion(idx, { option_d: e.target.value })}
+                                  placeholder="Option D"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                  <Label>Correct Answer</Label>
+                                  <Select
+                                    value={question.correct_answer}
+                                    onValueChange={(value) => updateCertQuestion(idx, { correct_answer: value })}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="A">Option A</SelectItem>
+                                      <SelectItem value="B">Option B</SelectItem>
+                                      <SelectItem value="C">Option C</SelectItem>
+                                      <SelectItem value="D">Option D</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label>Image (Optional)</Label>
+                                  <Input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+
+                                      setUploading(true);
+                                      try {
+                                        const fileExt = file.name.split('.').pop();
+                                        const filePath = `question-images/${Math.random()}.${fileExt}`;
+
+                                        const { error: uploadError } = await supabase.storage
+                                          .from('course-materials')
+                                          .upload(filePath, file);
+
+                                        if (uploadError) throw uploadError;
+
+                                        const { data } = supabase.storage
+                                          .from('course-materials')
+                                          .getPublicUrl(filePath);
+
+                                        updateCertQuestion(idx, { image_url: data.publicUrl });
+                                      } catch (error) {
+                                        console.error('Upload error:', error);
+                                      } finally {
+                                        setUploading(false);
+                                      }
+                                    }}
+                                  />
+                                  {question.image_url && (
+                                    <img src={question.image_url} alt="" className="max-w-xs rounded mt-2" />
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label>Explanation (Optional)</Label>
+                                <Textarea
+                                  value={question.explanation || ""}
+                                  onChange={(e) => updateCertQuestion(idx, { explanation: e.target.value })}
+                                  placeholder="Explain the correct answer"
+                                  rows={2}
+                                />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+
+                        {certQuestions.length === 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            No certification questions yet. Add at least one question.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="preview">
+
             <div className="grid lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                 <div>

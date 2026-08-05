@@ -18,6 +18,8 @@ interface PurchasedCourse {
   total_items: number;
   current_item_index: number;
   purchased_at: string;
+  certification_enabled?: boolean;
+
 }
 
 interface Certificate {
@@ -68,8 +70,10 @@ export default function Dashboard() {
             id,
             title,
             description,
-            hero_image
+            hero_image,
+            certification_enabled
           )
+
         `)
         .eq("user_id", user?.id);
 
@@ -113,6 +117,8 @@ export default function Dashboard() {
             total_items: totalItems,
             current_item_index: progress?.last_item_index ?? 0,
             purchased_at: purchase.purchased_at,
+            certification_enabled: !!purchase.courses.certification_enabled,
+
           };
         })
       );
@@ -353,17 +359,21 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="tests">
-            {purchasedCourses.length === 0 ? (
+            {purchasedCourses.filter((c) => c.certification_enabled).length === 0 ? (
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-center text-muted-foreground">
-                    Purchase a course to access certification tests.
+                    {purchasedCourses.length === 0
+                      ? 'Purchase a course to access certification tests.'
+                      : 'None of your courses include a certification test.'}
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {purchasedCourses.map((course) => (
+                {purchasedCourses
+                  .filter((course) => course.certification_enabled)
+                  .map((course) => (
                   <Card key={course.id}>
                     <CardHeader>
                       <CardTitle>{course.title}</CardTitle>
@@ -384,6 +394,7 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+
           </TabsContent>
 
           <TabsContent value="certificates">

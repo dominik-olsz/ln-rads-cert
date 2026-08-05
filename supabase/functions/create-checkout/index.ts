@@ -45,26 +45,42 @@ serve(async (req) => {
     const stripeInit = () => new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
 
     if (purchaseType === "certification_retake") {
+      if (!courseId) return json({ error: "courseId is required" }, 400);
+
       const admin = createClient(
         Deno.env.get("SUPABASE_URL") ?? "",
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
       );
 
+      const { data: retakeCourse } = await admin
+        .from("courses")
+        .select("id, title, certification_enabled, attempts_included, attempts_total, retake_price")
+        .eq("id", courseId)
+        .maybeSingle();
+
+      if (!retakeCourse) return json({ error: "Course not found" }, 404);
+      if (!retakeCourse.certification_enabled) {
+        return json({ error: "This course does not have a certification test" }, 400);
+      }
+
       const { data: attempts } = await admin
         .from("test_attempts")
         .select("id, passed")
         .eq("user_id", user.id)
+        .eq("course_id", courseId)
         .eq("is_certification_test", true);
 
       const attemptsUsed = attempts?.length ?? 0;
+      const attemptsIncluded = retakeCourse.attempts_included ?? 1;
+      const attemptsTotal = retakeCourse.attempts_total ?? 3;
 
       if ((attempts ?? []).some((a: any) => a.passed)) {
         return json({ error: "You have already passed the certification test" }, 400);
       }
-      if (attemptsUsed === 0) {
-        return json({ error: "Your first attempt is included — no payment needed" }, 400);
+      if (attemptsUsed < attemptsIncluded) {
+        return json({ error: "You still have an attempt included with your course" }, 400);
       }
-      if (attemptsUsed >= 3) {
+      if (attemptsUsed >= attemptsTotal) {
         return json({ error: "No attempts left. Please contact cert@lnrads.com." }, 400);
       }
 
@@ -72,6 +88,7 @@ serve(async (req) => {
         .from("certification_retake_purchases")
         .select("id")
         .eq("user_id", user.id)
+        .eq("course_id", courseId)
         .is("consumed_at", null)
         .maybeSingle();
 
@@ -79,13 +96,7 @@ serve(async (req) => {
         return json({ error: "You already have a paid retake available" }, 400);
       }
 
-      const { data: setting } = await admin
-        .from("app_settings")
-        .select("value")
-        .eq("key", "certification_retake_price")
-        .maybeSingle();
-
-      const amount = Number(setting?.value ?? 6900);
+      const amount = Number(retakeCourse.retake_price ?? 0) * 100;
       if (!Number.isFinite(amount) || amount <= 0) {
         return json({ error: "Retake price is not configured" }, 500);
       }
@@ -102,19 +113,24 @@ serve(async (req) => {
               currency: "eur",
               unit_amount: Math.round(amount),
               product_data: {
-                name: "Certification exam retake",
+                name: `Certification exam retake — ${retakeCourse.title}`,
                 tax_code: "txcd_10103001",
               },
             },
           },
         ],
-        metadata: { user_id: user.id, purchase_type: "certification_retake" },
-        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=certification_retake`,
-        cancel_url: `${origin}/certification-test?payment=cancelled`,
+        metadata: {
+          user_id: user.id,
+          course_id: retakeCourse.id,
+          purchase_type: "certification_retake",
+        },
+        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=certification_retake&course_id=${retakeCourse.id}`,
+        cancel_url: `${origin}/certification-test?courseId=${retakeCourse.id}&payment=cancelled`,
       });
 
       return json({ url: session.url });
     }
+
 
     if (!courseId) return json({ error: "courseId is required" }, 400);
 

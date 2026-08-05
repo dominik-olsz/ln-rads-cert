@@ -32,40 +32,9 @@ interface TestAttempt {
 const AdminTestAttempts = () => {
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [retakePrice, setRetakePrice] = useState('');
-  const [savingPrice, setSavingPrice] = useState(false);
   const { toast } = useToast();
 
-  const fetchRetakePrice = async () => {
-    const { data } = await supabase
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'certification_retake_price')
-      .maybeSingle();
 
-    setRetakePrice(((Number(data?.value ?? 6900)) / 100).toFixed(2));
-  };
-
-  const saveRetakePrice = async () => {
-    const euros = Number(retakePrice.replace(',', '.'));
-    if (!Number.isFinite(euros) || euros <= 0) {
-      toast({ title: 'Invalid price', description: 'Enter an amount greater than 0.', variant: 'destructive' });
-      return;
-    }
-
-    setSavingPrice(true);
-    const { error } = await supabase
-      .from('app_settings')
-      .update({ value: Math.round(euros * 100) as any })
-      .eq('key', 'certification_retake_price');
-    setSavingPrice(false);
-
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      return;
-    }
-    toast({ title: 'Saved', description: `Retake price set to €${euros.toFixed(2)}` });
-  };
 
 
   const fetchAttempts = async () => {
@@ -127,7 +96,7 @@ const AdminTestAttempts = () => {
 
   useEffect(() => {
     fetchAttempts();
-    fetchRetakePrice();
+    
   }, []);
 
 
@@ -240,29 +209,16 @@ const AdminTestAttempts = () => {
             <CardTitle>Retake Pricing</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Each student gets 3 attempts. The first is included with the course; attempts 2
-              and 3 require this payment. After 3 failed attempts students must contact
-              cert@lnrads.com and an admin can reset their attempts below.
+            <p className="text-sm text-muted-foreground">
+              Attempt limits and retake prices are set per course in the course editor
+              (Admin → Courses → edit a course → Basic Info → Certification Attempts). When a
+              student runs out of attempts they must contact cert@lnrads.com and you can reset
+              their attempts below.
             </p>
-            <div className="flex items-end gap-3 max-w-sm">
-              <div className="flex-1">
-                <Label htmlFor="retake-price">Retake price (EUR)</Label>
-                <Input
-                  id="retake-price"
-                  type="number"
-                  min="1"
-                  step="0.01"
-                  value={retakePrice}
-                  onChange={(e) => setRetakePrice(e.target.value)}
-                />
-              </div>
-              <Button onClick={saveRetakePrice} disabled={savingPrice}>
-                {savingPrice ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
           </CardContent>
         </Card>
+
+
 
 
         <Card>

@@ -29,6 +29,7 @@ const PaymentSuccess = () => {
         ? await supabase
             .from("certification_retake_purchases")
             .select("id")
+            .eq("user_id", user.id)
             .is("consumed_at", null)
             .limit(1)
             .maybeSingle()
@@ -38,6 +39,7 @@ const PaymentSuccess = () => {
             .eq("user_id", user.id)
             .eq("course_id", courseId as string)
             .maybeSingle();
+
 
       if (cancelled) return;
 
@@ -87,8 +89,13 @@ const PaymentSuccess = () => {
                 <div className="flex flex-col gap-2 pt-2">
                   <Button
                     onClick={() =>
-                      navigate(isRetake ? "/certification-test" : `/training/${courseId}`)
+                      navigate(
+                        isRetake
+                          ? `/certification-test?courseId=${courseId ?? ""}`
+                          : `/training/${courseId}`
+                      )
                     }
+
                   >
                     {isRetake ? "Start certification test" : "Start training"}
                   </Button>
