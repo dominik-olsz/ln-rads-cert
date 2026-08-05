@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, CheckCircle, PlayCircle, BookOpen, FileQuestion } from "lucide-react";
+import { Award, CheckCircle, PlayCircle, BookOpen, FileQuestion, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -198,6 +198,10 @@ const CourseDetail = () => {
       setPurchasing(false);
     }
   };
+
+  const hasFreePreview = courseItems.some((item) => item.isFree);
+
+
 
 
   const handleStartTraining = () => {
