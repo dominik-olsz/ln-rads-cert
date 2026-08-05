@@ -107,7 +107,6 @@ const CourseBuilder = () => {
   // Unsaved changes tracking
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [baselineArmed, setBaselineArmed] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   const currentSnapshot = useMemo(() => JSON.stringify({
     title, description, price, heroImage, courseIncludes, whatYouLearn,
@@ -120,6 +119,11 @@ const CourseBuilder = () => {
     certQuestions, lessons, questionGroups]);
 
   const isDirty = savedSnapshot !== null && savedSnapshot !== currentSnapshot;
+
+  // Block every in-app navigation away from this page while there are unsaved changes
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
 
   useEffect(() => {
     if (baselineArmed) {
@@ -147,27 +151,24 @@ const CourseBuilder = () => {
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
-  const requestNavigation = (path: string) => {
-    if (isDirty) {
-      setPendingNavigation(path);
-    } else {
-      navigate(path);
-    }
+  const cancelLeave = () => {
+    if (blocker.state === "blocked") blocker.reset();
   };
 
   const discardAndLeave = () => {
-    const path = pendingNavigation;
-    setPendingNavigation(null);
     setSavedSnapshot(currentSnapshot);
-    if (path) navigate(path);
+    if (blocker.state === "blocked") blocker.proceed();
   };
 
   const saveAndLeave = async () => {
-    const path = pendingNavigation;
     const ok = await saveCourse();
-    setPendingNavigation(null);
-    if (ok && path) navigate(path);
+    if (ok && blocker.state === "blocked") {
+      blocker.proceed();
+    } else if (!ok && blocker.state === "blocked") {
+      blocker.reset();
+    }
   };
+
 
 
   const fetchCourse = async () => {
