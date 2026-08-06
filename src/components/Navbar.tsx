@@ -39,7 +39,7 @@ const Navbar = () => {
 
   return (
     <header className="sticky top-4 z-50 px-4 md:px-6">
-      <nav className="max-w-6xl mx-auto h-20 px-6 md:px-8 flex items-center justify-between">
+      <nav className="max-w-6xl mx-auto h-20 px-6 md:px-8 bg-background/80 backdrop-blur-md border border-border/60 rounded-3xl shadow-nav flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 group cursor-pointer">
           <img src={lnradsLogo} alt="LN-RADS logo" className="h-14 w-auto p-1.5 bg-white rounded-lg border border-border/60 shadow-sm object-contain" />
           <div className="flex flex-col -space-y-1">
