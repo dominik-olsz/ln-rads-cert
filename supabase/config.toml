@@ -31,3 +31,6 @@ verify_jwt = false
 [functions.invoice-actions]
 verify_jwt = false
 
+
+[functions.validate-discount]
+verify_jwt = false

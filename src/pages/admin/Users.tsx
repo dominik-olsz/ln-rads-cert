@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, ShieldOff, Trash2 } from 'lucide-react';
+import { Shield, ShieldOff, Trash2, Percent } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,7 @@ interface UserWithRole {
   full_name: string;
   created_at: string;
   is_admin: boolean;
+  discount_percent: number;
 }
 
 const AdminUsers = () => {
@@ -31,6 +33,32 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [discountDrafts, setDiscountDrafts] = useState<Record<string, string>>({});
+  const [savingDiscount, setSavingDiscount] = useState<string | null>(null);
+
+  const saveDiscount = async (userId: string) => {
+    const raw = Number(discountDrafts[userId]);
+    const percent = Number.isFinite(raw) ? Math.min(100, Math.max(0, Math.round(raw))) : 0;
+    setSavingDiscount(userId);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ discount_percent: percent })
+        .eq('id', userId);
+      if (error) throw error;
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, discount_percent: percent } : u)));
+      setDiscountDrafts((prev) => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+      toast({ title: 'Saved', description: `Discount set to ${percent}%` });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to save discount', variant: 'destructive' });
+    } finally {
+      setSavingDiscount(null);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -53,6 +81,7 @@ const AdminUsers = () => {
           return {
             ...profile,
             is_admin: !!roleData,
+            discount_percent: (profile as any).discount_percent ?? 0,
           };
         })
       );
@@ -166,6 +195,7 @@ const AdminUsers = () => {
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Discount</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -181,6 +211,33 @@ const AdminUsers = () => {
                       ) : (
                         <Badge variant="secondary">User</Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="relative w-24">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={discountDrafts[user.id] ?? String(user.discount_percent ?? 0)}
+                            onChange={(e) =>
+                              setDiscountDrafts((prev) => ({ ...prev, [user.id]: e.target.value }))
+                            }
+                            className="pr-7"
+                          />
+                          <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        </div>
+                        {discountDrafts[user.id] !== undefined &&
+                          Number(discountDrafts[user.id]) !== (user.discount_percent ?? 0) && (
+                            <Button
+                              size="sm"
+                              onClick={() => saveDiscount(user.id)}
+                              disabled={savingDiscount === user.id}
+                            >
+                              {savingDiscount === user.id ? 'Saving…' : 'Save'}
+                            </Button>
+                          )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {new Date(user.created_at).toLocaleDateString()}

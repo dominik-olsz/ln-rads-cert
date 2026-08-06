@@ -3,6 +3,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Award, Users } from "lucide-react";
+import DiscountCountdown from "@/components/DiscountCountdown";
+import { formatEuro, getEffectivePrice } from "@/lib/pricing";
 
 interface CourseCardProps {
   id: string;
@@ -13,6 +15,8 @@ interface CourseCardProps {
   useCases?: number;
   imageUrl?: string;
   certificationEnabled?: boolean;
+  discountPrice?: number | null;
+  discountValidUntil?: string | null;
 }
 
 const CourseCard = ({
@@ -24,7 +28,15 @@ const CourseCard = ({
   useCases = 0,
   imageUrl = "/placeholder.svg",
   certificationEnabled = false,
+  discountPrice = null,
+  discountValidUntil = null,
 }: CourseCardProps) => {
+  const priceInfo = getEffectivePrice({
+    price,
+    discount_price: discountPrice,
+    discount_valid_until: discountValidUntil,
+  });
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
       <div className="aspect-video w-full overflow-hidden bg-muted">
@@ -36,8 +48,22 @@ const CourseCard = ({
       </div>
       
       <CardHeader>
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <span className="text-2xl font-bold text-primary">€{price}</span>
+        <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
+          <div className="flex items-end gap-2">
+            <span className="text-2xl font-bold text-primary">{formatEuro(priceInfo.effective)}</span>
+            {priceInfo.saleActive && (
+              <span className="text-sm text-muted-foreground line-through">{formatEuro(priceInfo.base)}</span>
+            )}
+          </div>
+          {priceInfo.saleActive && (
+            <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/30">
+              {priceInfo.validUntil ? (
+                <>Ends in <DiscountCountdown until={priceInfo.validUntil} className="ml-1 font-semibold" /></>
+              ) : (
+                "Limited offer"
+              )}
+            </Badge>
+          )}
         </div>
         <CardTitle className="line-clamp-2">{title}</CardTitle>
       </CardHeader>

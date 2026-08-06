@@ -70,6 +70,23 @@ serve(async (req) => {
           ? session.payment_intent
           : session.payment_intent?.id ?? null;
       const buyer = buyerFromSession(session);
+      const discountCodeId = session.metadata?.discount_code_id || null;
+      const discountSummary = session.metadata?.discount_summary || null;
+
+      // Lock the single-use discount code now that payment succeeded.
+      const redeemDiscountCode = async () => {
+        if (!discountCodeId) return;
+        await admin
+          .from("discount_codes")
+          .update({
+            redeemed_by: userId ?? null,
+            redeemed_at: new Date().toISOString(),
+            redeemed_email: buyer.email ?? null,
+            is_active: false,
+          })
+          .eq("id", discountCodeId)
+          .is("redeemed_at", null);
+      };
       const grossCents = session.amount_total ?? 0;
       const currency = session.currency ?? "eur";
 
@@ -89,6 +106,8 @@ serve(async (req) => {
             stripe_payment_intent_id: paymentIntentId,
             buyer_email: buyer.email,
             buyer_name: buyer.name,
+            discount_code_id: discountCodeId,
+            discount_summary: discountSummary,
           })
           .select()
           .maybeSingle();
@@ -97,6 +116,8 @@ serve(async (req) => {
           console.error("Failed to record retake purchase:", retakeError);
           return new Response("DB error", { status: 500, headers: corsHeaders });
         }
+
+        await redeemDiscountCode();
 
         if (retakeRow) {
           const { data: course } = await admin
@@ -114,9 +135,12 @@ serve(async (req) => {
             buyer,
             currency,
             grossCents,
+            discountCodeId,
+            discountSummary,
             lineItems: [
               {
-                description: `Certification exam retake — ${course?.title ?? "Certification"}`,
+                description: `Certification exam retake — ${course?.title ?? "Certification"}`
+                  + (discountSummary ? ` (${discountSummary})` : ""),
                 quantity: 1,
                 gross: grossCents,
               },
@@ -143,6 +167,8 @@ serve(async (req) => {
           stripe_payment_intent_id: paymentIntentId,
           buyer_email: buyer.email,
           buyer_name: buyer.name,
+          discount_code_id: discountCodeId,
+          discount_summary: discountSummary,
         })
         .select()
         .maybeSingle();
@@ -152,6 +178,8 @@ serve(async (req) => {
         console.error("Failed to record purchase:", error);
         return new Response("DB error", { status: 500, headers: corsHeaders });
       }
+
+      await redeemDiscountCode();
 
       if (purchaseRow) {
         const { data: course } = await admin
@@ -169,8 +197,15 @@ serve(async (req) => {
           buyer,
           currency,
           grossCents,
+          discountCodeId,
+          discountSummary,
           lineItems: [
-            { description: course?.title ?? "Online course", quantity: 1, gross: grossCents },
+            {
+              description: (course?.title ?? "Online course")
+                + (discountSummary ? ` (${discountSummary})` : ""),
+              quantity: 1,
+              gross: grossCents,
+            },
           ],
         }).catch((e) => console.error("Course invoice failed:", e));
       }

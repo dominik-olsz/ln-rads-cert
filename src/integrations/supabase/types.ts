@@ -85,6 +85,8 @@ export type Database = {
           consumed_at: string | null
           course_id: string | null
           created_at: string
+          discount_code_id: string | null
+          discount_summary: string | null
           id: string
           refunded_amount: number
           refunded_at: string | null
@@ -100,6 +102,8 @@ export type Database = {
           consumed_at?: string | null
           course_id?: string | null
           created_at?: string
+          discount_code_id?: string | null
+          discount_summary?: string | null
           id?: string
           refunded_amount?: number
           refunded_at?: string | null
@@ -115,6 +119,8 @@ export type Database = {
           consumed_at?: string | null
           course_id?: string | null
           created_at?: string
+          discount_code_id?: string | null
+          discount_summary?: string | null
           id?: string
           refunded_amount?: number
           refunded_at?: string | null
@@ -129,6 +135,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certification_retake_purchases_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
             referencedColumns: ["id"]
           },
         ]
@@ -314,6 +327,8 @@ export type Database = {
           buyer_email: string | null
           buyer_name: string | null
           course_id: string
+          discount_code_id: string | null
+          discount_summary: string | null
           id: string
           payment_status: string
           purchased_at: string
@@ -328,6 +343,8 @@ export type Database = {
           buyer_email?: string | null
           buyer_name?: string | null
           course_id: string
+          discount_code_id?: string | null
+          discount_summary?: string | null
           id?: string
           payment_status?: string
           purchased_at?: string
@@ -342,6 +359,8 @@ export type Database = {
           buyer_email?: string | null
           buyer_name?: string | null
           course_id?: string
+          discount_code_id?: string | null
+          discount_summary?: string | null
           id?: string
           payment_status?: string
           purchased_at?: string
@@ -359,6 +378,13 @@ export type Database = {
             referencedRelation: "courses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "course_purchases_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       courses: {
@@ -371,6 +397,8 @@ export type Database = {
           course_includes: string | null
           created_at: string | null
           description: string
+          discount_price: number | null
+          discount_valid_until: string | null
           hero_image: string | null
           id: string
           price: number | null
@@ -390,6 +418,8 @@ export type Database = {
           course_includes?: string | null
           created_at?: string | null
           description: string
+          discount_price?: number | null
+          discount_valid_until?: string | null
           hero_image?: string | null
           id?: string
           price?: number | null
@@ -409,6 +439,8 @@ export type Database = {
           course_includes?: string | null
           created_at?: string | null
           description?: string
+          discount_price?: number | null
+          discount_valid_until?: string | null
           hero_image?: string | null
           id?: string
           price?: number | null
@@ -418,6 +450,48 @@ export type Database = {
           total_lessons?: number
           updated_at?: string | null
           what_you_learn?: string | null
+        }
+        Relationships: []
+      }
+      discount_codes: {
+        Row: {
+          batch_label: string | null
+          code: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          percent: number
+          redeemed_at: string | null
+          redeemed_by: string | null
+          redeemed_email: string | null
+          updated_at: string
+        }
+        Insert: {
+          batch_label?: string | null
+          code: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          percent: number
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          redeemed_email?: string | null
+          updated_at?: string
+        }
+        Update: {
+          batch_label?: string | null
+          code?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          percent?: number
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          redeemed_email?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -463,6 +537,8 @@ export type Database = {
           course_purchase_id: string | null
           created_at: string
           currency: string
+          discount_code_id: string | null
+          discount_summary: string | null
           doc_type: string
           gross_amount: number
           id: string
@@ -499,6 +575,8 @@ export type Database = {
           course_purchase_id?: string | null
           created_at?: string
           currency?: string
+          discount_code_id?: string | null
+          discount_summary?: string | null
           doc_type?: string
           gross_amount?: number
           id?: string
@@ -535,6 +613,8 @@ export type Database = {
           course_purchase_id?: string | null
           created_at?: string
           currency?: string
+          discount_code_id?: string | null
+          discount_summary?: string | null
           doc_type?: string
           gross_amount?: number
           id?: string
@@ -570,6 +650,13 @@ export type Database = {
             columns: ["course_purchase_id"]
             isOneToOne: false
             referencedRelation: "course_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
             referencedColumns: ["id"]
           },
           {
@@ -639,6 +726,7 @@ export type Database = {
         Row: {
           certificate_name: string | null
           created_at: string | null
+          discount_percent: number
           email: string | null
           full_name: string | null
           id: string
@@ -649,6 +737,7 @@ export type Database = {
         Insert: {
           certificate_name?: string | null
           created_at?: string | null
+          discount_percent?: number
           email?: string | null
           full_name?: string | null
           id: string
@@ -659,6 +748,7 @@ export type Database = {
         Update: {
           certificate_name?: string | null
           created_at?: string | null
+          discount_percent?: number
           email?: string | null
           full_name?: string | null
           id?: string

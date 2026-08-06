@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -59,6 +60,9 @@ const CertificationTest = () => {
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [retakePrice, setRetakePrice] = useState<number>(6900);
   const [payLoading, setPayLoading] = useState(false);
+  const [retakeCode, setRetakeCode] = useState('');
+  const [retakeQuote, setRetakeQuote] = useState<{ finalCents: number; userPercent: number; codePercent: number } | null>(null);
+  const [checkingCode, setCheckingCode] = useState(false);
 
 
   useEffect(() => {
@@ -467,11 +471,20 @@ const CertificationTest = () => {
     setPayLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { type: 'certification_retake', ...(courseId ? { courseId } : {}) },
+        body: {
+          type: 'certification_retake',
+          ...(courseId ? { courseId } : {}),
+          ...(retakeCode.trim() ? { code: retakeCode.trim() } : {}),
+        },
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      if (data?.free) {
+        toast({ title: 'Retake unlocked', description: 'Your discount covered the full price.' });
+        window.location.reload();
+        return;
+      }
       if (!data?.url) throw new Error('Could not start checkout');
 
       window.location.href = data.url;
@@ -485,6 +498,27 @@ const CertificationTest = () => {
     }
   };
 
+
+  const handleApplyRetakeCode = async () => {
+    if (!retakeCode.trim() || !courseId) return;
+    setCheckingCode(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-discount', {
+        body: { courseId, type: 'certification_retake', code: retakeCode.trim() },
+      });
+      if (error) throw error;
+      if (!data?.valid || data?.error) throw new Error(data?.error || 'This code cannot be used');
+      setRetakeQuote(data.pricing);
+      toast({ title: 'Discount applied', description: `New price: €${(data.pricing.finalCents / 100).toFixed(2)}` });
+    } catch (e: any) {
+      setRetakeQuote(null);
+      toast({ title: 'Invalid code', description: e.message, variant: 'destructive' });
+    } finally {
+      setCheckingCode(false);
+    }
+  };
+
+  const retakeAmountCents = retakeQuote ? retakeQuote.finalCents : retakePrice;
 
   const handleStartTest = async () => {
     // Create progress record
@@ -656,10 +690,36 @@ const CertificationTest = () => {
                       </span>
                       .
                     </p>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Discount code (optional)"
+                        value={retakeCode}
+                        onChange={(e) => setRetakeCode(e.target.value.toUpperCase())}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={handleApplyRetakeCode}
+                        disabled={checkingCode || !retakeCode.trim()}
+                      >
+                        {checkingCode ? 'Checking…' : 'Apply'}
+                      </Button>
+                    </div>
+                    {retakeQuote && (
+                      <p className="text-sm text-muted-foreground">
+                        {retakeQuote.userPercent > 0 && `Account discount −${retakeQuote.userPercent}%. `}
+                        {retakeQuote.codePercent > 0 && `Code −${retakeQuote.codePercent}%. `}
+                        New price:{' '}
+                        <span className="font-semibold text-foreground">
+                          €{(retakeQuote.finalCents / 100).toFixed(2)}
+                        </span>
+                      </p>
+                    )}
                     <Button onClick={handlePayForRetake} disabled={payLoading} className="w-full">
                       {payLoading
                         ? 'Redirecting to checkout…'
-                        : `Pay €${(retakePrice / 100).toFixed(2)} & retake`}
+                        : retakeAmountCents === 0
+                          ? 'Unlock retake for free'
+                          : `Pay €${(retakeAmountCents / 100).toFixed(2)} & retake`}
                     </Button>
                   </>
                 )}

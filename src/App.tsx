@@ -18,6 +18,7 @@ import FAQ from "./pages/FAQ";
 import AdminRoute from "./components/AdminRoute";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminUsers from "./pages/admin/Users";
+import AdminDiscountCodes from "./pages/admin/DiscountCodes";
 import AdminCourses from "./pages/admin/Courses";
 import AdminTestAttempts from "./pages/admin/TestAttempts";
 import CourseBuilder from "./pages/admin/CourseBuilder";
@@ -58,6 +59,7 @@ const router = createBrowserRouter([
 
       { path: "/admin/dashboard", element: <AdminRoute><AdminDashboard /></AdminRoute> },
       { path: "/admin/users", element: <AdminRoute><AdminUsers /></AdminRoute> },
+      { path: "/admin/discount-codes", element: <AdminRoute><AdminDiscountCodes /></AdminRoute> },
       { path: "/admin/courses", element: <AdminRoute><AdminCourses /></AdminRoute> },
       { path: "/admin/courses/:courseId", element: <AdminRoute><CourseBuilder /></AdminRoute> },
       { path: "/admin/test-attempts", element: <AdminRoute><AdminTestAttempts /></AdminRoute> },
