@@ -180,7 +180,9 @@ export function BillingFields({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="address_line1">Address</Label>
+          <Label htmlFor="address_line1">
+            Address{value.buyer_type === "private" ? " (optional)" : ""}
+          </Label>
           <Input
             id="address_line1"
             value={value.address_line1}
@@ -199,7 +201,9 @@ export function BillingFields({
           />
         </div>
         <div>
-          <Label htmlFor="postal_code">Postal code</Label>
+          <Label htmlFor="postal_code">
+            Postal code{value.buyer_type === "private" ? " (optional)" : ""}
+          </Label>
           <Input
             id="postal_code"
             value={value.postal_code}
@@ -209,7 +213,9 @@ export function BillingFields({
           {err("postal_code")}
         </div>
         <div>
-          <Label htmlFor="city">City</Label>
+          <Label htmlFor="city">
+            City{value.buyer_type === "private" ? " (optional)" : ""}
+          </Label>
           <Input
             id="city"
             value={value.city}
@@ -222,6 +228,7 @@ export function BillingFields({
     </div>
   );
 }
+
 
 export function validateBilling(value: BillingProfile) {
   const parsed = billingSchema.safeParse(value);
