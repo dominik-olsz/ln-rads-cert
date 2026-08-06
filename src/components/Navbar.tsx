@@ -71,11 +71,6 @@ const Navbar = () => {
           <Link to="/courses" className="text-sm font-semibold text-accent hover:text-accent/80 transition-colors px-2 py-2">
             Courses
           </Link>
-          {isAdmin && (
-            <Link to="/admin/dashboard" className={navLinkClass}>
-              Admin
-            </Link>
-          )}
         </div>
         
         <div className="flex items-center gap-4">
