@@ -249,6 +249,7 @@ export default function Account() {
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [billing, setBilling] = useState<BillingProfile>(emptyBilling);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [savingBilling, setSavingBilling] = useState(false);
