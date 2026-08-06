@@ -135,7 +135,9 @@ export function BillingFields({
           {err("full_name")}
         </div>
         <div>
-          <Label htmlFor="country">Country</Label>
+          <Label htmlFor="country">
+            Country{value.buyer_type === "private" ? " (optional)" : ""}
+          </Label>
           <Select value={value.country} onValueChange={(v) => onChange({ country: v })}>
             <SelectTrigger id="country">
               <SelectValue placeholder="Choose country" />
