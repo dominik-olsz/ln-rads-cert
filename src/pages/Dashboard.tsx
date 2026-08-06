@@ -278,7 +278,12 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8">My Dashboard</h1>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+          <h1 className="text-4xl font-bold">My Dashboard</h1>
+          <Button variant="outline" className="rounded-xl border-2" onClick={() => navigate("/account")}>
+            <Settings className="h-4 w-4 mr-2" /> Account settings
+          </Button>
+        </div>
 
         <Tabs defaultValue="courses" className="w-full">
           <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto mb-8">
