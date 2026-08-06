@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { COUNTRIES } from "@/lib/countries";
-import { Loader2, Lock, Mail, ReceiptText } from "lucide-react";
+import { Building2, Loader2, Lock, Mail, ReceiptText } from "lucide-react";
 
 export interface BillingProfile {
   buyer_type: "private" | "company";
