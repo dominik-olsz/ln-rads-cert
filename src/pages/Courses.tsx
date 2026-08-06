@@ -73,7 +73,7 @@ const Courses = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <section className="py-12 border-b bg-muted/30">
+      <section className="-mt-24 pt-36 pb-12 border-b bg-muted/30">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl font-bold mb-4">All Courses</h1>
           <p className="text-muted-foreground mb-8">
