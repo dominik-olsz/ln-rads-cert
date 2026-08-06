@@ -26,6 +26,7 @@ import AdminCertificates from "./pages/admin/Certificates";
 import AdminSales from "./pages/admin/Sales";
 
 import Dashboard from "./pages/Dashboard";
+import Account from "./pages/Account";
 import ResetPassword from "./pages/ResetPassword";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
       { path: "/auth", element: <Auth /> },
       { path: "/reset-password", element: <ResetPassword /> },
       { path: "/dashboard", element: <Dashboard /> },
+      { path: "/account", element: <Account /> },
       { path: "/courses", element: <Courses /> },
       { path: "/course/:id", element: <CourseDetail /> },
       { path: "/payment-success", element: <PaymentSuccess /> },
