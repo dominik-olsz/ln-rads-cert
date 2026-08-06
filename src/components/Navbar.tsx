@@ -44,7 +44,7 @@ const Navbar = () => {
           <img src={lnradsLogo} alt="LN-RADS" className="h-10 w-auto rounded-xl" />
           <div className="flex flex-col -space-y-1">
             <span className="text-foreground font-bold text-lg tracking-tight">LN-RADS</span>
-            <span className="text-primary font-semibold text-[10px] uppercase tracking-[0.2em]">Certification</span>
+            <span className="text-primary font-semibold text-[10px] uppercase tracking-[0.2em] hidden md:block">Certification</span>
           </div>
         </Link>
         
