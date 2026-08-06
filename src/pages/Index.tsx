@@ -255,8 +255,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-      
-      <Footer />
     </div>;
 };
 export default Index;
