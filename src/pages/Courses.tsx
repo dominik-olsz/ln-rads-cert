@@ -12,6 +12,8 @@ interface Course {
   title: string;
   description: string;
   price: number;
+  discount_price?: number | null;
+  discount_valid_until?: string | null;
   hero_image?: string;
   total_lessons: number;
   course_includes?: string;
@@ -111,6 +113,8 @@ const Courses = () => {
                   useCases={course.test_questions_count || 0}
                   imageUrl={course.hero_image || "/placeholder.svg"}
                   certificationEnabled={course.certification_enabled || false}
+                  discountPrice={course.discount_price ?? null}
+                  discountValidUntil={course.discount_valid_until ?? null}
                 />
               ))}
             </div>

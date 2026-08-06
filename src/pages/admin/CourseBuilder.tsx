@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import { formatEuro } from "@/lib/pricing";
 import { Badge } from "@/components/ui/badge";
 
 interface Lesson {
@@ -80,6 +81,8 @@ const CourseBuilder = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState(0);
+  const [discountPrice, setDiscountPrice] = useState<string>("");
+  const [discountValidUntil, setDiscountValidUntil] = useState<string>("");
   const [heroImage, setHeroImage] = useState<string | null>(null);
   const [courseIncludes, setCourseIncludes] = useState("");
   const [whatYouLearn, setWhatYouLearn] = useState("");
@@ -109,11 +112,11 @@ const CourseBuilder = () => {
   const [baselineArmed, setBaselineArmed] = useState(false);
 
   const currentSnapshot = useMemo(() => JSON.stringify({
-    title, description, price, heroImage, courseIncludes, whatYouLearn,
+    title, description, price, discountPrice, discountValidUntil, heroImage, courseIncludes, whatYouLearn,
     certificationEnabled, certificationMode, certificationQuestionCount,
     attemptsIncluded, attemptsTotal, courseRetakePrice,
     certQuestions, lessons, questionGroups,
-  }), [title, description, price, heroImage, courseIncludes, whatYouLearn,
+  }), [title, description, price, discountPrice, discountValidUntil, heroImage, courseIncludes, whatYouLearn,
     certificationEnabled, certificationMode, certificationQuestionCount,
     attemptsIncluded, attemptsTotal, courseRetakePrice,
     certQuestions, lessons, questionGroups]);
@@ -186,6 +189,16 @@ const CourseBuilder = () => {
       setTitle(courseData.title);
       setDescription(courseData.description);
       setPrice(courseData.price || 0);
+      setDiscountPrice(
+        courseData.discount_price === null || courseData.discount_price === undefined
+          ? ""
+          : String(courseData.discount_price)
+      );
+      setDiscountValidUntil(
+        courseData.discount_valid_until
+          ? new Date(courseData.discount_valid_until).toISOString().slice(0, 10)
+          : ""
+      );
       setHeroImage(courseData.hero_image);
       setCourseIncludes(courseData.course_includes || "");
       setWhatYouLearn(courseData.what_you_learn || "");
@@ -559,6 +572,11 @@ const CourseBuilder = () => {
         title,
         description,
         price,
+        discount_price: discountPrice.trim() === "" ? null : Number(discountPrice),
+        discount_valid_until:
+          discountPrice.trim() === "" || discountValidUntil === ""
+            ? null
+            : new Date(`${discountValidUntil}T23:59:59`).toISOString(),
         hero_image: heroImage,
         total_lessons: lessons.length,
         course_includes: courseIncludes,
@@ -843,16 +861,64 @@ const CourseBuilder = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="price">Price (€)</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    value={price}
-                    onChange={(e) => setPrice(Number(e.target.value))}
-                    placeholder="299"
-                  />
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Price (€)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      min={0}
+                      value={price}
+                      onChange={(e) => setPrice(Number(e.target.value))}
+                      placeholder="299"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="discountPrice">Discounted price (€)</Label>
+                    <Input
+                      id="discountPrice"
+                      type="number"
+                      min={0}
+                      value={discountPrice}
+                      onChange={(e) => setDiscountPrice(e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="discountValidUntil">Discount valid until</Label>
+                    <Input
+                      id="discountValidUntil"
+                      type="date"
+                      value={discountValidUntil}
+                      onChange={(e) => setDiscountValidUntil(e.target.value)}
+                      disabled={discountPrice.trim() === ""}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty for a discount without an end date.
+                    </p>
+                  </div>
                 </div>
+
+                {discountPrice.trim() !== "" && (
+                  Number(discountPrice) >= price ? (
+                    <p className="text-sm text-destructive">
+                      The discounted price must be lower than the regular price ({formatEuro(price)}).
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Students will see{" "}
+                      <span className="line-through">{formatEuro(price)}</span>{" "}
+                      <span className="font-semibold text-foreground">
+                        {formatEuro(Number(discountPrice))}
+                      </span>
+                      {discountValidUntil
+                        ? ` with a countdown ending ${discountValidUntil}.`
+                        : " with no end date."}
+                    </p>
+                  )
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="courseIncludes">This course includes</Label>

@@ -8,12 +8,16 @@ import { Award, CheckCircle, PlayCircle, BookOpen, FileQuestion, Lock } from "lu
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import DiscountPricePanel, { PricingQuote } from "@/components/DiscountPricePanel";
+import { getEffectivePrice } from "@/lib/pricing";
 
 interface Course {
   id: string;
   title: string;
   description: string;
   price: number;
+  discount_price: number | null;
+  discount_valid_until: string | null;
   total_lessons: number;
   hero_image: string | null;
   course_includes: string | null;
@@ -53,6 +57,8 @@ const CourseDetail = () => {
   const [hasPurchased, setHasPurchased] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [courseQuestionsCount, setCourseQuestionsCount] = useState(0);
+  const [quote, setQuote] = useState<PricingQuote | null>(null);
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -185,10 +191,18 @@ const CourseDetail = () => {
     setPurchasing(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { courseId: id },
+        body: { courseId: id, code: appliedCode },
       });
 
       if (error) throw error;
+
+      if (data?.free) {
+        toast.success('Your discount covers the full price — you now have access!');
+        setHasPurchased(true);
+        setPurchasing(false);
+        return;
+      }
+
       if (!data?.url) throw new Error(data?.error || 'Could not start checkout');
 
       window.location.href = data.url;
@@ -198,6 +212,49 @@ const CourseDetail = () => {
       setPurchasing(false);
     }
   };
+
+  const fetchQuote = async (code: string | null) => {
+    if (!id) return null;
+    const { data, error } = await supabase.functions.invoke('validate-discount', {
+      body: { courseId: id, type: 'course', code },
+    });
+    if (error) return null;
+    return data as { valid: boolean; error?: string; pricing?: PricingQuote };
+  };
+
+  useEffect(() => {
+    if (!id) return;
+    fetchQuote(appliedCode).then((res) => {
+      if (res?.pricing) setQuote(res.pricing);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, user?.id]);
+
+  const handleApplyCode = async (code: string) => {
+    const res = await fetchQuote(code);
+    if (!res) {
+      toast.error('Could not check this code, please try again');
+      return false;
+    }
+    if (!res.valid || res.error) {
+      toast.error(res.error || 'This discount code cannot be used');
+      return false;
+    }
+    setQuote(res.pricing ?? null);
+    setAppliedCode(code.toUpperCase());
+    toast.success(`Discount code applied — ${res.pricing?.codePercent}% off`);
+    return true;
+  };
+
+  const handleClearCode = async () => {
+    setAppliedCode(null);
+    const res = await fetchQuote(null);
+    if (res?.pricing) setQuote(res.pricing);
+  };
+
+  const priceInfo = course
+    ? getEffectivePrice(course)
+    : { base: 0, effective: 0, saleActive: false, validUntil: null };
 
   const hasFreePreview = courseItems.some((item) => item.isFree);
 
@@ -303,10 +360,23 @@ const CourseDetail = () => {
               <div className="lg:hidden">
                 <Card>
                   <CardContent className="pt-6 space-y-6">
-                    <div>
-                      <div className="text-4xl font-bold text-primary mb-2">€{course.price}</div>
-                      <p className="text-sm text-muted-foreground">One-time payment · Lifetime access</p>
-                    </div>
+                    {!hasPurchased ? (
+                      <DiscountPricePanel
+                        basePrice={priceInfo.base}
+                        saleActive={priceInfo.saleActive}
+                        salePrice={priceInfo.effective}
+                        saleValidUntil={priceInfo.validUntil}
+                        quote={quote}
+                        appliedCode={appliedCode}
+                        onApplyCode={handleApplyCode}
+                        onClearCode={handleClearCode}
+                      />
+                    ) : (
+                      <div>
+                        <div className="text-2xl font-bold text-primary mb-2">You own this course</div>
+                        <p className="text-sm text-muted-foreground">Lifetime access</p>
+                      </div>
+                    )}
 
                     <div className="space-y-3">
                       {!hasPurchased ? (
@@ -454,10 +524,23 @@ const CourseDetail = () => {
               {/* Pricing card for desktop - hidden on mobile */}
               <Card className="sticky top-20 hidden lg:block">
                 <CardContent className="pt-6 space-y-6">
-                  <div>
-                    <div className="text-4xl font-bold text-primary mb-2">€{course.price}</div>
-                    <p className="text-sm text-muted-foreground">One-time payment · Lifetime access</p>
-                  </div>
+                  {!hasPurchased ? (
+                    <DiscountPricePanel
+                      basePrice={priceInfo.base}
+                      saleActive={priceInfo.saleActive}
+                      salePrice={priceInfo.effective}
+                      saleValidUntil={priceInfo.validUntil}
+                      quote={quote}
+                      appliedCode={appliedCode}
+                      onApplyCode={handleApplyCode}
+                      onClearCode={handleClearCode}
+                    />
+                  ) : (
+                    <div>
+                      <div className="text-2xl font-bold text-primary mb-2">You own this course</div>
+                      <p className="text-sm text-muted-foreground">Lifetime access</p>
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     {!hasPurchased ? (

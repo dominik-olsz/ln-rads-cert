@@ -317,6 +317,8 @@ export async function createInvoice(
     lineItems: { description: string; quantity: number; gross: number }[];
     grossCents: number;
     currency?: string;
+    discountCodeId?: string | null;
+    discountSummary?: string | null;
     refundReason?: string | null;
     notes?: string | null;
     email?: boolean;
@@ -361,6 +363,8 @@ export async function createInvoice(
     net_amount: amounts.net_amount,
     vat_amount: amounts.vat_amount,
     gross_amount: amounts.gross_amount,
+    discount_code_id: params.discountCodeId ?? null,
+    discount_summary: params.discountSummary ?? null,
     refund_reason: params.refundReason ?? null,
     notes: params.notes ?? null,
     issued_at: new Date().toISOString(),
