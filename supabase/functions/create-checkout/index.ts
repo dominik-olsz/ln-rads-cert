@@ -55,6 +55,73 @@ serve(async (req) => {
 
     const stripeInit = () => new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
 
+    // Saved invoice details (Account settings) are used to pre-fill Stripe Checkout.
+    const { data: profile } = await admin
+      .from("profiles")
+      .select(
+        "buyer_type, full_name, company_name, vat_id, address_line1, address_line2, postal_code, city, country",
+      )
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const hasAddress = Boolean(
+      profile?.address_line1 && profile?.postal_code && profile?.city && profile?.country,
+    );
+
+    const vatTaxType = (country?: string | null) => {
+      const c = (country ?? "").toUpperCase();
+      const eu = ["AT","BE","BG","CY","CZ","DE","DK","EE","ES","FI","FR","GR","HR","HU","IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK"];
+      if (eu.includes(c)) return "eu_vat";
+      if (c === "GB") return "gb_vat";
+      if (c === "CH") return "ch_vat";
+      if (c === "NO") return "no_vat";
+      return null;
+    };
+
+    /** Reuses or creates a Stripe customer pre-filled from the saved profile. */
+    const buildCustomer = async (stripe: Stripe): Promise<string | undefined> => {
+      if (!hasAddress || !user.email) return undefined;
+      try {
+        const existingList = await stripe.customers.list({ email: user.email, limit: 1 });
+        const address = {
+          line1: profile!.address_line1 as string,
+          line2: (profile!.address_line2 as string) || undefined,
+          postal_code: profile!.postal_code as string,
+          city: profile!.city as string,
+          country: (profile!.country as string).toUpperCase(),
+        };
+        const name =
+          profile!.buyer_type === "company"
+            ? (profile!.company_name as string) || (profile!.full_name as string) || user.email
+            : (profile!.full_name as string) || user.email;
+
+        let customerId = existingList.data[0]?.id;
+        if (customerId) {
+          await stripe.customers.update(customerId, { name, address });
+        } else {
+          const created = await stripe.customers.create({ email: user.email, name, address });
+          customerId = created.id;
+        }
+
+        const vatId = ((profile!.vat_id as string) ?? "").trim();
+        const taxType = vatTaxType(profile!.country as string);
+        if (profile!.buyer_type === "company" && vatId && taxType) {
+          const taxIds = await stripe.customers.listTaxIds(customerId, { limit: 10 });
+          if (!taxIds.data.some((t) => t.value?.replace(/\s/g, "") === vatId.replace(/\s/g, ""))) {
+            await stripe.customers.createTaxId(customerId, { type: taxType as any, value: vatId })
+              .catch((e) => console.error("Tax ID prefill failed:", e));
+          }
+        }
+        return customerId;
+      } catch (e) {
+        console.error("Customer prefill failed:", e);
+        return undefined;
+      }
+    };
+
+    const customerUpdate = { address: "auto", name: "auto" } as const;
+    const buyerCompany = (profile?.company_name as string) ?? "";
+
     const redeemCode = async (extra: Record<string, unknown> = {}) => {
       if (!codeRow) return;
       await admin
