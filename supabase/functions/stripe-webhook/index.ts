@@ -90,6 +90,32 @@ serve(async (req) => {
       const grossCents = session.amount_total ?? 0;
       const currency = session.currency ?? "eur";
 
+      // Store the billing details entered in Checkout so future purchases are pre-filled.
+      if (userId && buyer.address_line1) {
+        const { data: existingProfile } = await admin
+          .from("profiles")
+          .select("address_line1")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (!existingProfile?.address_line1) {
+          await admin
+            .from("profiles")
+            .update({
+              buyer_type: buyer.vat_id || buyer.company ? "company" : "private",
+              company_name: buyer.company ?? null,
+              vat_id: buyer.vat_id ?? null,
+              address_line1: buyer.address_line1,
+              address_line2: buyer.address_line2 ?? null,
+              postal_code: buyer.postal_code ?? null,
+              city: buyer.city ?? null,
+              country: buyer.country ?? null,
+            })
+            .eq("id", userId);
+        }
+      }
+
+
       if (purchaseType === "certification_retake") {
         if (!userId) {
           console.error("Missing user_id in retake session", session.id);
