@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { COUNTRIES } from "@/lib/countries";
-import { Loader2, Lock, Mail, ReceiptText } from "lucide-react";
+import { Building2, Loader2, Lock, Mail, ReceiptText } from "lucide-react";
 
 export interface BillingProfile {
   buyer_type: "private" | "company";
@@ -249,6 +249,7 @@ export default function Account() {
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [billing, setBilling] = useState<BillingProfile>(emptyBilling);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [savingBilling, setSavingBilling] = useState(false);
@@ -269,13 +270,18 @@ export default function Account() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select(
-          "buyer_type, full_name, company_name, vat_id, address_line1, address_line2, postal_code, city, country",
-        )
-        .eq("id", user.id)
-        .maybeSingle();
+      const [{ data }, { data: adminData }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select(
+            "buyer_type, full_name, company_name, vat_id, address_line1, address_line2, postal_code, city, country",
+          )
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+      ]);
+
+      setIsAdmin(adminData === true);
 
       if (data) {
         setBilling({
@@ -293,6 +299,7 @@ export default function Account() {
       setLoading(false);
     })();
   }, [user]);
+
 
   const patch = (p: Partial<BillingProfile>) => setBilling((b) => ({ ...b, ...p }));
 
@@ -426,27 +433,60 @@ export default function Account() {
         <header>
           <h1 className="text-3xl font-bold tracking-tight">Account settings</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your sign-in details and the data used on your invoices.
+            {isAdmin
+              ? "Manage your sign-in details. Invoices are always issued with the fixed seller data below."
+              : "Manage your sign-in details and the data used on your invoices."}
           </p>
         </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <ReceiptText className="h-5 w-5 text-primary" /> Invoice details
-            </CardTitle>
-            <CardDescription>
-              Saved here once, then filled in automatically every time you buy.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <BillingFields value={billing} onChange={patch} errors={errors} />
-            <Button onClick={saveBilling} disabled={savingBilling}>
-              {savingBilling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save invoice details
-            </Button>
-          </CardContent>
-        </Card>
+        {isAdmin ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Building2 className="h-5 w-5 text-primary" /> Seller details (fixed)
+              </CardTitle>
+              <CardDescription>
+                Used on every invoice issued by the platform. These values cannot be edited here.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 text-sm">
+              <div className="space-y-1">
+                <p className="font-semibold text-base">Praktyka Lekarska Cezary Chudobiński</p>
+                <p className="text-muted-foreground">
+                  95-050 Konstantynów Łódzki, ul. Bursztynowa 2
+                </p>
+                <p className="text-muted-foreground">VAT (PL) 8291244164 · REGON 731020643</p>
+              </div>
+              <Separator />
+              <div className="space-y-1">
+                <p className="font-medium">Bank Millennium</p>
+                <p className="text-muted-foreground font-mono">
+                  PL66 1160 2202 0000 0005 0655 2822
+                </p>
+                <p className="text-muted-foreground">BIC/SWIFT: BIGBPLPWXXX</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <ReceiptText className="h-5 w-5 text-primary" /> Invoice details
+              </CardTitle>
+              <CardDescription>
+                Saved here once, then filled in automatically every time you buy.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <BillingFields value={billing} onChange={patch} errors={errors} />
+              <Button onClick={saveBilling} disabled={savingBilling}>
+                {savingBilling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save invoice details
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
 
         <Card>
           <CardHeader>
