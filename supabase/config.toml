@@ -1,39 +1,29 @@
 project_id = "kkbgxovmdpdjnblliqka"
 
-[functions.generate-certificate]
-verify_jwt = true
-
-[functions.send-certificate]
-verify_jwt = true
-
-[functions.get-test-questions]
-verify_jwt = false
-
-[functions.get-lesson-content]
-verify_jwt = false
-
-[functions.check-answer]
-verify_jwt = false
-
-
-[functions.delete-user]
-verify_jwt = true
-
-[functions.create-checkout]
-verify_jwt = false
-
-[functions.stripe-webhook]
-verify_jwt = false
-
-[functions.refund-payment]
-verify_jwt = false
-
-[functions.invoice-actions]
-verify_jwt = false
-
-
-[functions.validate-discount]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = true
+[functions]
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.check-answer]
+    verify_jwt = false
+  [functions.create-checkout]
+    verify_jwt = false
+  [functions.delete-user]
+    verify_jwt = true
+  [functions.generate-certificate]
+    verify_jwt = true
+  [functions.get-lesson-content]
+    verify_jwt = false
+  [functions.get-test-questions]
+    verify_jwt = false
+  [functions.invoice-actions]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.refund-payment]
+    verify_jwt = false
+  [functions.send-certificate]
+    verify_jwt = true
+  [functions.stripe-webhook]
+    verify_jwt = false
+  [functions.validate-discount]
+    verify_jwt = false
