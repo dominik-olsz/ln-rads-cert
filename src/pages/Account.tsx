@@ -20,6 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { COUNTRIES } from "@/lib/countries";
 import { Building2, Loader2, Lock, Mail, ReceiptText } from "lucide-react";
+import { appUrl } from "@/lib/appUrl";
 
 export interface BillingProfile {
   buyer_type: "private" | "company";
@@ -400,7 +401,7 @@ export default function Account() {
     setSavingEmail(true);
     const { error } = await supabase.auth.updateUser(
       { email },
-      { emailRedirectTo: `${window.location.origin}/account` },
+      { emailRedirectTo: appUrl("/account") },
     );
     setSavingEmail(false);
     if (error) {

@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { appUrl } from '@/lib/appUrl';
 
 export const LEGAL_VERSION = "2026-08-05";
 
@@ -50,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: appUrl("/"),
         data: {
           full_name: fullName,
           terms_accepted_at: new Date().toISOString(),

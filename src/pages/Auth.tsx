@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import lnradsLogo from "@/assets/lnrads-logo.jpg";
 import { supabase } from "@/integrations/supabase/client";
+import { appUrl } from "@/lib/appUrl";
 import { lovable } from "@/integrations/lovable/index";
 
 const GoogleIcon = () => (
@@ -79,7 +80,7 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: appUrl("/reset-password"),
     });
     setIsLoading(false);
     if (error) {
