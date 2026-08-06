@@ -270,13 +270,18 @@ export default function Account() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select(
-          "buyer_type, full_name, company_name, vat_id, address_line1, address_line2, postal_code, city, country",
-        )
-        .eq("id", user.id)
-        .maybeSingle();
+      const [{ data }, { data: adminData }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select(
+            "buyer_type, full_name, company_name, vat_id, address_line1, address_line2, postal_code, city, country",
+          )
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+      ]);
+
+      setIsAdmin(adminData === true);
 
       if (data) {
         setBilling({
@@ -294,6 +299,7 @@ export default function Account() {
       setLoading(false);
     })();
   }, [user]);
+
 
   const patch = (p: Partial<BillingProfile>) => setBilling((b) => ({ ...b, ...p }));
 
