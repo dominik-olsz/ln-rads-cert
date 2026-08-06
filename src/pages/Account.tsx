@@ -400,7 +400,7 @@ export default function Account() {
     setSavingEmail(true);
     const { error } = await supabase.auth.updateUser(
       { email },
-      { emailRedirectTo: `${window.location.origin}/account` },
+      { emailRedirectTo: appUrl("/account") },
     );
     setSavingEmail(false);
     if (error) {
