@@ -35,7 +35,7 @@ const Navbar = () => {
     checkAdminRole();
   }, [user]);
 
-  const navLinkClass = "relative text-sm font-medium text-muted-foreground hover:text-primary transition-colors py-2 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary hover:after:w-full after:transition-all after:duration-300";
+  const navLinkClass = "text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-2";
 
   return (
     <header className="sticky top-4 z-50 px-4 md:px-6">
