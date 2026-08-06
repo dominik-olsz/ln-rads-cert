@@ -51,11 +51,11 @@ export const billingSchema = z
     full_name: z.string().trim().min(2, "Please enter your full name").max(120),
     company_name: z.string().trim().max(160).optional().or(z.literal("")),
     vat_id: z.string().trim().max(40).optional().or(z.literal("")),
-    address_line1: z.string().trim().min(3, "Please enter your address").max(160),
+    address_line1: z.string().trim().max(160).optional().or(z.literal("")),
     address_line2: z.string().trim().max(160).optional().or(z.literal("")),
-    postal_code: z.string().trim().min(2, "Please enter your postal code").max(20),
-    city: z.string().trim().min(2, "Please enter your city").max(80),
-    country: z.string().trim().length(2, "Please choose your country"),
+    postal_code: z.string().trim().max(20).optional().or(z.literal("")),
+    city: z.string().trim().max(80).optional().or(z.literal("")),
+    country: z.string().trim().max(2).optional().or(z.literal("")),
   })
   .refine((v) => v.buyer_type !== "company" || !!v.company_name?.trim(), {
     message: "Company name is required",
@@ -68,7 +68,24 @@ export const billingSchema = z
   .refine(
     (v) => v.buyer_type !== "company" || /^[A-Za-z0-9\-. ]{6,20}$/.test((v.vat_id ?? "").trim()),
     { message: "This VAT number does not look valid", path: ["vat_id"] },
-  );
+  )
+  .refine((v) => v.buyer_type !== "company" || (v.address_line1 ?? "").trim().length >= 3, {
+    message: "Please enter your address",
+    path: ["address_line1"],
+  })
+  .refine((v) => v.buyer_type !== "company" || (v.postal_code ?? "").trim().length >= 2, {
+    message: "Please enter your postal code",
+    path: ["postal_code"],
+  })
+  .refine((v) => v.buyer_type !== "company" || (v.city ?? "").trim().length >= 2, {
+    message: "Please enter your city",
+    path: ["city"],
+  })
+  .refine((v) => v.buyer_type !== "company" || (v.country ?? "").trim().length === 2, {
+    message: "Please choose your country",
+    path: ["country"],
+  });
+
 
 export function BillingFields({
   value,
@@ -118,7 +135,9 @@ export function BillingFields({
           {err("full_name")}
         </div>
         <div>
-          <Label htmlFor="country">Country</Label>
+          <Label htmlFor="country">
+            Country{value.buyer_type === "private" ? " (optional)" : ""}
+          </Label>
           <Select value={value.country} onValueChange={(v) => onChange({ country: v })}>
             <SelectTrigger id="country">
               <SelectValue placeholder="Choose country" />
@@ -163,7 +182,9 @@ export function BillingFields({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="address_line1">Address</Label>
+          <Label htmlFor="address_line1">
+            Address{value.buyer_type === "private" ? " (optional)" : ""}
+          </Label>
           <Input
             id="address_line1"
             value={value.address_line1}
@@ -182,7 +203,9 @@ export function BillingFields({
           />
         </div>
         <div>
-          <Label htmlFor="postal_code">Postal code</Label>
+          <Label htmlFor="postal_code">
+            Postal code{value.buyer_type === "private" ? " (optional)" : ""}
+          </Label>
           <Input
             id="postal_code"
             value={value.postal_code}
@@ -192,7 +215,9 @@ export function BillingFields({
           {err("postal_code")}
         </div>
         <div>
-          <Label htmlFor="city">City</Label>
+          <Label htmlFor="city">
+            City{value.buyer_type === "private" ? " (optional)" : ""}
+          </Label>
           <Input
             id="city"
             value={value.city}
@@ -205,6 +230,7 @@ export function BillingFields({
     </div>
   );
 }
+
 
 export function validateBilling(value: BillingProfile) {
   const parsed = billingSchema.safeParse(value);
