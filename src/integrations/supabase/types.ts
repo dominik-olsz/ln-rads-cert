@@ -724,37 +724,61 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address_line1: string | null
+          address_line2: string | null
+          buyer_type: string
           certificate_name: string | null
+          city: string | null
+          company_name: string | null
+          country: string | null
           created_at: string | null
           discount_percent: number
           email: string | null
           full_name: string | null
           id: string
+          postal_code: string | null
           terms_accepted_at: string | null
           terms_version: string | null
           updated_at: string | null
+          vat_id: string | null
         }
         Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          buyer_type?: string
           certificate_name?: string | null
+          city?: string | null
+          company_name?: string | null
+          country?: string | null
           created_at?: string | null
           discount_percent?: number
           email?: string | null
           full_name?: string | null
           id: string
+          postal_code?: string | null
           terms_accepted_at?: string | null
           terms_version?: string | null
           updated_at?: string | null
+          vat_id?: string | null
         }
         Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          buyer_type?: string
           certificate_name?: string | null
+          city?: string | null
+          company_name?: string | null
+          country?: string | null
           created_at?: string | null
           discount_percent?: number
           email?: string | null
           full_name?: string | null
           id?: string
+          postal_code?: string | null
           terms_accepted_at?: string | null
           terms_version?: string | null
           updated_at?: string | null
+          vat_id?: string | null
         }
         Relationships: []
       }
