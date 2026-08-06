@@ -308,11 +308,14 @@ serve(async (req) => {
     }
 
     const stripe = stripeInit();
+    const courseCustomerId = await buildCustomer(stripe);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       client_reference_id: user.id,
-      customer_email: user.email ?? undefined,
+      customer: courseCustomerId,
+      customer_email: courseCustomerId ? undefined : (user.email ?? undefined),
+      customer_update: courseCustomerId ? customerUpdate : undefined,
       billing_address_collection: "required",
       tax_id_collection: { enabled: true },
       line_items: [
