@@ -64,10 +64,6 @@ const Footer = () => {
         <div className="pt-8 border-t border-border/50">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()} LN-RADS Certification. All rights reserved.</p>
-            <div className="flex gap-6">
-              <Link to="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link>
-              <Link to="/terms" className="hover:text-primary transition-colors">Terms and Conditions</Link>
-            </div>
 
           </div>
         </div>
