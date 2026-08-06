@@ -126,6 +126,18 @@ const Navbar = () => {
                     <div className="text-sm text-muted-foreground border-b pb-3 truncate">
                       {user.email}
                     </div>
+                    <a href="https://lnrads.com/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-primary transition-colors">
+                      Home
+                    </a>
+                    <a href="https://lnrads.com/our-team/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-primary transition-colors">
+                      About us
+                    </a>
+                    <a href="https://lnrads.com/from-internet/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-primary transition-colors">
+                      Publications
+                    </a>
+                    <a href="https://lnrads.com/contact-us/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-primary transition-colors">
+                      Contact
+                    </a>
                     <Link to="/courses" className="text-sm font-medium hover:text-primary transition-colors">
                       Courses
                     </Link>
@@ -167,6 +179,18 @@ const Navbar = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-64 rounded-l-3xl">
                   <div className="flex flex-col gap-4 mt-8">
+                    <a href="https://lnrads.com/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-primary transition-colors">
+                      Home
+                    </a>
+                    <a href="https://lnrads.com/our-team/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-primary transition-colors">
+                      About us
+                    </a>
+                    <a href="https://lnrads.com/from-internet/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-primary transition-colors">
+                      Publications
+                    </a>
+                    <a href="https://lnrads.com/contact-us/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-primary transition-colors">
+                      Contact
+                    </a>
                     <Link to="/courses" className="text-sm font-medium hover:text-primary transition-colors">
                       Courses
                     </Link>
