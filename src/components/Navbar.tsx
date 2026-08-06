@@ -68,7 +68,7 @@ const Navbar = () => {
           <a href="https://lnrads.com/contact-us/" target="_blank" rel="noopener noreferrer" className={navLinkClass}>
             Contact
           </a>
-          <Link to="/courses" className={navLinkClass}>
+          <Link to="/courses" className="text-sm font-semibold text-accent hover:text-accent/80 transition-colors px-2 py-2">
             Courses
           </Link>
           {user && !isAdmin && (
@@ -138,7 +138,7 @@ const Navbar = () => {
                     <a href="https://lnrads.com/contact-us/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-primary transition-colors">
                       Contact
                     </a>
-                    <Link to="/courses" className="text-sm font-medium hover:text-primary transition-colors">
+                    <Link to="/courses" className="text-sm font-medium text-accent hover:text-accent/80 transition-colors">
                       Courses
                     </Link>
                     {!isAdmin && (
@@ -191,7 +191,7 @@ const Navbar = () => {
                     <a href="https://lnrads.com/contact-us/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-primary transition-colors">
                       Contact
                     </a>
-                    <Link to="/courses" className="text-sm font-medium hover:text-primary transition-colors">
+                    <Link to="/courses" className="text-sm font-medium text-accent hover:text-accent/80 transition-colors">
                       Courses
                     </Link>
                     <Link to="/auth" className="text-sm font-medium hover:text-primary transition-colors">
