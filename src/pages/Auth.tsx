@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import lnradsLogo from "@/assets/lnrads-logo.jpg";
 import { supabase } from "@/integrations/supabase/client";
+import { appUrl } from "@/lib/appUrl";
 import { lovable } from "@/integrations/lovable/index";
 
 const GoogleIcon = () => (

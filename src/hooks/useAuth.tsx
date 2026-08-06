@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { appUrl } from '@/lib/appUrl';
 
 export const LEGAL_VERSION = "2026-08-05";
 
