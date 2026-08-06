@@ -68,7 +68,7 @@ const Navbar = () => {
           <a href="https://lnrads.com/contact-us/" target="_blank" rel="noopener noreferrer" className={navLinkClass}>
             Contact
           </a>
-          <Link to="/courses" className={navLinkClass}>
+          <Link to="/courses" className="text-sm font-semibold text-accent hover:text-accent/80 transition-colors px-2 py-2">
             Courses
           </Link>
           {user && !isAdmin && (
