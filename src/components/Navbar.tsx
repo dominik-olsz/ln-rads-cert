@@ -35,48 +35,57 @@ const Navbar = () => {
     checkAdminRole();
   }, [user]);
 
+  const navLinkClass = "relative text-sm font-medium text-muted-foreground hover:text-primary transition-colors py-2 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary hover:after:w-full after:transition-all after:duration-300";
+
   return (
-    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 shadow-sm">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-3">
-          <img src={lnradsLogo} alt="LN-RADS" className="h-10 w-auto" />
-          <span className="font-bold text-sm md:text-xl">LN-RADS Certification</span>
+    <header className="sticky top-4 z-50 px-4 md:px-6">
+      <nav className="max-w-6xl mx-auto h-20 px-6 md:px-8 bg-background/80 backdrop-blur-md border border-border/60 rounded-3xl shadow-nav flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-3 group cursor-pointer">
+          <img src={lnradsLogo} alt="LN-RADS" className="h-10 w-auto rounded-xl" />
+          <div className="flex flex-col -space-y-1">
+            <span className="text-foreground font-bold text-lg tracking-tight">LN-RADS</span>
+            <span className="text-primary font-semibold text-[10px] uppercase tracking-[0.2em] hidden md:block">Certification</span>
+          </div>
         </Link>
         
-        <div className="hidden md:flex items-center gap-6">
-          <Link to="/courses" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
+        <div className="hidden md:flex items-center gap-10">
+          <Link to="/courses" className={navLinkClass}>
             Courses
           </Link>
           {user && !isAdmin && (
-            <Link to="/dashboard" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
+            <Link to="/dashboard" className={navLinkClass}>
               My Dashboard
             </Link>
           )}
           {isAdmin && (
-            <Link to="/admin/dashboard" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
+            <Link to="/admin/dashboard" className={navLinkClass}>
               Admin
             </Link>
           )}
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {user ? (
             <>
-              <span className="text-sm text-muted-foreground hidden md:inline">
+              <span className="text-sm text-muted-foreground hidden lg:inline max-w-[180px] truncate">
                 {user.email}
               </span>
-              <Button variant="outline" onClick={signOut} className="hidden md:inline-flex">
+              <Button
+                variant="outline"
+                onClick={signOut}
+                className="hidden md:inline-flex rounded-xl border-2 hover:bg-muted transition-colors"
+              >
                 Sign Out
               </Button>
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="md:hidden">
+                  <Button variant="ghost" size="icon" className="md:hidden rounded-xl">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-64">
+                <SheetContent side="right" className="w-64 rounded-l-3xl">
                   <div className="flex flex-col gap-4 mt-8">
-                    <div className="text-sm text-muted-foreground border-b pb-3">
+                    <div className="text-sm text-muted-foreground border-b pb-3 truncate">
                       {user.email}
                     </div>
                     <Link to="/courses" className="text-sm font-medium hover:text-primary transition-colors">
@@ -92,7 +101,7 @@ const Navbar = () => {
                         Admin
                       </Link>
                     )}
-                    <Button variant="outline" onClick={signOut} className="justify-center border-2 mt-4">
+                    <Button variant="outline" onClick={signOut} className="justify-center border-2 mt-4 rounded-xl">
                       Sign Out
                     </Button>
                   </div>
@@ -101,17 +110,39 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <Link to="/auth" className="hidden md:inline-flex">
-                <Button variant="ghost">Sign In</Button>
+              <Link to="/auth" className="hidden md:inline-flex text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors px-2">
+                Sign In
               </Link>
               <Link to="/auth?tab=signup">
-                <Button>Get Started</Button>
+                <Button className="inline-flex items-center justify-center px-3 py-2 md:px-6 md:py-3 h-auto bg-foreground text-background font-semibold text-xs md:text-sm rounded-2xl transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-xl hover:shadow-primary/20 active:scale-95 shadow-lg">
+                  Get Started
+                </Button>
               </Link>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="md:hidden rounded-xl">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-64 rounded-l-3xl">
+                  <div className="flex flex-col gap-4 mt-8">
+                    <Link to="/courses" className="text-sm font-medium hover:text-primary transition-colors">
+                      Courses
+                    </Link>
+                    <Link to="/auth" className="text-sm font-medium hover:text-primary transition-colors">
+                      Sign In
+                    </Link>
+                    <Link to="/auth?tab=signup" className="text-sm font-medium hover:text-primary transition-colors">
+                      Get Started
+                    </Link>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </>
           )}
         </div>
-      </div>
-    </nav>
+      </nav>
+    </header>
   );
 };
 
