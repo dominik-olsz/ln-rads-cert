@@ -211,10 +211,13 @@ serve(async (req) => {
       }
 
       const stripe = stripeInit();
+      const retakeCustomerId = await buildCustomer(stripe);
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         client_reference_id: user.id,
-        customer_email: user.email ?? undefined,
+        customer: retakeCustomerId,
+        customer_email: retakeCustomerId ? undefined : (user.email ?? undefined),
+        customer_update: retakeCustomerId ? customerUpdate : undefined,
         billing_address_collection: "required",
         tax_id_collection: { enabled: true },
 
