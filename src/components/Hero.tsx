@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Microscope, Award, Users } from "lucide-react";
 import heroBackground from "@/assets/hero-background.jpg";
 const Hero = () => {
-  return <section className="relative py-20 md:py-32 overflow-hidden">
+  return <section className="relative py-12 md:py-20 overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <img 
           src={heroBackground} 
