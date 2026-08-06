@@ -38,8 +38,8 @@ const Navbar = () => {
   const navLinkClass = "relative text-sm font-medium text-muted-foreground hover:text-primary transition-colors py-2 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary hover:after:w-full after:transition-all after:duration-300";
 
   return (
-    <header className="sticky top-4 z-50 px-4 md:px-6">
-      <nav className="max-w-6xl mx-auto h-20 px-6 md:px-8 bg-background/80 backdrop-blur-md border border-border/60 rounded-3xl shadow-nav flex items-center justify-between">
+    <header className="sticky top-0 z-50">
+      <nav className="max-w-6xl mx-auto h-20 px-6 md:px-8 bg-background/80 backdrop-blur-md border border-border/60 rounded-b-3xl shadow-nav flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 group cursor-pointer">
           <img src={lnradsLogo} alt="LN-RADS" className="h-10 w-auto rounded-xl" />
           <div className="flex flex-col -space-y-1">
