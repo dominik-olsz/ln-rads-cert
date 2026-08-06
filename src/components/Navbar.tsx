@@ -127,6 +127,9 @@ const Navbar = () => {
                         Admin
                       </Link>
                     )}
+                    <Link to="/account" className="text-sm font-medium hover:text-primary transition-colors">
+                      Account settings
+                    </Link>
                     <Button variant="outline" onClick={signOut} className="justify-center border-2 mt-4 rounded-xl">
                       Sign Out
                     </Button>
