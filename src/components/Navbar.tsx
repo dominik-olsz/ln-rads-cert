@@ -71,11 +71,6 @@ const Navbar = () => {
           <Link to="/courses" className="text-sm font-semibold text-accent hover:text-accent/80 transition-colors px-2 py-2">
             Courses
           </Link>
-          {user && !isAdmin && (
-            <Link to="/dashboard" className={navLinkClass}>
-              My Dashboard
-            </Link>
-          )}
           {isAdmin && (
             <Link to="/admin/dashboard" className={navLinkClass}>
               Admin
