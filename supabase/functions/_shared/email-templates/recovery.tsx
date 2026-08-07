@@ -9,7 +9,6 @@ import {
   Head,
   Heading,
   Html,
-  Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -24,7 +23,6 @@ export const RecoveryEmail = ({
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Reset your password for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Reset your password</Heading>

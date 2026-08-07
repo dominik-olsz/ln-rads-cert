@@ -28,6 +28,8 @@ import AdminSales from "./pages/admin/Sales";
 import Dashboard from "./pages/Dashboard";
 import Account from "./pages/Account";
 import ResetPassword from "./pages/ResetPassword";
+import AuthConfirm from "./pages/AuthConfirm";
+
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
@@ -45,7 +47,9 @@ const router = createBrowserRouter([
     children: [
       { path: "/", element: <Index /> },
       { path: "/auth", element: <Auth /> },
+      { path: "/auth/confirm", element: <AuthConfirm /> },
       { path: "/reset-password", element: <ResetPassword /> },
+
       { path: "/dashboard", element: <Dashboard /> },
       { path: "/account", element: <Account /> },
       { path: "/courses", element: <Courses /> },

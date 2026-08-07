@@ -10,7 +10,6 @@ import {
   Heading,
   Html,
   Link,
-  Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -27,7 +26,6 @@ export const InviteEmail = ({
 }: InviteEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>You've been invited to join {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>You've been invited</Heading>

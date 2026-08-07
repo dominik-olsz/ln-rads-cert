@@ -10,7 +10,6 @@ import {
   Heading,
   Html,
   Link,
-  Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -29,7 +28,6 @@ export const SignupEmail = ({
 }: SignupEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Confirm your email for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Confirm your email</Heading>
