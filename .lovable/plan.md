@@ -1,25 +1,34 @@
-# Confirm email delivery with a non-o2.pl mailbox
+# Improve deliverability to o2.pl / wp.pl
 
-## Goal
+## Diagnosis (from the send log)
 
-Establish whether the missing reset emails are an o2.pl filtering problem or a general sending problem, using a mailbox on a different provider (Gmail, Outlook, or similar).
+All three recent reset emails to the o2.pl address were accepted by the mail provider and recorded as `sent`, with no bounce and no entry in the suppression list. The same email to `dominik@teamsharq.com` arrived normally. So sending, DNS delegation and the templates are working — o2.pl is accepting the message and then dropping or quarantining it.
 
-## What happens
+Cause: `mail.lnrads.com` is a brand-new sending domain with no reputation, and the Wirtualna Polska group (o2.pl, wp.pl) filters new domains aggressively. A missing DMARC policy on the parent domain makes this markedly worse.
 
-1. You give me one test address on a different provider (or run the steps yourself if you prefer not to share it).
-2. Create an account for that address through the normal sign-up form on `/auth`. This also tests the branded signup confirmation email.
-3. Request a password reset for that same address from `/auth` -> "Forgot password?".
-4. I check the send log for both emails and report the recorded status (queued, sent, failed, dead-lettered, or suppressed) with timestamps.
-5. You check the inbox and the spam/junk folder, and confirm the sender shown is `noreply@mail.lnrads.com`.
-6. Click the reset link and confirm it lands on `https://cert.lnrads.com/reset-password` and accepts a new password.
+## Steps
 
-## How to read the outcome
+1. **Add a DMARC record** at your DNS provider for `lnrads.com` (this is a TXT record on the parent domain, not on the delegated sending subdomain, so it does not touch the Lovable-managed zone or `cert.lnrads.com`):
+   - Name: `_dmarc`
+   - Type: TXT
+   - Value: `v=DMARC1; p=none; rua=mailto:dmarc@lnrads.com; adkim=r; aspf=r`
+   Start at `p=none` (monitor only, cannot block legitimate mail); tighten to `quarantine` later once reports look clean.
+2. **Verify SPF and DKIM alignment** — I re-check the email domain status and confirm the delegated subdomain is fully verified with both records live.
+3. **Confirm the visible sender is stable** — check that the From address, the envelope domain and the DKIM signing domain all sit under `mail.lnrads.com` so DMARC alignment passes.
+4. **Add a plain-text part and a valid List-Unsubscribe** where missing — auth emails already render a text version; I verify the recovery email carries both a text body and a correct `Reply-To`, since text-less HTML-only mail is a strong spam signal for WP/o2.
+5. **Warm up gently** — avoid repeated reset requests to the same o2.pl address for a day or two; repeated identical near-duplicate messages from a cold domain reinforce the filter.
+6. **Ask the recipient to allowlist** `noreply@mail.lnrads.com` in their o2.pl account and check the spam folder, then send one fresh reset and I confirm the log entry.
 
-- Arrives on Gmail/Outlook, missing on o2.pl -> sending and DNS are fine; o2.pl is filtering. Next step is a reputation/warm-up question for Lovable support with the three affected message IDs.
-- Missing everywhere while the log says sent -> provider-side issue; escalate to support with the message IDs.
-- Log shows failed or dead-lettered -> the error text names the cause and I fix it directly.
+## If it still fails after DNS propagates
+
+Escalate to Lovable support with these message IDs so they can pull the provider-side SMTP responses and check whether the shared sending IPs are on a blocklist that WP/o2 consults:
+
+- `81568c16-ca16-47c8-b39f-77fdfa2ae9b4` (Aug 6 14:44 UTC)
+- `ca6b9235-0f9a-4d59-acdf-e0916894ce5b` (Aug 6 14:46 UTC)
+- `5f951458-51eb-4b3e-947f-69b36c8c5a61` (Aug 7 12:22 UTC)
 
 ## Notes
 
-- No code changes are needed for this test; it uses the existing sign-up and reset flows.
-- If you would rather not create a second account, a reset request alone is enough — but note that a reset for an address with no account sends nothing at all, so the account must exist.
+- Step 1 is the only action that needs you; it is a DNS change at your registrar.
+- No application code changes are required for steps 1-3 and 6. Steps 4 may involve a small edit to the auth email hook if a text part or `Reply-To` turns out to be missing.
+- Deliverability to a hostile provider is never guaranteed by configuration alone; reputation builds over days of successful sending.
