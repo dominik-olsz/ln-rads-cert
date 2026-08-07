@@ -9,7 +9,6 @@ import {
   Head,
   Heading,
   Html,
-  Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -24,7 +23,6 @@ export const MagicLinkEmail = ({
 }: MagicLinkEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your login link for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Your login link</Heading>

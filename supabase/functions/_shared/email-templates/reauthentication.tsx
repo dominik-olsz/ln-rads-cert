@@ -8,7 +8,6 @@ import {
   Head,
   Heading,
   Html,
-  Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -19,7 +18,6 @@ interface ReauthenticationEmailProps {
 export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your verification code</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Confirm reauthentication</Heading>
