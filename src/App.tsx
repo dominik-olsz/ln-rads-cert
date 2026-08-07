@@ -28,6 +28,8 @@ import AdminSales from "./pages/admin/Sales";
 import Dashboard from "./pages/Dashboard";
 import Account from "./pages/Account";
 import ResetPassword from "./pages/ResetPassword";
+import AuthConfirm from "./pages/AuthConfirm";
+
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
