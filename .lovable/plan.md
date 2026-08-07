@@ -1,34 +1,61 @@
-# Improve deliverability to o2.pl / wp.pl
+# Keep auth email links on cert.lnrads.com (fix PHISHING classification)
 
-## Diagnosis (from the send log)
+Your diagnosis matches what the code does. The auth email hook passes Supabase's raw verify URL straight into the templates:
 
-All three recent reset emails to the o2.pl address were accepted by the mail provider and recorded as `sent`, with no bounce and no entry in the suppression list. The same email to `dominik@teamsharq.com` arrived normally. So sending, DNS delegation and the templates are working — o2.pl is accepting the message and then dropping or quarantining it.
+```
+confirmationUrl: payload.data.url
+// -> https://<project>.supabase.co/auth/v1/verify?token=<hash>&type=recovery&redirect_to=...
+```
 
-Cause: `mail.lnrads.com` is a brand-new sending domain with no reputation, and the Wirtualna Polska group (o2.pl, wp.pl) filters new domains aggressively. A missing DMARC policy on the parent domain makes this markedly worse.
+The hook also sets `siteUrl` to `https://mail.lnrads.com` (the sending domain, not the app), which adds a second mismatched domain to the body.
 
-## Steps
+Good news: the verify URL already carries the token hash in its `token` query parameter, so we can rebuild every link on `https://cert.lnrads.com` without needing Supabase template variables.
 
-1. **Add a DMARC record** at your DNS provider for `lnrads.com` (this is a TXT record on the parent domain, not on the delegated sending subdomain, so it does not touch the Lovable-managed zone or `cert.lnrads.com`):
-   - Name: `_dmarc`
-   - Type: TXT
-   - Value: `v=DMARC1; p=none; rua=mailto:dmarc@lnrads.com; adkim=r; aspf=r`
-   Start at `p=none` (monitor only, cannot block legitimate mail); tighten to `quarantine` later once reports look clean.
-2. **Verify SPF and DKIM alignment** — I re-check the email domain status and confirm the delegated subdomain is fully verified with both records live.
-3. **Confirm the visible sender is stable** — check that the From address, the envelope domain and the DKIM signing domain all sit under `mail.lnrads.com` so DMARC alignment passes.
-4. **Add a plain-text part and a valid List-Unsubscribe** where missing — auth emails already render a text version; I verify the recovery email carries both a text body and a correct `Reply-To`, since text-less HTML-only mail is a strong spam signal for WP/o2.
-5. **Warm up gently** — avoid repeated reset requests to the same o2.pl address for a day or two; repeated identical near-duplicate messages from a cold domain reinforce the filter.
-6. **Ask the recipient to allowlist** `noreply@mail.lnrads.com` in their o2.pl account and check the spam folder, then send one fresh reset and I confirm the log entry.
+## 1. Rewrite links in the auth email hook
 
-## If it still fails after DNS propagates
+In `supabase/functions/auth-email-hook/index.ts`:
 
-Escalate to Lovable support with these message IDs so they can pull the provider-side SMTP responses and check whether the shared sending IPs are on a blocklist that WP/o2 consults:
+- Parse `payload.data.url` and extract the `token` query param (this is the token hash).
+- Build the link on the canonical app origin `https://cert.lnrads.com`:
+  - recovery -> `/reset-password?token_hash=...&type=recovery`
+  - signup -> `/auth/confirm?token_hash=...&type=signup`
+  - magiclink -> `/auth/confirm?token_hash=...&type=magiclink`
+  - invite -> `/auth/confirm?token_hash=...&type=invite`
+  - email_change -> `/auth/confirm?token_hash=...&type=email_change` (uses `new_token` when present)
+- Fall back to the original URL only if no token can be extracted, so emails never break silently.
+- Set `siteUrl` to `https://cert.lnrads.com`.
 
-- `81568c16-ca16-47c8-b39f-77fdfa2ae9b4` (Aug 6 14:44 UTC)
-- `ca6b9235-0f9a-4d59-acdf-e0916894ce5b` (Aug 6 14:46 UTC)
-- `5f951458-51eb-4b3e-947f-69b36c8c5a61` (Aug 7 12:22 UTC)
+No `supabase.co` host appears in any email body afterwards. `reauthentication` is a code-only email and needs no link.
 
-## Notes
+## 2. Strip the invisible preheader padding
 
-- Step 1 is the only action that needs you; it is a DNS change at your registrar.
-- No application code changes are required for steps 1-3 and 6. Steps 4 may involve a small edit to the auth email hook if a text part or `Reply-To` turns out to be missing.
-- Deliverability to a hostile provider is never guaranteed by configuration alone; reputation builds over days of successful sending.
+React Email's `<Preview>` component is what emits the long run of zero-width characters. Remove `<Preview>` from all six templates in `supabase/functions/_shared/email-templates/` and let the first visible line act as the preheader. Copy stays unchanged otherwise.
+
+## 3. Client-side verification pages
+
+`src/pages/ResetPassword.tsx`:
+- Read `token_hash` and `type` from the query string.
+- Call `supabase.auth.verifyOtp({ token_hash, type: 'recovery' })` on mount; show the new-password form on success and call `supabase.auth.updateUser({ password })` as today.
+- On invalid/expired token show a clear message plus a link back to `/auth` to request a new reset email.
+- Keep the existing recovery-session path so links already in inboxes still work.
+
+New `src/pages/AuthConfirm.tsx` at route `/auth/confirm`:
+- Reads `token_hash` and `type` (`signup`, `magiclink`, `invite`, `email_change`).
+- Calls `verifyOtp` with the matching type, shows a branded verifying/success/error state, then redirects: `/dashboard` for signup, magiclink and invite, `/account` for email_change.
+- Register the route in `src/App.tsx`.
+
+## 4. Points I cannot change in code
+
+- **Site URL / redirect allow-list**: managed by Lovable Cloud and not exposed to me. With the token_hash pattern no `redirect_to` is used, so the allow-list stops mattering for these emails.
+- **Quoted-printable vs base64 encoding and `List-Unsubscribe`**: applied by the managed sending pipeline, not by our function. App (non-auth) emails already get an unsubscribe footer; auth emails are exempt by design.
+- **Dedicated sending IP**: the pool is shared platform infrastructure (`Lovable Custom Domains`); no per-project dedicated IP option is exposed to me. Needs a support request.
+- **Supabase custom domain add-on**: not available for Lovable Cloud projects — there is no self-serve path to it. The token_hash change above solves the same problem at the app level.
+
+## 5. Deploy and verify
+
+Deploy `auth-email-hook`, then trigger one password reset and one signup and confirm the rendered link starts with `https://cert.lnrads.com` and that OVH no longer flags the message.
+
+## Technical notes
+
+- Token extraction reads the `token` param of the Supabase verify URL; for `email_change` Supabase issues a token per address, so `new_token` is preferred when present.
+- `src/lib/appUrl.ts` already pins the canonical origin for links generated in the app; the hook gets its own constant since it runs server-side.
