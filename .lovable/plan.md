@@ -9,23 +9,25 @@ confirmationUrl: payload.data.url
 
 The hook also sets `siteUrl` to `https://mail.lnrads.com` (the sending domain, not the app), which adds a second mismatched domain to the body.
 
-Good news: the verify URL already carries the token hash in its `token` query parameter, so we can rebuild every link on `https://cert.lnrads.com` without needing Supabase template variables.
+Every link can be rebuilt on `https://cert.lnrads.com` from the hook payload's token hash, with URL parsing only as a fallback.
 
 ## 1. Rewrite links in the auth email hook
 
 In `supabase/functions/auth-email-hook/index.ts`:
 
-- Parse `payload.data.url` and extract the `token` query param (this is the token hash).
+- Read the token hash from the hook payload first: `token_hash`, and `token_hash_new` for the new address in an email change. Note: the typed surface of the Lovable email payload helper currently declares only `token` / `new_token`, so the implementation will read the hash fields off the raw payload defensively and only then fall back to extracting the `token` query param from `payload.data.url`. String-parsing the verify URL is the last resort, never the primary path.
 - Build the link on the canonical app origin `https://cert.lnrads.com`:
   - recovery -> `/reset-password?token_hash=...&type=recovery`
   - signup -> `/auth/confirm?token_hash=...&type=signup`
   - magiclink -> `/auth/confirm?token_hash=...&type=magiclink`
   - invite -> `/auth/confirm?token_hash=...&type=invite`
-  - email_change -> `/auth/confirm?token_hash=...&type=email_change` (uses `new_token` when present)
-- Fall back to the original URL only if no token can be extracted, so emails never break silently.
+  - email_change -> `/auth/confirm?token_hash=...&type=email_change`
+- **Email change sends two messages** when secure email change is on (old address and new address). Rewrite both: the message to the old address uses the old-address token hash, the one to the new address uses `token_hash_new`. The template will render whichever hash belongs to that recipient, so neither link keeps a `supabase.co` host.
+- Fall back to the original URL only if no hash can be found at all, so emails never break silently.
 - Set `siteUrl` to `https://cert.lnrads.com`.
 
 No `supabase.co` host appears in any email body afterwards. `reauthentication` is a code-only email and needs no link.
+
 
 ## 2. Strip the invisible preheader padding
 
