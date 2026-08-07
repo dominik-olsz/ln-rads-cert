@@ -117,21 +117,26 @@ const ResetPassword = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Set a new password</CardTitle>
+            <CardTitle>
+              {hasRecoverySession === false ? "We couldn't open this reset link" : "Set a new password"}
+            </CardTitle>
             <CardDescription>
               {hasRecoverySession === false
-                ? "This reset link is invalid or has expired."
-                : "Enter your new password below."}
+                ? errorMessage || "This reset link is invalid or has expired."
+                : hasRecoverySession === null
+                  ? "Checking your reset link..."
+                  : "Enter your new password below."}
             </CardDescription>
           </CardHeader>
 
           {hasRecoverySession === false ? (
             <CardFooter>
               <Button asChild className="w-full">
-                <Link to="/auth">Back to sign in</Link>
+                <Link to="/auth">Request a new reset email</Link>
               </Button>
             </CardFooter>
           ) : (
+
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
