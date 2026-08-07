@@ -41,6 +41,57 @@ const SENDER_DOMAIN = "notify.mail.lnrads.com"
 const ROOT_DOMAIN = "mail.lnrads.com"
 const FROM_DOMAIN = "mail.lnrads.com" // Domain shown in From address (may be root or sender subdomain)
 
+// Canonical public app origin. All links in auth emails must live here so the
+// body domain matches the sending domain (avoids phishing classification).
+const APP_ORIGIN = "https://cert.lnrads.com"
+
+// Route that completes verification for each auth action type.
+const ACTION_ROUTES: Record<string, { path: string; type: string }> = {
+  signup: { path: '/auth/confirm', type: 'signup' },
+  invite: { path: '/auth/confirm', type: 'invite' },
+  magiclink: { path: '/auth/confirm', type: 'magiclink' },
+  email_change: { path: '/auth/confirm', type: 'email_change' },
+  recovery: { path: '/reset-password', type: 'recovery' },
+}
+
+// Prefer the hook payload's token hash fields; only fall back to parsing the
+// Supabase verify URL if they are absent.
+function resolveTokenHash(data: Record<string, any>): string | null {
+  const isNewRecipient =
+    !!data.new_email && !!data.email && data.email === data.new_email
+
+  const candidates = isNewRecipient
+    ? [data.token_hash_new, data.new_token_hash, data.token_hash]
+    : [data.token_hash, data.token_hash_new, data.new_token_hash]
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.length > 0) return candidate
+  }
+
+  try {
+    const fromUrl = new URL(data.url).searchParams.get('token')
+    if (fromUrl) return fromUrl
+  } catch (_error) {
+    // ignore - handled by caller fallback
+  }
+
+  return null
+}
+
+function buildActionUrl(emailType: string, data: Record<string, any>): string {
+  const route = ACTION_ROUTES[emailType]
+  if (!route) return data.url
+
+  const tokenHash = resolveTokenHash(data)
+  if (!tokenHash) {
+    console.error('No token hash available, falling back to provider URL', { emailType })
+    return data.url
+  }
+
+  return `${APP_ORIGIN}${route.path}?token_hash=${encodeURIComponent(tokenHash)}&type=${route.type}`
+}
+
+
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
 // The sample email uses a fixed placeholder (RFC 6761 .test TLD) so the Go backend
