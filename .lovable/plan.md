@@ -63,11 +63,12 @@ Current project auth config: Site URL is `https://ln-rads-cert.lovable.app`, and
 - **Supabase custom domain add-on**: not available for Lovable Cloud projects — there is no self-serve path to it. The token_hash change above solves the same problem at the app level.
 
 
-## 5. Deploy and verify
+## 6. Deploy and verify
 
 Deploy `auth-email-hook`, then trigger one password reset and one signup and confirm the rendered link starts with `https://cert.lnrads.com` and that OVH no longer flags the message.
 
 ## Technical notes
 
-- Token extraction reads the `token` param of the Supabase verify URL; for `email_change` Supabase issues a token per address, so `new_token` is preferred when present.
+- Primary source for links is the payload's `token_hash` / `token_hash_new`; parsing the `token` param out of the verify URL stays only as a fallback.
 - `src/lib/appUrl.ts` already pins the canonical origin for links generated in the app; the hook gets its own constant since it runs server-side.
+
