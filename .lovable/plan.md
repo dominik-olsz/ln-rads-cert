@@ -38,7 +38,6 @@ React Email's `<Preview>` component is what emits the long run of zero-width cha
 `src/pages/ResetPassword.tsx`:
 - Read `token_hash` and `type` from the query string.
 - Call `supabase.auth.verifyOtp({ token_hash, type: 'recovery' })` on mount; show the new-password form on success and call `supabase.auth.updateUser({ password })` as today.
-- On invalid/expired token show a clear message plus a link back to `/auth` to request a new reset email.
 - Keep the existing recovery-session path so links already in inboxes still work.
 
 New `src/pages/AuthConfirm.tsx` at route `/auth/confirm`:
@@ -46,12 +45,23 @@ New `src/pages/AuthConfirm.tsx` at route `/auth/confirm`:
 - Calls `verifyOtp` with the matching type, shows a branded verifying/success/error state, then redirects: `/dashboard` for signup, magiclink and invite, `/account` for email_change.
 - Register the route in `src/App.tsx`.
 
-## 4. Points I cannot change in code
+Error handling on both pages (`verifyOtp` returns an `error` object, it does not throw):
+- Explicit states for missing/malformed params, expired token, and already-used token — matched on the returned error message/status rather than assumed.
+- Each error state renders a branded card with a plain-language explanation ("This link has expired or has already been used") and a button to request a fresh email (`/auth` for reset/signup, `/account` for email change). Never a blank page or a silent redirect.
+- `updateUser` failures on the reset page surface the same way instead of only a toast.
 
-- **Site URL / redirect allow-list**: managed by Lovable Cloud and not exposed to me. With the token_hash pattern no `redirect_to` is used, so the allow-list stops mattering for these emails.
+## 4. Site URL and redirect allow-list (needs a config change)
+
+Current project auth config: Site URL is `https://ln-rads-cert.lovable.app`, and the allow-list already contains `https://cert.lnrads.com/**` (plus the other project hosts). So:
+- The allow-list entry you asked about is present.
+- The Site URL is wrong for your intent and should be `https://cert.lnrads.com`. It is not `mail.lnrads.com`, so nothing points at the sending domain — but it still resolves `{{ .SiteURL }}` and default redirects to the Lovable host. Changing it is a Cloud auth setting, not code; the tooling I have does not expose Site URL, so this one needs to be set in Cloud → Users → Auth settings (I'll point you at the exact field). The code changes above do not depend on it, since the token_hash links are absolute and use no `redirect_to`.
+
+## 5. Points that are platform-side, not code
+
 - **Quoted-printable vs base64 encoding and `List-Unsubscribe`**: applied by the managed sending pipeline, not by our function. App (non-auth) emails already get an unsubscribe footer; auth emails are exempt by design.
 - **Dedicated sending IP**: the pool is shared platform infrastructure (`Lovable Custom Domains`); no per-project dedicated IP option is exposed to me. Needs a support request.
 - **Supabase custom domain add-on**: not available for Lovable Cloud projects — there is no self-serve path to it. The token_hash change above solves the same problem at the app level.
+
 
 ## 5. Deploy and verify
 
