@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,14 +9,52 @@ import { supabase } from "@/integrations/supabase/client";
 import lnradsLogo from "@/assets/lnrads-logo.jpg";
 
 const ResetPassword = () => {
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [hasRecoverySession, setHasRecoverySession] = useState<boolean | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const tokenHash = searchParams.get("token_hash");
+
   useEffect(() => {
+    let cancelled = false;
+
+    // token_hash flow: the email link stays on our own domain and we exchange
+    // the hash for a recovery session here.
+    if (tokenHash) {
+      const type = searchParams.get("type");
+      if (type && type !== "recovery") {
+        setHasRecoverySession(false);
+        setErrorMessage("This link isn't a password reset link. Please request a new reset email.");
+        return;
+      }
+
+      supabase.auth
+        .verifyOtp({ token_hash: tokenHash, type: "recovery" })
+        .then(({ error }) => {
+          if (cancelled) return;
+          if (error) {
+            setHasRecoverySession(false);
+            setErrorMessage(
+              /expired|invalid|not found|already/i.test(error.message)
+                ? "This reset link has expired or has already been used."
+                : error.message,
+            );
+            return;
+          }
+          setHasRecoverySession(true);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // Legacy flow: links already in inboxes deliver a session via the URL hash.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         setHasRecoverySession(true);
@@ -24,11 +62,18 @@ const ResetPassword = () => {
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
       setHasRecoverySession(!!session);
+      if (!session) {
+        setErrorMessage("This reset link is invalid or has expired.");
+      }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [tokenHash, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +92,10 @@ const ResetPassword = () => {
 
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+      if (/session|expired|jwt|token/i.test(error.message)) {
+        setHasRecoverySession(false);
+        setErrorMessage("Your reset session has expired. Please request a new reset email.");
+      }
       return;
     }
 
@@ -54,6 +103,7 @@ const ResetPassword = () => {
     await supabase.auth.signOut({ scope: "local" });
     navigate("/auth");
   };
+
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
