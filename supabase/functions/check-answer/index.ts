@@ -1,5 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import {
+  MAX_POINTS_PER_QUESTION,
+  correctIndexes,
+  normalizeOptions,
+  pointsForAnswer,
+  resolveAnswerIndex,
+  semiCorrectIndexes,
+} from '../_shared/questions.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,7 +21,6 @@ const json = (body: unknown, status = 200) =>
   });
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const LETTERS = ['A', 'B', 'C', 'D'];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -23,10 +30,11 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const questionId = typeof body?.questionId === 'string' ? body.questionId : '';
-    const answer = typeof body?.answer === 'string' ? body.answer.trim().charAt(0).toUpperCase() : '';
+    const rawAnswer = body?.optionIndex ?? body?.answer;
+    const answerIndex = resolveAnswerIndex(rawAnswer);
 
-    if (!UUID_RE.test(questionId) || !LETTERS.includes(answer)) {
-      return json({ error: 'A valid question ID and answer (A-D) are required' }, 400);
+    if (!UUID_RE.test(questionId) || answerIndex < 0) {
+      return json({ error: 'A valid question ID and selected option are required' }, 400);
     }
 
     const admin = createClient(
@@ -48,7 +56,7 @@ serve(async (req) => {
 
     const { data: question, error } = await admin
       .from('test_questions')
-      .select('id, course_id, test_type, is_free, correct_answer, explanation, option_a, option_b, option_c, option_d')
+      .select('id, course_id, test_type, is_free, options, correct_answer, explanation, option_a, option_b, option_c, option_d')
       .eq('id', questionId)
       .maybeSingle();
 
@@ -82,20 +90,19 @@ serve(async (req) => {
       }
     }
 
-    // Normalize the stored correct answer to a letter
-    const raw = String(question.correct_answer ?? '').trim();
-    let correctLetter = raw.charAt(0).toUpperCase();
-    if (!LETTERS.includes(correctLetter)) {
-      const lower = raw.toLowerCase();
-      if (lower === String(question.option_a ?? '').toLowerCase()) correctLetter = 'A';
-      else if (lower === String(question.option_b ?? '').toLowerCase()) correctLetter = 'B';
-      else if (lower === String(question.option_c ?? '').toLowerCase()) correctLetter = 'C';
-      else if (lower === String(question.option_d ?? '').toLowerCase()) correctLetter = 'D';
+    const options = normalizeOptions(question);
+    if (answerIndex >= options.length) {
+      return json({ error: 'Invalid option selected' }, 400);
     }
 
+    const points = pointsForAnswer(question, answerIndex);
+
     return json({
-      correct: answer === correctLetter,
-      correctAnswer: correctLetter,
+      points,
+      maxPoints: MAX_POINTS_PER_QUESTION,
+      correct: points === MAX_POINTS_PER_QUESTION,
+      correctIndexes: correctIndexes(question),
+      semiCorrectIndexes: semiCorrectIndexes(question),
       explanation: question.explanation ?? null,
     });
   } catch (e) {

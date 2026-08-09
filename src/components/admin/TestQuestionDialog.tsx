@@ -7,16 +7,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import QuestionOptionsEditor from '@/components/admin/QuestionOptionsEditor';
+import {
+  QuestionOption,
+  emptyOptions,
+  isValidQuestionOptions,
+  normalizeOptions,
+} from '@/lib/questionOptions';
 
 interface TestQuestion {
   id?: string;
   course_id: string;
   question_text: string;
-  option_a: string;
-  option_b: string;
-  option_c: string;
-  option_d: string;
-  correct_answer: string;
+  options?: unknown;
+  option_a?: string | null;
+  option_b?: string | null;
+  option_c?: string | null;
+  option_d?: string | null;
+  correct_answer?: string | null;
   explanation?: string;
   image_url?: string;
   test_type?: 'course' | 'certification';
@@ -34,11 +42,7 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
   const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
   const [courseId, setCourseId] = useState('');
   const [questionText, setQuestionText] = useState('');
-  const [optionA, setOptionA] = useState('');
-  const [optionB, setOptionB] = useState('');
-  const [optionC, setOptionC] = useState('');
-  const [optionD, setOptionD] = useState('');
-  const [correctAnswer, setCorrectAnswer] = useState('');
+  const [options, setOptions] = useState<QuestionOption[]>(emptyOptions());
   const [explanation, setExplanation] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -53,21 +57,13 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
     if (question) {
       setCourseId(question.course_id);
       setQuestionText(question.question_text);
-      setOptionA(question.option_a);
-      setOptionB(question.option_b);
-      setOptionC(question.option_c);
-      setOptionD(question.option_d);
-      setCorrectAnswer(question.correct_answer);
+      setOptions(normalizeOptions(question.options, question));
       setExplanation(question.explanation || '');
       setImageUrl(question.image_url || '');
     } else {
       setCourseId('');
       setQuestionText('');
-      setOptionA('');
-      setOptionB('');
-      setOptionC('');
-      setOptionD('');
-      setCorrectAnswer('');
+      setOptions(emptyOptions());
       setExplanation('');
       setImageUrl('');
     }
@@ -120,17 +116,28 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isValidQuestionOptions(options)) {
+      toast({
+        title: 'Check the answer options',
+        description: 'Fill in every option and mark at least one as Correct.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
       const questionData = {
         course_id: courseId || null,
         question_text: questionText,
-        option_a: optionA,
-        option_b: optionB,
-        option_c: optionC,
-        option_d: optionD,
-        correct_answer: correctAnswer,
+        options: options as unknown as any,
+        option_a: null,
+        option_b: null,
+        option_c: null,
+        option_d: null,
+        correct_answer: null,
         explanation: explanation || null,
         image_url: imageUrl || null,
         test_type: question?.test_type || testType,
@@ -211,59 +218,7 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="optionA">Option A</Label>
-              <Input
-                id="optionA"
-                value={optionA}
-                onChange={(e) => setOptionA(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="optionB">Option B</Label>
-              <Input
-                id="optionB"
-                value={optionB}
-                onChange={(e) => setOptionB(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="optionC">Option C</Label>
-              <Input
-                id="optionC"
-                value={optionC}
-                onChange={(e) => setOptionC(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="optionD">Option D</Label>
-              <Input
-                id="optionD"
-                value={optionD}
-                onChange={(e) => setOptionD(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="correctAnswer">Correct Answer</Label>
-            <Select value={correctAnswer} onValueChange={setCorrectAnswer} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select correct answer" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="A">A</SelectItem>
-                <SelectItem value="B">B</SelectItem>
-                <SelectItem value="C">C</SelectItem>
-                <SelectItem value="D">D</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <QuestionOptionsEditor options={options} onChange={setOptions} />
 
           <div>
             <Label htmlFor="image">Question Image (Optional)</Label>

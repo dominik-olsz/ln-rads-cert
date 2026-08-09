@@ -9,16 +9,15 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { optionLetter } from "@/lib/questionOptions";
 
 interface TestQuestion {
   id: string;
   question_text: string;
-  option_a: string;
-  option_b: string;
-  option_c: string;
-  option_d: string;
-  difficulty: string;
+  options: { text: string }[];
+  difficulty?: string;
 }
+
 
 const Test = () => {
   const navigate = useNavigate();
@@ -105,12 +104,8 @@ const Test = () => {
 
   const progress = ((currentQuestion + 1) / questions.length) * 100;
   const question = questions[currentQuestion];
-  const options = [
-    question.option_a,
-    question.option_b,
-    question.option_c,
-    question.option_d,
-  ];
+  const options = question.options ?? [];
+
 
   const handleAnswer = (value: string) => {
     setAnswers({ ...answers, [question.id]: value });
@@ -154,17 +149,18 @@ const Test = () => {
         throw new Error('Failed to submit test');
       }
 
-      const { score, passed } = await response.json();
-      
+      const { score, passed, passPercent = 80, pointsEarned = 0, pointsPossible = 0 } = await response.json();
+
       toast({
         title: passed ? "Congratulations!" : "Test Complete",
-        description: passed 
-          ? `You passed with a score of ${score}%!` 
-          : `You scored ${score}%. You need 70% to pass.`,
+        description: passed
+          ? `You passed with ${pointsEarned}/${pointsPossible} points (${score}%)!`
+          : `You scored ${score}%. You need ${passPercent}% to pass.`,
         variant: passed ? "default" : "destructive",
       });
 
-      navigate(`/results?score=${score}&passed=${passed}&courseId=${courseId}`);
+      navigate(`/results?score=${score}&passed=${passed}&courseId=${courseId}&passPercent=${passPercent}&points=${pointsEarned}&maxPoints=${pointsPossible}`);
+
     } catch (error) {
       console.error('Error submitting test:', error);
       toast({
@@ -212,23 +208,22 @@ const Test = () => {
                   onValueChange={handleAnswer}
                   className="space-y-3"
                 >
-                  {options.map((option, index) => {
-                    const optionValue = ['A', 'B', 'C', 'D'][index];
-                    return (
-                      <div
-                        key={index}
-                        className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                  {options.map((option, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                    >
+                      <RadioGroupItem value={String(index)} id={`option-${index}`} />
+                      <Label
+                        htmlFor={`option-${index}`}
+                        className="flex-1 cursor-pointer"
                       >
-                        <RadioGroupItem value={optionValue} id={`option-${index}`} />
-                        <Label
-                          htmlFor={`option-${index}`}
-                          className="flex-1 cursor-pointer"
-                        >
-                          {option}
-                        </Label>
-                      </div>
-                    );
-                  })}
+                        <span className="font-medium mr-1">{optionLetter(index)}:</span>
+                        {option.text}
+                      </Label>
+                    </div>
+                  ))}
+
                 </RadioGroup>
               </div>
 

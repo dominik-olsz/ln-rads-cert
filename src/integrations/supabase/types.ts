@@ -399,6 +399,7 @@ export type Database = {
           attempts_total: number
           certification_enabled: boolean
           certification_mode: string
+          certification_pass_percent: number
           certification_question_count: number | null
           course_includes: string | null
           created_at: string | null
@@ -420,6 +421,7 @@ export type Database = {
           attempts_total?: number
           certification_enabled?: boolean
           certification_mode?: string
+          certification_pass_percent?: number
           certification_question_count?: number | null
           course_includes?: string | null
           created_at?: string | null
@@ -441,6 +443,7 @@ export type Database = {
           attempts_total?: number
           certification_enabled?: boolean
           certification_mode?: string
+          certification_pass_percent?: number
           certification_question_count?: number | null
           course_includes?: string | null
           created_at?: string | null
@@ -907,6 +910,8 @@ export type Database = {
           id: string
           is_certification_test: boolean
           passed: boolean
+          points_earned: number | null
+          points_possible: number | null
           score: number
           started_at: string | null
           time_per_question: Json | null
@@ -920,6 +925,8 @@ export type Database = {
           id?: string
           is_certification_test?: boolean
           passed: boolean
+          points_earned?: number | null
+          points_possible?: number | null
           score: number
           started_at?: string | null
           time_per_question?: Json | null
@@ -933,6 +940,8 @@ export type Database = {
           id?: string
           is_certification_test?: boolean
           passed?: boolean
+          points_earned?: number | null
+          points_possible?: number | null
           score?: number
           started_at?: string | null
           time_per_question?: Json | null
@@ -951,7 +960,7 @@ export type Database = {
       }
       test_questions: {
         Row: {
-          correct_answer: string
+          correct_answer: string | null
           course_id: string | null
           created_at: string | null
           explanation: string | null
@@ -960,17 +969,18 @@ export type Database = {
           image_url: string | null
           is_free: boolean
           lesson_id: string | null
-          option_a: string
-          option_b: string
-          option_c: string
-          option_d: string
+          option_a: string | null
+          option_b: string | null
+          option_c: string | null
+          option_d: string | null
+          options: Json
           order_index: number | null
           question_text: string
           test_type: string
           updated_at: string | null
         }
         Insert: {
-          correct_answer: string
+          correct_answer?: string | null
           course_id?: string | null
           created_at?: string | null
           explanation?: string | null
@@ -979,17 +989,18 @@ export type Database = {
           image_url?: string | null
           is_free?: boolean
           lesson_id?: string | null
-          option_a: string
-          option_b: string
-          option_c: string
-          option_d: string
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          options?: Json
           order_index?: number | null
           question_text: string
           test_type?: string
           updated_at?: string | null
         }
         Update: {
-          correct_answer?: string
+          correct_answer?: string | null
           course_id?: string | null
           created_at?: string | null
           explanation?: string | null
@@ -998,10 +1009,11 @@ export type Database = {
           image_url?: string | null
           is_free?: boolean
           lesson_id?: string | null
-          option_a?: string
-          option_b?: string
-          option_c?: string
-          option_d?: string
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          options?: Json
           order_index?: number | null
           question_text?: string
           test_type?: string
