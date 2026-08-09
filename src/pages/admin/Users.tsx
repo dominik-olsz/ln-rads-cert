@@ -362,6 +362,14 @@ const AdminUsers = () => {
         </Card>
       </main>
 
+      <UserProfileSheet
+        userId={profileUserId}
+        onOpenChange={(open) => !open && setProfileUserId(null)}
+        onDiscountSaved={(userId, percent) =>
+          setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, discount_percent: percent } : u)))
+        }
+      />
+
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
