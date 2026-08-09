@@ -264,6 +264,14 @@ const AdminUsers = () => {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => setProfileUserId(user.id)}
+                        >
+                          <User className="h-4 w-4 mr-2" />
+                          View profile
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => toggleAdminRole(user.id, user.is_admin)}
                         >
                           {user.is_admin ? (
@@ -292,7 +300,9 @@ const AdminUsers = () => {
                 ))}
               </TableBody>
             </Table>
+            )}
           </CardContent>
+
         </Card>
       </main>
 
