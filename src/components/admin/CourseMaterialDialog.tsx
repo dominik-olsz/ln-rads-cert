@@ -63,16 +63,14 @@ const CourseMaterialDialog = ({ open, onOpenChange, material, courseId, lessons,
       const filePath = `${courseId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('course-materials')
+        .from(MATERIAL_BUCKET)
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage
-        .from('course-materials')
-        .getPublicUrl(filePath);
+      // Store the private storage path; access-checked signed URLs are created on read.
+      setFileUrl(filePath);
 
-      setFileUrl(data.publicUrl);
       
       toast({
         title: 'Success',
