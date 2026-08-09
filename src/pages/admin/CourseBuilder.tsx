@@ -244,16 +244,19 @@ const CourseBuilder = () => {
         .eq('test_type', 'certification')
         .order('order_index');
 
-      const lessonsWithoutQuestions = lessonsData.map(lesson => ({
+      const lessonContents = await attachLessonContent(lessonsData || []);
+
+      const lessonsWithoutQuestions = lessonContents.map(lesson => ({
         id: lesson.id,
         title: lesson.title,
         order_index: lesson.order_index,
         content_type: lesson.content_type,
-        content_url: lesson.content_url,
+        content_url: lesson.content_url ?? undefined,
         content_text: lesson.content_text || "",
         duration: lesson.duration,
         is_free: lesson.is_free || false
       }));
+
 
       // Group questions by order_index to recreate question groups
       const questionsByOrder = (questionsData || []).reduce((acc, q) => {
