@@ -329,6 +329,8 @@ export type Database = {
           course_id: string
           discount_code_id: string | null
           discount_summary: string | null
+          granted_by: string | null
+          granted_by_admin: boolean
           id: string
           payment_status: string
           purchased_at: string
@@ -345,6 +347,8 @@ export type Database = {
           course_id: string
           discount_code_id?: string | null
           discount_summary?: string | null
+          granted_by?: string | null
+          granted_by_admin?: boolean
           id?: string
           payment_status?: string
           purchased_at?: string
@@ -361,6 +365,8 @@ export type Database = {
           course_id?: string
           discount_code_id?: string | null
           discount_summary?: string | null
+          granted_by?: string | null
+          granted_by_admin?: boolean
           id?: string
           payment_status?: string
           purchased_at?: string
