@@ -71,7 +71,7 @@ serve(async (req) => {
     const { error } = await admin.from("course_purchases").insert({
       user_id: userId,
       course_id: courseId,
-      payment_status: "paid",
+      payment_status: "completed",
       amount_paid: 0,
       granted_by_admin: true,
       granted_by: user.id,
