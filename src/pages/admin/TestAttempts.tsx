@@ -234,6 +234,7 @@ const AdminTestAttempts = () => {
                   <TableRow>
                     <TableHead>Student</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Course</TableHead>
                     <TableHead>Score</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Attempts</TableHead>
@@ -248,6 +249,7 @@ const AdminTestAttempts = () => {
                         {attempt.profiles?.full_name || 'Unknown'}
                       </TableCell>
                       <TableCell>{attempt.profiles?.email || 'N/A'}</TableCell>
+                      <TableCell>{attempt.courses?.title || '—'}</TableCell>
                       <TableCell>
                         <span className="font-semibold">{attempt.score}%</span>
                       </TableCell>
