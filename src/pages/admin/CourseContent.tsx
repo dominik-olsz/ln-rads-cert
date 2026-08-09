@@ -93,7 +93,7 @@ const CourseContent = () => {
       .from('course_materials')
       .select('*')
       .eq('course_id', courseId);
-    if (data) setMaterials(data);
+    if (data) setMaterials(await resolveMaterialUrls(data));
   };
 
   const fetchQuestions = async () => {
