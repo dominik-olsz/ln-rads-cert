@@ -279,28 +279,39 @@ const AdminTestAttempts = () => {
 
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>All Certification Test Attempts</CardTitle>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search student, email or course"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </CardHeader>
           <CardContent>
             {attempts.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">No certification test attempts yet.</p>
+            ) : visibleAttempts.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No attempts match your search.</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Course</TableHead>
-                    <TableHead>Score</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Attempts</TableHead>
-                    <TableHead>Date</TableHead>
+                    <SortHeader label="Student" sortKey="student" />
+                    <SortHeader label="Email" sortKey="email" />
+                    <SortHeader label="Course" sortKey="course" />
+                    <SortHeader label="Score" sortKey="score" />
+                    <SortHeader label="Status" sortKey="status" />
+                    <SortHeader label="Attempts" sortKey="attempts" />
+                    <SortHeader label="Date" sortKey="date" />
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {attempts.map((attempt) => (
+                  {visibleAttempts.map((attempt) => (
                     <TableRow key={attempt.id}>
                       <TableCell className="font-medium">
                         {attempt.profiles?.full_name || 'Unknown'}
