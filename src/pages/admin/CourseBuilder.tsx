@@ -221,9 +221,10 @@ const CourseBuilder = () => {
 
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
-        .select('*')
+        .select('id, course_id, title, content_type, order_index, duration, is_free')
         .eq('course_id', courseId)
         .order('order_index');
+
 
       if (lessonsError) throw lessonsError;
 
