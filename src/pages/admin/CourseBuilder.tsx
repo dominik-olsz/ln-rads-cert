@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { attachLessonContent } from "@/lib/lessonContent";
+
 import { 
   ArrowLeft, Plus, Trash2, Upload, Video, FileText, 
   GripVertical, Save, PlayCircle, CheckCircle, BookOpen, 
@@ -221,9 +223,10 @@ const CourseBuilder = () => {
 
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
-        .select('*')
+        .select('id, course_id, title, content_type, order_index, duration, is_free')
         .eq('course_id', courseId)
         .order('order_index');
+
 
       if (lessonsError) throw lessonsError;
 
@@ -243,16 +246,19 @@ const CourseBuilder = () => {
         .eq('test_type', 'certification')
         .order('order_index');
 
-      const lessonsWithoutQuestions = lessonsData.map(lesson => ({
+      const lessonContents = await attachLessonContent(lessonsData || []);
+
+      const lessonsWithoutQuestions = lessonContents.map(lesson => ({
         id: lesson.id,
         title: lesson.title,
         order_index: lesson.order_index,
         content_type: lesson.content_type,
-        content_url: lesson.content_url,
+        content_url: lesson.content_url ?? undefined,
         content_text: lesson.content_text || "",
         duration: lesson.duration,
         is_free: lesson.is_free || false
       }));
+
 
       // Group questions by order_index to recreate question groups
       const questionsByOrder = (questionsData || []).reduce((acc, q) => {

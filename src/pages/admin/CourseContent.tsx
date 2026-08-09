@@ -11,6 +11,8 @@ import LessonDialog from '@/components/admin/LessonDialog';
 import CourseMaterialDialog from '@/components/admin/CourseMaterialDialog';
 import TestQuestionDialog from '@/components/admin/TestQuestionDialog';
 import { resolveMaterialUrls } from '@/lib/materialUrl';
+import { attachLessonContent } from '@/lib/lessonContent';
+
 
 
 interface Course {
@@ -82,11 +84,12 @@ const CourseContent = () => {
   const fetchLessons = async () => {
     const { data } = await supabase
       .from('lessons')
-      .select('*')
+      .select('id, course_id, title, content_type, order_index, duration, is_free')
       .eq('course_id', courseId)
       .order('order_index');
-    if (data) setLessons(data);
+    if (data) setLessons(await attachLessonContent(data) as any);
   };
+
 
   const fetchMaterials = async () => {
     const { data } = await supabase
