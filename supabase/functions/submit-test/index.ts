@@ -82,19 +82,29 @@ serve(async (req) => {
       }
 
       // For certification tests, get questions from the progress record
+      // Scope by user_id so a caller can never read another learner's progress row
       const { data: progressData, error: progressError } = await supabaseAdmin
         .from('certification_test_progress')
-        .select('questions')
+        .select('questions, user_id')
         .eq('id', progressId)
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle();
 
       if (progressError) {
         console.error('Error fetching progress:', progressError);
         return new Response(
-          JSON.stringify({ error: 'Failed to fetch test progress', details: progressError.message }),
+          JSON.stringify({ error: 'Failed to fetch test progress' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      if (!progressData) {
+        return new Response(
+          JSON.stringify({ error: 'Test progress not found' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
 
       // Get question IDs from progress
       const savedQuestions = progressData.questions as any[];
