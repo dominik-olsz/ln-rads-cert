@@ -6,7 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, ShieldOff, Trash2, Percent } from 'lucide-react';
+import { Shield, ShieldOff, Trash2, Percent, Search, User, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import UserProfileSheet from '@/components/admin/UserProfileSheet';
+
+type SortKey = 'name' | 'email' | 'role' | 'discount' | 'joined';
 import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
@@ -35,6 +38,9 @@ const AdminUsers = () => {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [discountDrafts, setDiscountDrafts] = useState<Record<string, string>>({});
   const [savingDiscount, setSavingDiscount] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'joined', dir: 'desc' });
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
 
   const saveDiscount = async (userId: string) => {
     const raw = Number(discountDrafts[userId]);
@@ -169,6 +175,56 @@ const AdminUsers = () => {
     }
   };
 
+  const toggleSort = (key: SortKey) => {
+    setSort((prev) =>
+      prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+    );
+  };
+
+  const sortValue = (u: UserWithRole, key: SortKey): string | number => {
+    switch (key) {
+      case 'name': return (u.full_name || '').toLowerCase();
+      case 'email': return (u.email || '').toLowerCase();
+      case 'role': return u.is_admin ? 1 : 0;
+      case 'discount': return u.discount_percent ?? 0;
+      case 'joined': return new Date(u.created_at).getTime();
+    }
+  };
+
+  const term = search.trim().toLowerCase();
+  const visibleUsers = users
+    .filter(
+      (u) =>
+        !term ||
+        (u.full_name || '').toLowerCase().includes(term) ||
+        (u.email || '').toLowerCase().includes(term)
+    )
+    .sort((a, b) => {
+      const va = sortValue(a, sort.key);
+      const vb = sortValue(b, sort.key);
+      if (va === vb) return 0;
+      return (va > vb ? 1 : -1) * (sort.dir === 'asc' ? 1 : -1);
+    });
+
+  const SortHeader = ({ label, sortKey }: { label: string; sortKey: SortKey }) => (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => toggleSort(sortKey)}
+        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+      >
+        {label}
+        {sort.key === sortKey ? (
+          sort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  );
+
+
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -185,23 +241,40 @@ const AdminUsers = () => {
       <Navbar />
       <main className="container mx-auto px-4 py-8">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>User Management</CardTitle>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                {visibleUsers.length} of {users.length}
+              </span>
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search name or email"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
+            {visibleUsers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No users match your search.</p>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Discount</TableHead>
-                  <TableHead>Joined</TableHead>
+                  <SortHeader label="Name" sortKey="name" />
+                  <SortHeader label="Email" sortKey="email" />
+                  <SortHeader label="Role" sortKey="role" />
+                  <SortHeader label="Discount" sortKey="discount" />
+                  <SortHeader label="Joined" sortKey="joined" />
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
+                {visibleUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>{user.full_name || 'N/A'}</TableCell>
                     <TableCell>{user.email}</TableCell>
@@ -247,6 +320,14 @@ const AdminUsers = () => {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => setProfileUserId(user.id)}
+                        >
+                          <User className="h-4 w-4 mr-2" />
+                          View profile
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => toggleAdminRole(user.id, user.is_admin)}
                         >
                           {user.is_admin ? (
@@ -275,9 +356,19 @@ const AdminUsers = () => {
                 ))}
               </TableBody>
             </Table>
+            )}
           </CardContent>
+
         </Card>
       </main>
+
+      <UserProfileSheet
+        userId={profileUserId}
+        onOpenChange={(open) => !open && setProfileUserId(null)}
+        onDiscountSaved={(userId, percent) =>
+          setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, discount_percent: percent } : u)))
+        }
+      />
 
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
