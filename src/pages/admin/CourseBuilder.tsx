@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { attachLessonContent } from "@/lib/lessonContent";
+
 import { 
   ArrowLeft, Plus, Trash2, Upload, Video, FileText, 
   GripVertical, Save, PlayCircle, CheckCircle, BookOpen, 
