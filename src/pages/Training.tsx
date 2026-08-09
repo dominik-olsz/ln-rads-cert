@@ -10,6 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { optionLetter } from "@/lib/questionOptions";
+import { resolveMaterialUrls } from "@/lib/materialUrl";
+
 
 interface Lesson {
   id: string;
@@ -220,9 +222,10 @@ const Training = () => {
 
         if (materialsError) throw materialsError;
 
-        // Group materials by lesson_id
+        // Group materials by lesson_id, resolving private storage paths to signed URLs
+        const signedMaterials = await resolveMaterialUrls(materialsData ?? []);
         const groupedMaterials: { [lessonId: string]: CourseMaterial[] } = {};
-        materialsData?.forEach((material) => {
+        signedMaterials.forEach((material) => {
           if (material.lesson_id) {
             if (!groupedMaterials[material.lesson_id]) {
               groupedMaterials[material.lesson_id] = [];
@@ -231,6 +234,7 @@ const Training = () => {
           }
         });
         setMaterials(groupedMaterials);
+
 
         // Start on the first accessible item
         const firstOpen = allItems.findIndex((item) => !item.locked);

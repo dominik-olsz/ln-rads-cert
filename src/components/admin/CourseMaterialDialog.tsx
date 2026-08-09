@@ -7,6 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { MATERIAL_BUCKET } from '@/lib/materialUrl';
+
 
 interface CourseMaterial {
   id?: string;
@@ -63,16 +65,14 @@ const CourseMaterialDialog = ({ open, onOpenChange, material, courseId, lessons,
       const filePath = `${courseId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('course-materials')
+        .from(MATERIAL_BUCKET)
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage
-        .from('course-materials')
-        .getPublicUrl(filePath);
+      // Store the private storage path; access-checked signed URLs are created on read.
+      setFileUrl(filePath);
 
-      setFileUrl(data.publicUrl);
       
       toast({
         title: 'Success',

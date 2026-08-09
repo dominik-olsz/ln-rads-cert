@@ -10,6 +10,8 @@ import { Plus, Edit, Trash2, ArrowLeft, FileText, Image } from 'lucide-react';
 import LessonDialog from '@/components/admin/LessonDialog';
 import CourseMaterialDialog from '@/components/admin/CourseMaterialDialog';
 import TestQuestionDialog from '@/components/admin/TestQuestionDialog';
+import { resolveMaterialUrls } from '@/lib/materialUrl';
+
 
 interface Course {
   id: string;
@@ -91,7 +93,7 @@ const CourseContent = () => {
       .from('course_materials')
       .select('*')
       .eq('course_id', courseId);
-    if (data) setMaterials(data);
+    if (data) setMaterials(await resolveMaterialUrls(data));
   };
 
   const fetchQuestions = async () => {
