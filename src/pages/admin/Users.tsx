@@ -6,7 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, ShieldOff, Trash2, Percent } from 'lucide-react';
+import { Shield, ShieldOff, Trash2, Percent, Search, User, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import UserProfileSheet from '@/components/admin/UserProfileSheet';
+
+type SortKey = 'name' | 'email' | 'role' | 'discount' | 'joined';
 import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
