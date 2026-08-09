@@ -9,7 +9,9 @@ import { Label } from '@/components/ui/label';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { RotateCcw, CheckCircle, XCircle, Award } from 'lucide-react';
+import { RotateCcw, CheckCircle, XCircle, Award, Search, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+
+type SortKey = 'student' | 'email' | 'course' | 'score' | 'status' | 'attempts' | 'date';
 
 interface TestAttempt {
   id: string;
@@ -32,6 +34,8 @@ interface TestAttempt {
 const AdminTestAttempts = () => {
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
   const { toast } = useToast();
 
 
@@ -184,6 +188,59 @@ const AdminTestAttempts = () => {
   const getUserAttemptCount = (userId: string) => {
     return attempts.filter(a => a.user_id === userId).length;
   };
+
+  const toggleSort = (key: SortKey) => {
+    setSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const sortValue = (a: TestAttempt, key: SortKey): string | number => {
+    switch (key) {
+      case 'student': return (a.profiles?.full_name || '').toLowerCase();
+      case 'email': return (a.profiles?.email || '').toLowerCase();
+      case 'course': return (a.courses?.title || '').toLowerCase();
+      case 'score': return a.score;
+      case 'status': return a.passed ? 1 : 0;
+      case 'attempts': return getUserAttemptCount(a.user_id);
+      case 'date': return new Date(a.completed_at || 0).getTime();
+    }
+  };
+
+  const term = search.trim().toLowerCase();
+  const visibleAttempts = attempts
+    .filter(a =>
+      !term ||
+      (a.profiles?.full_name || '').toLowerCase().includes(term) ||
+      (a.profiles?.email || '').toLowerCase().includes(term) ||
+      (a.courses?.title || '').toLowerCase().includes(term)
+    )
+    .sort((a, b) => {
+      const va = sortValue(a, sort.key);
+      const vb = sortValue(b, sort.key);
+      if (va === vb) return 0;
+      return (va > vb ? 1 : -1) * (sort.dir === 'asc' ? 1 : -1);
+    });
+
+  const SortHeader = ({ label, sortKey }: { label: string; sortKey: SortKey }) => (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => toggleSort(sortKey)}
+        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+      >
+        {label}
+        {sort.key === sortKey ? (
+          sort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  );
+
 
   if (loading) {
     return (
