@@ -7,7 +7,7 @@ import {
   pointsForAnswer,
   resolveAnswerIndex,
   semiCorrectIndexes,
-} from '../_shared/questions.ts';
+} from './questions.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
