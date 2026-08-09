@@ -38,6 +38,9 @@ const AdminUsers = () => {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [discountDrafts, setDiscountDrafts] = useState<Record<string, string>>({});
   const [savingDiscount, setSavingDiscount] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'joined', dir: 'desc' });
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
 
   const saveDiscount = async (userId: string) => {
     const raw = Number(discountDrafts[userId]);
@@ -171,6 +174,56 @@ const AdminUsers = () => {
       setUserToDelete(null);
     }
   };
+
+  const toggleSort = (key: SortKey) => {
+    setSort((prev) =>
+      prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+    );
+  };
+
+  const sortValue = (u: UserWithRole, key: SortKey): string | number => {
+    switch (key) {
+      case 'name': return (u.full_name || '').toLowerCase();
+      case 'email': return (u.email || '').toLowerCase();
+      case 'role': return u.is_admin ? 1 : 0;
+      case 'discount': return u.discount_percent ?? 0;
+      case 'joined': return new Date(u.created_at).getTime();
+    }
+  };
+
+  const term = search.trim().toLowerCase();
+  const visibleUsers = users
+    .filter(
+      (u) =>
+        !term ||
+        (u.full_name || '').toLowerCase().includes(term) ||
+        (u.email || '').toLowerCase().includes(term)
+    )
+    .sort((a, b) => {
+      const va = sortValue(a, sort.key);
+      const vb = sortValue(b, sort.key);
+      if (va === vb) return 0;
+      return (va > vb ? 1 : -1) * (sort.dir === 'asc' ? 1 : -1);
+    });
+
+  const SortHeader = ({ label, sortKey }: { label: string; sortKey: SortKey }) => (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => toggleSort(sortKey)}
+        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+      >
+        {label}
+        {sort.key === sortKey ? (
+          sort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  );
+
+
 
   if (loading) {
     return (
