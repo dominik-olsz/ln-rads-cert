@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { optionLetter } from "@/lib/questionOptions";
 
 interface Lesson {
   id: string;
@@ -46,18 +47,18 @@ interface CourseMaterial {
 interface TestQuestion {
   id: string;
   question_text: string;
-  option_a: string;
-  option_b: string;
-  option_c: string;
-  option_d: string;
+  options: { text: string }[];
   image_url: string | null;
   group_title: string | null;
   order_index: number;
 }
 
 interface AnswerFeedback {
+  points: number;
+  maxPoints: number;
   correct: boolean;
-  correctAnswer: string;
+  correctIndexes: number[];
+  semiCorrectIndexes: number[];
   explanation: string | null;
 }
 
@@ -72,25 +73,28 @@ const Training = () => {
   const [loading, setLoading] = useState(true);
   const [userProgress, setUserProgress] = useState<Set<string>>(new Set());
   const [hasPurchased, setHasPurchased] = useState(false);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [answerFeedback, setAnswerFeedback] = useState<Record<string, AnswerFeedback>>({});
   const [lessonContents, setLessonContents] = useState<Record<string, { content_text: string | null; content_url: string | null }>>({});
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
 
   // Grade a practice answer server-side (the answer key is never sent to the browser)
-  const handleSelectAnswer = async (questionId: string, answer: 'A' | 'B' | 'C' | 'D') => {
-    setSelectedAnswers((prev) => ({ ...prev, [questionId]: answer }));
+  const handleSelectAnswer = async (questionId: string, optionIndex: number) => {
+    setSelectedAnswers((prev) => ({ ...prev, [questionId]: optionIndex }));
     try {
       const { data, error } = await supabase.functions.invoke('check-answer', {
-        body: { questionId, answer },
+        body: { questionId, optionIndex },
       });
       if (error) throw error;
       setAnswerFeedback((prev) => ({
         ...prev,
         [questionId]: {
+          points: Number(data?.points ?? 0),
+          maxPoints: Number(data?.maxPoints ?? 2),
           correct: !!data?.correct,
-          correctAnswer: String(data?.correctAnswer ?? ''),
+          correctIndexes: Array.isArray(data?.correctIndexes) ? data.correctIndexes : [],
+          semiCorrectIndexes: Array.isArray(data?.semiCorrectIndexes) ? data.semiCorrectIndexes : [],
           explanation: data?.explanation ?? null,
         },
       }));
@@ -99,6 +103,7 @@ const Training = () => {
       toast.error('Could not check your answer. Please try again.');
     }
   };
+
 
   useEffect(() => {
     const fetchTrainingData = async () => {
@@ -625,17 +630,10 @@ const Training = () => {
                           {group.questions.map((q, qIndex) => {
                             const selected = selectedAnswers?.[q.id];
                             const feedback = answerFeedback[q.id];
-                            const correctLetter = feedback?.correctAnswer ?? '';
                             const isCorrect = feedback?.correct ?? false;
+                            const isSemi = !!feedback && feedback.points === 1;
+                            const options = q.options ?? [];
 
-
-                            const options = [
-                              { key: 'A', text: q.option_a },
-                              { key: 'B', text: q.option_b },
-                              { key: 'C', text: q.option_c },
-                              { key: 'D', text: q.option_d },
-                            ] as const;
-                            
                             return (
                               <div key={q.id} className="border rounded-lg p-6 space-y-4 bg-card">
                                 <div className="flex items-start justify-between gap-4">
@@ -654,49 +652,63 @@ const Training = () => {
                                 <p className="text-base">{q.question_text}</p>
                                 
                                 <div role="radiogroup" className="space-y-2">
-                                  {options.map((o) => {
-                                    const isSelected = selected === o.key;
-                                    const isCorrectOption = correctLetter !== '' && o.key === correctLetter;
+                                  {options.map((o, oIndex) => {
+                                    const isSelected = selected === oIndex;
                                     const showFeedback = !!feedback;
-                                    
+                                    const isCorrectOption = showFeedback && feedback.correctIndexes.includes(oIndex);
+                                    const isSemiOption = showFeedback && feedback.semiCorrectIndexes.includes(oIndex);
+
                                     let buttonClass = 'border rounded-lg p-3 w-full text-left transition-colors ';
                                     if (isSelected) {
                                       if (showFeedback && isCorrect) {
                                         buttonClass += 'bg-green-100 border-green-500 dark:bg-green-900/20 dark:border-green-600';
-                                      } else if (showFeedback && !isCorrect) {
+                                      } else if (showFeedback && isSemi) {
+                                        buttonClass += 'bg-amber-100 border-amber-500 dark:bg-amber-900/20 dark:border-amber-600';
+                                      } else if (showFeedback) {
                                         buttonClass += 'bg-red-100 border-red-500 dark:bg-red-900/20 dark:border-red-600';
                                       } else {
                                         buttonClass += 'bg-accent/20 border-primary';
                                       }
-                                    } else if (showFeedback && isCorrectOption) {
+                                    } else if (isCorrectOption) {
                                       buttonClass += 'bg-green-50 border-green-300 dark:bg-green-900/10 dark:border-green-700';
+                                    } else if (isSemiOption) {
+                                      buttonClass += 'bg-amber-50 border-amber-300 dark:bg-amber-900/10 dark:border-amber-700';
                                     } else {
                                       buttonClass += 'hover:bg-muted';
                                     }
-                                    
+
                                     return (
                                       <button
                                         type="button"
-                                        key={o.key}
+                                        key={oIndex}
                                         role="radio"
                                         aria-checked={isSelected}
-                                        onClick={() => handleSelectAnswer(q.id, o.key as 'A' | 'B' | 'C' | 'D')}
+                                        onClick={() => handleSelectAnswer(q.id, oIndex)}
                                         className={buttonClass}
                                       >
-                                        <span className="font-medium mr-1">{o.key}:</span> {o.text}
+                                        <span className="font-medium mr-1">{optionLetter(oIndex)}:</span> {o.text}
+                                        {showFeedback && (isCorrectOption || isSemiOption) && (
+                                          <span className="ml-2 text-xs text-muted-foreground">
+                                            {isCorrectOption ? '2 pts' : '1 pt'}
+                                          </span>
+                                        )}
                                       </button>
                                     );
                                   })}
                                 </div>
                                 
-                                {selected && feedback && (
+                                {selected !== undefined && feedback && (
                                   <div className={`rounded-lg p-4 mt-4 ${
-                                    isCorrect 
-                                      ? 'bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800' 
-                                      : 'bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                                    isCorrect
+                                      ? 'bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                                      : isSemi
+                                        ? 'bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'
+                                        : 'bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800'
                                   }`}>
                                     <p className="font-semibold mb-2">
-                                      {isCorrect ? '✓ Correct!' : '✗ Incorrect.'} Correct Answer: {correctLetter}
+                                      {isCorrect ? '✓ Correct!' : isSemi ? '~ Partially correct.' : '✗ Incorrect.'}{' '}
+                                      {feedback.points} / {feedback.maxPoints} points — correct answer:{' '}
+                                      {feedback.correctIndexes.map((i) => optionLetter(i)).join(', ') || '—'}
                                     </p>
                                     {feedback.explanation && (
                                       <p className="text-sm">{feedback.explanation}</p>
@@ -706,6 +718,7 @@ const Training = () => {
 
                               </div>
                             );
+
                           })}
                         </div>
                       );

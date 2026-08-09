@@ -11,16 +11,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
+import { optionLetter } from "@/lib/questionOptions";
 
 interface TestQuestion {
   id: string;
   question_text: string;
-  option_a: string;
-  option_b: string;
-  option_c: string;
-  option_d: string;
+  options: { text: string }[];
   image_url?: string;
 }
+
 
 interface QuestionAnswer {
   questionId: string;
@@ -603,19 +602,20 @@ const CertificationTest = () => {
         throw new Error('No response data from server');
       }
 
-      const { score, passed, attemptId } = data;
-      
+      const { score, passed, attemptId, passPercent = 80, pointsEarned = 0, pointsPossible = 0 } = data;
+
       console.log('Test submitted successfully:', { score, passed, attemptId });
-      
+
       toast({
         title: passed ? "Congratulations!" : "Test Complete",
-        description: passed 
-          ? `You passed with a score of ${score}%!` 
-          : `You scored ${score}%. You need 80% to pass. You cannot retake this test.`,
+        description: passed
+          ? `You passed with ${pointsEarned}/${pointsPossible} points (${score}%)!`
+          : `You scored ${score}%. You need ${passPercent}% to pass. You cannot retake this test.`,
         variant: passed ? "default" : "destructive",
       });
 
-      navigate(`/results?score=${score}&passed=${passed}&isCertification=true&attemptId=${attemptId}`);
+      navigate(`/results?score=${score}&passed=${passed}&isCertification=true&attemptId=${attemptId}&passPercent=${passPercent}&points=${pointsEarned}&maxPoints=${pointsPossible}`);
+
     } catch (error: any) {
       console.error('Error submitting test:', error);
       
@@ -894,32 +894,30 @@ const CertificationTest = () => {
                   disabled={isLocked}
                   className="space-y-3"
                 >
-                  {['A', 'B', 'C', 'D'].map((optionValue) => {
-                    const optionText = question[`option_${optionValue.toLowerCase()}` as keyof TestQuestion] as string;
-                    return (
-                      <div
-                        key={optionValue}
-                        className={`flex items-center space-x-3 p-4 rounded-lg border transition-colors ${
-                          isLocked 
-                            ? 'opacity-75 cursor-not-allowed' 
-                            : 'hover:bg-muted/50'
-                        }`}
+                  {(question.options ?? []).map((option, index) => (
+                    <div
+                      key={index}
+                      className={`flex items-center space-x-3 p-4 rounded-lg border transition-colors ${
+                        isLocked
+                          ? 'opacity-75 cursor-not-allowed'
+                          : 'hover:bg-muted/50'
+                      }`}
+                    >
+                      <RadioGroupItem
+                        value={String(index)}
+                        id={`option-${index}`}
+                        disabled={isLocked}
+                      />
+                      <Label
+                        htmlFor={`option-${index}`}
+                        className={`flex-1 ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                       >
-                        <RadioGroupItem 
-                          value={optionValue} 
-                          id={`option-${optionValue}`}
-                          disabled={isLocked}
-                        />
-                        <Label
-                          htmlFor={`option-${optionValue}`}
-                          className={`flex-1 ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                        >
-                          <span className="font-semibold mr-2">{optionValue}.</span>
-                          {optionText}
-                        </Label>
-                      </div>
-                    );
-                  })}
+                        <span className="font-semibold mr-2">{optionLetter(index)}.</span>
+                        {option.text}
+                      </Label>
+                    </div>
+                  ))}
+
                 </RadioGroup>
               </div>
 

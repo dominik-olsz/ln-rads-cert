@@ -34,8 +34,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import QuestionOptionsEditor from "@/components/admin/QuestionOptionsEditor";
+import {
+  QuestionOption,
+  emptyOptions,
+  isValidQuestionOptions,
+  normalizeOptions,
+} from "@/lib/questionOptions";
 import { formatEuro } from "@/lib/pricing";
 import { Badge } from "@/components/ui/badge";
+
 
 interface Lesson {
   id?: string;
@@ -51,15 +59,12 @@ interface Lesson {
 interface TestQuestion {
   id?: string;
   question_text: string;
-  option_a: string;
-  option_b: string;
-  option_c: string;
-  option_d: string;
-  correct_answer: string;
+  options: QuestionOption[];
   explanation?: string;
   image_url?: string;
   order_index?: number;
 }
+
 
 interface TestQuestionsGroup {
   id?: string;
@@ -95,6 +100,8 @@ const CourseBuilder = () => {
   const [attemptsIncluded, setAttemptsIncluded] = useState(1);
   const [attemptsTotal, setAttemptsTotal] = useState(3);
   const [courseRetakePrice, setCourseRetakePrice] = useState(69);
+  const [certificationPassPercent, setCertificationPassPercent] = useState(80);
+
   const [certQuestions, setCertQuestions] = useState<TestQuestion[]>([]);
 
 
@@ -113,13 +120,14 @@ const CourseBuilder = () => {
 
   const currentSnapshot = useMemo(() => JSON.stringify({
     title, description, price, discountPrice, discountValidUntil, heroImage, courseIncludes, whatYouLearn,
-    certificationEnabled, certificationMode, certificationQuestionCount,
+    certificationEnabled, certificationMode, certificationQuestionCount, certificationPassPercent,
     attemptsIncluded, attemptsTotal, courseRetakePrice,
     certQuestions, lessons, questionGroups,
   }), [title, description, price, discountPrice, discountValidUntil, heroImage, courseIncludes, whatYouLearn,
-    certificationEnabled, certificationMode, certificationQuestionCount,
+    certificationEnabled, certificationMode, certificationQuestionCount, certificationPassPercent,
     attemptsIncluded, attemptsTotal, courseRetakePrice,
     certQuestions, lessons, questionGroups]);
+
 
   const isDirty = savedSnapshot !== null && savedSnapshot !== currentSnapshot;
 
@@ -208,6 +216,8 @@ const CourseBuilder = () => {
       setAttemptsIncluded(courseData.attempts_included ?? 1);
       setAttemptsTotal(courseData.attempts_total ?? 3);
       setCourseRetakePrice(courseData.retake_price ?? 69);
+      setCertificationPassPercent(courseData.certification_pass_percent ?? 80);
+
 
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
@@ -255,9 +265,14 @@ const CourseBuilder = () => {
           };
         }
         acc[order].questions.push({
-          ...q,
+          id: q.id,
+          question_text: q.question_text,
+          options: normalizeOptions(q.options, q),
+          explanation: q.explanation ?? undefined,
+          image_url: q.image_url ?? undefined,
           order_index: q.order_index ?? 999
         });
+
         return acc;
       }, {} as Record<number, { title: string | null, is_free: boolean, questions: TestQuestion[] }>);
 
@@ -270,7 +285,17 @@ const CourseBuilder = () => {
 
       setLessons(lessonsWithoutQuestions);
       setQuestionGroups(groups);
-      setCertQuestions((certQuestionsData || []) as TestQuestion[]);
+      setCertQuestions(
+        (certQuestionsData || []).map((q: any) => ({
+          id: q.id,
+          question_text: q.question_text,
+          options: normalizeOptions(q.options, q),
+          explanation: q.explanation ?? undefined,
+          image_url: q.image_url ?? undefined,
+          order_index: q.order_index ?? 0,
+        }))
+      );
+
       setBaselineArmed(true);
 
     } catch (error: any) {
@@ -357,13 +382,10 @@ const CourseBuilder = () => {
     
     const newQuestions: TestQuestion[] = Array.from({ length: numQuestionsToAdd }, () => ({
       question_text: "",
-      option_a: "",
-      option_b: "",
-      option_c: "",
-      option_d: "",
-      correct_answer: "A",
+      options: emptyOptions(),
       order_index: newOrderIndex
     }));
+
     
     const newGroup: TestQuestionsGroup = {
       title: `Test Questions ${questionGroups.length + 1}`,
@@ -427,13 +449,10 @@ const CourseBuilder = () => {
     const updatedGroups = [...questionGroups];
     const newQuestion: TestQuestion = {
       question_text: "",
-      option_a: "",
-      option_b: "",
-      option_c: "",
-      option_d: "",
-      correct_answer: "A",
+      options: emptyOptions(),
       order_index: updatedGroups[groupIndex].order_index
     };
+
     updatedGroups[groupIndex].questions.push(newQuestion);
     setQuestionGroups(updatedGroups);
   };
@@ -525,13 +544,10 @@ const CourseBuilder = () => {
       ...certQuestions,
       {
         question_text: "",
-        option_a: "",
-        option_b: "",
-        option_c: "",
-        option_d: "",
-        correct_answer: "A",
+        options: emptyOptions(),
         order_index: certQuestions.length,
       },
+
     ]);
   };
 
@@ -588,6 +604,8 @@ const CourseBuilder = () => {
         attempts_included: attemptsIncluded,
         attempts_total: attemptsTotal,
         retake_price: courseRetakePrice,
+        certification_pass_percent: certificationPassPercent,
+
       };
 
       // Save or update course
@@ -636,12 +654,8 @@ const CourseBuilder = () => {
       }
 
       const isValidQuestion = (q: TestQuestion) =>
-        q.question_text?.trim() &&
-        q.option_a?.trim() &&
-        q.option_b?.trim() &&
-        q.option_c?.trim() &&
-        q.option_d?.trim() &&
-        q.correct_answer;
+        Boolean(q.question_text?.trim()) && isValidQuestionOptions(q.options);
+
 
       // Save course-level test questions
       for (const group of questionGroups) {
@@ -652,11 +666,13 @@ const CourseBuilder = () => {
             course_id: finalCourseId,
             lesson_id: null,
             question_text: q.question_text,
-            option_a: q.option_a,
-            option_b: q.option_b,
-            option_c: q.option_c,
-            option_d: q.option_d,
-            correct_answer: q.correct_answer,
+            options: q.options as unknown as any,
+            option_a: null,
+            option_b: null,
+            option_c: null,
+            option_d: null,
+            correct_answer: null,
+
             explanation: q.explanation || null,
             image_url: q.image_url || null,
             test_type: 'course',
@@ -685,11 +701,13 @@ const CourseBuilder = () => {
                 course_id: finalCourseId,
                 lesson_id: null,
                 question_text: q.question_text,
-                option_a: q.option_a,
-                option_b: q.option_b,
-                option_c: q.option_c,
-                option_d: q.option_d,
-                correct_answer: q.correct_answer,
+                options: q.options as unknown as any,
+                option_a: null,
+                option_b: null,
+                option_c: null,
+                option_d: null,
+                correct_answer: null,
+
                 explanation: q.explanation || null,
                 image_url: q.image_url || null,
                 test_type: 'certification',
@@ -1161,57 +1179,15 @@ const CourseBuilder = () => {
                               />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                              <Input
-                                value={question.option_a}
-                                onChange={(e) =>
-                                  updateQuestionInGroup(currentItemIndex, idx, { option_a: e.target.value })
-                                }
-                                placeholder="Option A"
-                              />
-                              <Input
-                                value={question.option_b}
-                                onChange={(e) =>
-                                  updateQuestionInGroup(currentItemIndex, idx, { option_b: e.target.value })
-                                }
-                                placeholder="Option B"
-                              />
-                              <Input
-                                value={question.option_c}
-                                onChange={(e) =>
-                                  updateQuestionInGroup(currentItemIndex, idx, { option_c: e.target.value })
-                                }
-                                placeholder="Option C"
-                              />
-                              <Input
-                                value={question.option_d}
-                                onChange={(e) =>
-                                  updateQuestionInGroup(currentItemIndex, idx, { option_d: e.target.value })
-                                }
-                                placeholder="Option D"
-                              />
-                            </div>
+                            <QuestionOptionsEditor
+                              options={question.options}
+                              onChange={(options) =>
+                                updateQuestionInGroup(currentItemIndex, idx, { options })
+                              }
+                            />
 
                             <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-2">
-                                <Label>Correct Answer</Label>
-                                <Select
-                                  value={question.correct_answer}
-                                  onValueChange={(value) =>
-                                    updateQuestionInGroup(currentItemIndex, idx, { correct_answer: value })
-                                  }
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="A">Option A</SelectItem>
-                                    <SelectItem value="B">Option B</SelectItem>
-                                    <SelectItem value="C">Option C</SelectItem>
-                                    <SelectItem value="D">Option D</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
+
 
                               <div className="space-y-2">
                                 <Label>Image (Optional)</Label>
@@ -1361,6 +1337,27 @@ const CourseBuilder = () => {
                       </Select>
                     </div>
 
+                    <div className="space-y-2 max-w-md">
+                      <Label htmlFor="certPassPercent">Points required to pass (%)</Label>
+                      <Input
+                        id="certPassPercent"
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={certificationPassPercent}
+                        onChange={(e) =>
+                          setCertificationPassPercent(Math.min(100, Math.max(1, Number(e.target.value) || 0)))
+                        }
+                        placeholder="e.g., 80"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Each question is worth up to 2 points (correct = 2, semi-correct = 1, wrong = 0).
+                        A 100-question exam is worth 200 points.
+                      </p>
+                    </div>
+
+
+
                     {certificationMode === 'random' ? (
                       <div className="space-y-2 max-w-md">
                         <Label htmlFor="certCount">Number of questions in the exam</Label>
@@ -1415,47 +1412,13 @@ const CourseBuilder = () => {
                                 />
                               </div>
 
-                              <div className="grid grid-cols-2 gap-3">
-                                <Input
-                                  value={question.option_a}
-                                  onChange={(e) => updateCertQuestion(idx, { option_a: e.target.value })}
-                                  placeholder="Option A"
-                                />
-                                <Input
-                                  value={question.option_b}
-                                  onChange={(e) => updateCertQuestion(idx, { option_b: e.target.value })}
-                                  placeholder="Option B"
-                                />
-                                <Input
-                                  value={question.option_c}
-                                  onChange={(e) => updateCertQuestion(idx, { option_c: e.target.value })}
-                                  placeholder="Option C"
-                                />
-                                <Input
-                                  value={question.option_d}
-                                  onChange={(e) => updateCertQuestion(idx, { option_d: e.target.value })}
-                                  placeholder="Option D"
-                                />
-                              </div>
+                              <QuestionOptionsEditor
+                                options={question.options}
+                                onChange={(options) => updateCertQuestion(idx, { options })}
+                              />
 
                               <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-2">
-                                  <Label>Correct Answer</Label>
-                                  <Select
-                                    value={question.correct_answer}
-                                    onValueChange={(value) => updateCertQuestion(idx, { correct_answer: value })}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="A">Option A</SelectItem>
-                                      <SelectItem value="B">Option B</SelectItem>
-                                      <SelectItem value="C">Option C</SelectItem>
-                                      <SelectItem value="D">Option D</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+
 
                                 <div className="space-y-2">
                                   <Label>Image (Optional)</Label>

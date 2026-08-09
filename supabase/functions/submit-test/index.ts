@@ -1,10 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { MAX_POINTS_PER_QUESTION, pointsForAnswer } from './questions.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -100,10 +102,10 @@ serve(async (req) => {
 
       console.log('Fetching correct answers for', questionIds.length, 'questions');
 
-      // Fetch correct answers for these questions
+      // Fetch answer keys for these questions
       const { data: questionsData, error: questionsError } = await supabaseAdmin
         .from('test_questions')
-        .select('id, correct_answer')
+        .select('id, options, correct_answer, option_a, option_b, option_c, option_d')
         .in('id', questionIds);
 
       if (questionsError) {
@@ -123,7 +125,7 @@ serve(async (req) => {
 
       const { data: questionsData, error: questionsError } = await supabaseAdmin
         .from('test_questions')
-        .select('id, correct_answer')
+        .select('id, options, correct_answer, option_a, option_b, option_c, option_d')
         .eq('course_id', courseId);
 
       questions = questionsData;
@@ -138,20 +140,34 @@ serve(async (req) => {
       );
     }
 
-    // Calculate score
-    let correctCount = 0;
+    // Calculate points: 2 = correct, 1 = semi-correct, 0 = wrong
     const totalQuestions = questions.length;
+    let pointsEarned = 0;
+    let correctCount = 0;
 
     questions.forEach((question: any) => {
-      if (answers[question.id] === question.correct_answer) {
-        correctCount++;
-      }
+      const points = pointsForAnswer(question, answers[question.id]);
+      pointsEarned += points;
+      if (points === MAX_POINTS_PER_QUESTION) correctCount++;
     });
 
-    const score = Math.round((correctCount / totalQuestions) * 100);
-    const passed = score >= 80; // 80% passing grade
+    const pointsPossible = totalQuestions * MAX_POINTS_PER_QUESTION;
+    const score = pointsPossible > 0 ? Math.round((pointsEarned / pointsPossible) * 100) : 0;
 
-    console.log('Test results:', { score, passed, correctCount, totalQuestions });
+    // Passing threshold: per-course for certification tests, 80% otherwise
+    let passPercent = 80;
+    if (isCertificationTest && courseId) {
+      const { data: courseCfg } = await supabaseAdmin
+        .from('courses')
+        .select('certification_pass_percent')
+        .eq('id', courseId)
+        .maybeSingle();
+      passPercent = courseCfg?.certification_pass_percent ?? 80;
+    }
+
+    const passed = score >= passPercent;
+
+    console.log('Test results:', { score, passed, pointsEarned, pointsPossible, passPercent });
 
     // Record test attempt
     const testAttemptData: any = {
@@ -159,6 +175,8 @@ serve(async (req) => {
       score,
       passed,
       total_questions: totalQuestions,
+      points_earned: pointsEarned,
+      points_possible: pointsPossible,
       answers: answers,
       time_per_question: timePerQuestion || {},
       is_certification_test: isCertificationTest || false
@@ -167,6 +185,7 @@ serve(async (req) => {
     if (courseId) {
       testAttemptData.course_id = courseId;
     }
+
 
     console.log('Creating test attempt record...');
 
@@ -205,12 +224,16 @@ serve(async (req) => {
     console.log('Returning success response');
 
     return new Response(
-      JSON.stringify({ 
-        score, 
-        passed, 
-        correctCount, 
+      JSON.stringify({
+        score,
+        passed,
+        passPercent,
+        pointsEarned,
+        pointsPossible,
+        correctCount,
         totalQuestions,
         attemptId: testAttempt.id
+
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

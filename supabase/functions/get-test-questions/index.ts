@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { publicOptions } from './questions.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,7 +14,14 @@ const json = (body: unknown, status = 200) =>
   });
 
 const SELECT_COLUMNS =
-  'id, lesson_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, image_url, created_at, test_type, group_title, order_index, is_free';
+  'id, lesson_id, question_text, options, option_a, option_b, option_c, option_d, correct_answer, explanation, image_url, created_at, test_type, group_title, order_index, is_free';
+
+// Strips the answer key and exposes only the option texts.
+const toSafeQuestion = (q: any) => {
+  const { correct_answer, explanation, options, option_a, option_b, option_c, option_d, ...rest } = q;
+  return { ...rest, options: publicOptions(q) };
+};
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -78,9 +86,8 @@ serve(async (req) => {
 
       // Never ship the answer key to the client; feedback is graded by the
       // check-answer function after the learner picks an option.
-      const safeCourseQuestions = (questions ?? []).map(
-        ({ correct_answer, explanation, ...rest }: any) => rest
-      );
+      const safeCourseQuestions = (questions ?? []).map(toSafeQuestion);
+
 
 
       // For visitors without access, also describe the locked groups so the
@@ -262,9 +269,8 @@ serve(async (req) => {
     }
 
     // Strip answers/explanations to prevent cheating
-    const safeQuestions = certQuestions.map(
-      ({ correct_answer, explanation, ...rest }: any) => rest
-    );
+    const safeQuestions = certQuestions.map(toSafeQuestion);
+
 
     return json({ questions: safeQuestions });
   } catch (error) {

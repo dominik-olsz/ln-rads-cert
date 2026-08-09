@@ -14,6 +14,9 @@ const Results = () => {
   const passed = searchParams.get("passed") === "true";
   const attemptId = searchParams.get("attemptId");
   const courseId = searchParams.get("courseId");
+  const passPercent = parseFloat(searchParams.get("passPercent") || "80");
+  const pointsEarned = parseFloat(searchParams.get("points") || "0");
+  const pointsPossible = parseFloat(searchParams.get("maxPoints") || "0");
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -116,7 +119,7 @@ const Results = () => {
                 <p className="text-muted-foreground">
                   {passed
                     ? "You have successfully completed the certification test"
-                    : "You need 80% or higher to pass. You can't retake the test."}
+                    : `You need ${passPercent}% or higher to pass. You can't retake the test.`}
                 </p>
               </div>
 
@@ -124,8 +127,11 @@ const Results = () => {
                 <div className="text-6xl font-bold text-primary mb-2">
                   {score.toFixed(1)}%
                 </div>
-                <p className="text-muted-foreground">Your Score</p>
+                <p className="text-muted-foreground">
+                  Your Score{pointsPossible > 0 ? ` — ${pointsEarned} / ${pointsPossible} points` : ''}
+                </p>
               </div>
+
 
               {passed && (
                 <div className="space-y-4">
@@ -179,18 +185,21 @@ const Results = () => {
               <h2 className="font-semibold mb-4">Test Summary</h2>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="space-y-1">
-                  <p className="text-muted-foreground">Total Questions</p>
-                  <p className="text-lg font-semibold">100</p>
+                  <p className="text-muted-foreground">Questions</p>
+                  <p className="text-lg font-semibold">
+                    {pointsPossible > 0 ? pointsPossible / 2 : '—'}
+                  </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-muted-foreground">Correct Answers</p>
+                  <p className="text-muted-foreground">Points Earned</p>
                   <p className="text-lg font-semibold text-accent">
-                    {Math.round(score)}
+                    {pointsPossible > 0 ? `${pointsEarned} / ${pointsPossible}` : Math.round(score)}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-muted-foreground">Passing Score</p>
-                  <p className="text-lg font-semibold">80%</p>
+                  <p className="text-lg font-semibold">{passPercent}%</p>
+
                 </div>
                 <div className="space-y-1">
                   <p className="text-muted-foreground">Your Score</p>
