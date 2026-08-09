@@ -185,23 +185,40 @@ const AdminUsers = () => {
       <Navbar />
       <main className="container mx-auto px-4 py-8">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>User Management</CardTitle>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                {visibleUsers.length} of {users.length}
+              </span>
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search name or email"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
+            {visibleUsers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No users match your search.</p>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Discount</TableHead>
-                  <TableHead>Joined</TableHead>
+                  <SortHeader label="Name" sortKey="name" />
+                  <SortHeader label="Email" sortKey="email" />
+                  <SortHeader label="Role" sortKey="role" />
+                  <SortHeader label="Discount" sortKey="discount" />
+                  <SortHeader label="Joined" sortKey="joined" />
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
+                {visibleUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>{user.full_name || 'N/A'}</TableCell>
                     <TableCell>{user.email}</TableCell>
