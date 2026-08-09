@@ -9,7 +9,9 @@ import { Label } from '@/components/ui/label';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { RotateCcw, CheckCircle, XCircle, Award } from 'lucide-react';
+import { RotateCcw, CheckCircle, XCircle, Award, Search, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+
+type SortKey = 'student' | 'email' | 'course' | 'score' | 'status' | 'attempts' | 'date';
 
 interface TestAttempt {
   id: string;
@@ -32,6 +34,8 @@ interface TestAttempt {
 const AdminTestAttempts = () => {
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
   const { toast } = useToast();
 
 
@@ -185,6 +189,59 @@ const AdminTestAttempts = () => {
     return attempts.filter(a => a.user_id === userId).length;
   };
 
+  const toggleSort = (key: SortKey) => {
+    setSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const sortValue = (a: TestAttempt, key: SortKey): string | number => {
+    switch (key) {
+      case 'student': return (a.profiles?.full_name || '').toLowerCase();
+      case 'email': return (a.profiles?.email || '').toLowerCase();
+      case 'course': return (a.courses?.title || '').toLowerCase();
+      case 'score': return a.score;
+      case 'status': return a.passed ? 1 : 0;
+      case 'attempts': return getUserAttemptCount(a.user_id);
+      case 'date': return new Date(a.completed_at || 0).getTime();
+    }
+  };
+
+  const term = search.trim().toLowerCase();
+  const visibleAttempts = attempts
+    .filter(a =>
+      !term ||
+      (a.profiles?.full_name || '').toLowerCase().includes(term) ||
+      (a.profiles?.email || '').toLowerCase().includes(term) ||
+      (a.courses?.title || '').toLowerCase().includes(term)
+    )
+    .sort((a, b) => {
+      const va = sortValue(a, sort.key);
+      const vb = sortValue(b, sort.key);
+      if (va === vb) return 0;
+      return (va > vb ? 1 : -1) * (sort.dir === 'asc' ? 1 : -1);
+    });
+
+  const SortHeader = ({ label, sortKey }: { label: string; sortKey: SortKey }) => (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => toggleSort(sortKey)}
+        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+      >
+        {label}
+        {sort.key === sortKey ? (
+          sort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  );
+
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -222,28 +279,39 @@ const AdminTestAttempts = () => {
 
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>All Certification Test Attempts</CardTitle>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search student, email or course"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </CardHeader>
           <CardContent>
             {attempts.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">No certification test attempts yet.</p>
+            ) : visibleAttempts.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No attempts match your search.</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Course</TableHead>
-                    <TableHead>Score</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Attempts</TableHead>
-                    <TableHead>Date</TableHead>
+                    <SortHeader label="Student" sortKey="student" />
+                    <SortHeader label="Email" sortKey="email" />
+                    <SortHeader label="Course" sortKey="course" />
+                    <SortHeader label="Score" sortKey="score" />
+                    <SortHeader label="Status" sortKey="status" />
+                    <SortHeader label="Attempts" sortKey="attempts" />
+                    <SortHeader label="Date" sortKey="date" />
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {attempts.map((attempt) => (
+                  {visibleAttempts.map((attempt) => (
                     <TableRow key={attempt.id}>
                       <TableCell className="font-medium">
                         {attempt.profiles?.full_name || 'Unknown'}
