@@ -224,7 +224,8 @@ serve(async (req) => {
           is_completed: true,
           test_attempt_id: testAttempt.id
         })
-        .eq('id', progressId);
+        .eq('id', progressId)
+        .eq('user_id', user.id);
 
       if (updateError) {
         console.error('Error updating progress:', updateError);
