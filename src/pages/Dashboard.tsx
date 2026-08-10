@@ -98,6 +98,9 @@ export default function Dashboard() {
           (questions?.questions || []).forEach((q: any) => {
             questionGroups.add(q.group_title || 'Test Questions');
           });
+          (questions?.lockedGroups || []).forEach((g: any) => {
+            questionGroups.add(g.group_title || 'Test Questions');
+          });
 
           const totalItems = (lessonsCount || 0) + questionGroups.size;
 
