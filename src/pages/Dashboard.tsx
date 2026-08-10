@@ -85,7 +85,7 @@ export default function Dashboard() {
           // Get total lessons count
           const { count: lessonsCount } = await supabase
             .from("lessons")
-            .select("*", { count: "exact", head: true })
+            .select("id", { count: "exact", head: true })
             .eq("course_id", purchase.course_id);
 
           // Get total test question groups count (course-level questions only)
@@ -97,6 +97,9 @@ export default function Dashboard() {
           const questionGroups = new Set();
           (questions?.questions || []).forEach((q: any) => {
             questionGroups.add(q.group_title || 'Test Questions');
+          });
+          (questions?.lockedGroups || []).forEach((g: any) => {
+            questionGroups.add(g.group_title || 'Test Questions');
           });
 
           const totalItems = (lessonsCount || 0) + questionGroups.size;
