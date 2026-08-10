@@ -285,7 +285,7 @@ const CourseDetail = () => {
       toast.error('Please purchase this course first');
       return;
     }
-    navigate('/certification-test', { state: { courseId: id } });
+    navigate(`/certification-test?courseId=${id}`);
   };
 
   if (loading) {
