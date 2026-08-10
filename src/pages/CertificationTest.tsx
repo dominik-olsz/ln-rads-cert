@@ -38,7 +38,10 @@ const CertificationTest = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
-  const courseId = searchParams.get('courseId');
+  const location = useLocation();
+  const courseId =
+    searchParams.get('courseId') ??
+    ((location.state as { courseId?: string } | null)?.courseId ?? null);
   
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, QuestionAnswer>>({});
