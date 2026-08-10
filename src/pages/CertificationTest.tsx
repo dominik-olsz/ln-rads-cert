@@ -350,7 +350,7 @@ const CertificationTest = () => {
       }
 
       const { data, error } = await supabase.functions.invoke('get-test-questions', {
-        body: { testType: 'certification' },
+        body: { testType: 'certification', ...(courseId ? { courseId } : {}) },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       });
 
