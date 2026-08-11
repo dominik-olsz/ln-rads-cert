@@ -354,11 +354,16 @@ ${buyerIdentity}${optional("ulica_i_numer", invoiceRow.buyer_address_line1)}${
       return;
     }
 
-    // 2. Send to KSeF. 49 / 51 / 72 all mean KSeF has the document.
+    // 2. KSeF is only for domestic Polish B2B. Everyone else stops here with a
+    //    FakturaXL document and ksef_status null (not applicable, not an error).
+    if (!requiresKsef(invoiceRow)) return;
+
+    // 49 / 51 / 72 all mean KSeF has the document.
     const sent = await call(
       FXL_ENDPOINTS.sendToKsef,
-      `  <dokument_id>${cdata(documentId)}</dokument_id>`,
+      `  <dokument_id>${documentId}</dokument_id>`,
     );
+
     const sendCode = String(sent?.kod ?? "");
     if (sendCode === "52") {
       // The KSeF connection isn't authenticated yet. Expected state, not a
