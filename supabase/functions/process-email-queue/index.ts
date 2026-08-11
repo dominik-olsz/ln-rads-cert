@@ -323,13 +323,19 @@ Deno.serve(async (req) => {
         const providerId = await sendViaResend(payload, resendApiKey)
 
         // Log success
+        // Log success. `reference` carries the business key (e.g. invoice
+        // number) so admin views can show delivery state per document.
         await supabase.from('email_send_log').insert({
           message_id: payload.message_id,
           template_name: payload.label || queue,
           recipient_email: payload.to,
           status: 'sent',
-          metadata: providerId ? { provider: 'resend', provider_id: providerId } : null,
+          metadata: {
+            ...(providerId ? { provider: 'resend', provider_id: providerId } : {}),
+            ...(payload.reference ? { reference: String(payload.reference) } : {}),
+          },
         })
+
 
 
         // Delete from queue
