@@ -115,13 +115,7 @@ export default function Account() {
     if (!user) return;
     (async () => {
       const [{ data }, { data: adminData }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select(
-            "buyer_type, full_name, company_name, vat_id, address_line1, address_line2, postal_code, city, country",
-          )
-          .eq("id", user.id)
-          .maybeSingle(),
+        supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
         supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
       ]);
 
@@ -129,15 +123,8 @@ export default function Account() {
 
       if (data) {
         setBilling({
-          buyer_type: (data.buyer_type as BillingProfile["buyer_type"]) ?? "private",
+          ...emptyBilling,
           full_name: data.full_name ?? "",
-          company_name: data.company_name ?? "",
-          vat_id: data.vat_id ?? "",
-          address_line1: data.address_line1 ?? "",
-          address_line2: data.address_line2 ?? "",
-          postal_code: data.postal_code ?? "",
-          city: data.city ?? "",
-          country: data.country ?? "",
         });
       }
       setLoading(false);
