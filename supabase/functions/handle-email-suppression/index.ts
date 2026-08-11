@@ -124,6 +124,27 @@ Deno.serve(async (req) => {
     })
   }
 
+  // 3. Alert the admin so a failed customer email never goes unnoticed.
+  try {
+    await supabase.functions.invoke('send-transactional-email', {
+      body: {
+        templateName: 'admin-delivery-alert',
+        idempotencyKey: `delivery-alert-${payload.reason}-${payload.message_id ?? normalizedEmail}`,
+        templateData: {
+          affectedEmail: normalizedEmail,
+          eventType: payload.reason,
+          reason: sendLogMessage,
+          templateName: String(
+            (payload.metadata as Record<string, unknown> | undefined)?.subject ?? '',
+          ),
+          occurredAt: new Date().toISOString(),
+        },
+      },
+    })
+  } catch (alertError) {
+    console.warn('Failed to send admin delivery alert', { alertError })
+  }
+
   console.log('Suppression processed', {
     email_redacted: normalizedEmail[0] + '***@' + normalizedEmail.split('@')[1],
     reason: payload.reason,
@@ -134,6 +155,7 @@ Deno.serve(async (req) => {
 
   return jsonResponse({ success: true })
 })
+
 
 function mapReasonToStatus(
   reason: string,
