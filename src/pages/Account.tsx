@@ -142,35 +142,19 @@ export default function Account() {
     setSavingBilling(true);
     const { error } = await supabase
       .from("profiles")
-      .update({
-        buyer_type: billing.buyer_type,
-        full_name: billing.full_name.trim(),
-        company_name: billing.buyer_type === "company" ? billing.company_name.trim() : null,
-        vat_id: billing.buyer_type === "company" ? billing.vat_id.trim() : null,
-        address_line1: billing.address_line1.trim(),
-        address_line2: billing.address_line2.trim() || null,
-        postal_code: billing.postal_code.trim(),
-        city: billing.city.trim(),
-        country: billing.country,
-      })
+      .update({ full_name: billing.full_name.trim() })
       .eq("id", user!.id);
 
+    setSavingBilling(false);
+
     if (error) {
-      setSavingBilling(false);
       toast({ title: "Could not save", description: error.message, variant: "destructive" });
       return;
     }
 
-    // Push the same details to the payment provider so checkout is pre-filled
-    // with the buyer's name, address and VAT number.
-    const { data: sync } = await supabase.functions.invoke("sync-billing");
-    setSavingBilling(false);
-
     toast({
-      title: "Invoice details saved",
-      description: sync?.synced
-        ? "They are now in sync with checkout and will be used for your next purchase."
-        : "They will be used automatically for your next purchase.",
+      title: "Full name saved",
+      description: "Your name will be used on certificates and invoices.",
     });
   };
 
