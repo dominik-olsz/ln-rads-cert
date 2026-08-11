@@ -36,9 +36,10 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration — all mail is delivered through Resend from the verified
-// lnrads.com domain, so the From address matches the app's own domain.
+// mail.lnrads.com sending domain; replies go to the real cert@ mailbox.
 const SITE_NAME = "LN-RADS Certification"
-const FROM_ADDRESS = "cert@lnrads.com"
+const FROM_ADDRESS = "noreply@mail.lnrads.com"
+const REPLY_TO_ADDRESS = "cert@lnrads.com"
 const FROM = `${SITE_NAME} <${FROM_ADDRESS}>`
 
 
@@ -314,7 +315,7 @@ async function handleWebhook(req: Request): Promise<Response> {
       message_id: messageId,
       to: payload.data.email,
       from: FROM,
-      reply_to: FROM_ADDRESS,
+      reply_to: REPLY_TO_ADDRESS,
 
       subject: EMAIL_SUBJECTS[emailType] || 'Notification',
       html,
