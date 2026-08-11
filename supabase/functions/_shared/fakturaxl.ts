@@ -13,7 +13,11 @@ export const FXL_ENDPOINTS = {
   sendToKsef: "dokument_ksef_wyslanie",
   /** Read a document (status, KSeF number, PDF link). */
   readDocument: "dokument_odczytaj",
+  /** List documents (supports date filters + pagination, 1 request / 5 s). */
+  listDocuments: "lista_dokumentow",
 } as const;
+
+
 
 /** Documented FakturaXL response codes mapped to readable messages. */
 export const FXL_ERRORS: Record<string, string> = {
@@ -64,30 +68,47 @@ const parser = new XMLParser({
 
 export type FxlResponse = Record<string, any>;
 
+/** Parses a FakturaXL XML response into a plain object. */
+export function xmlToObject(text: string): FxlResponse {
+  try {
+    return (parser.parse(text) ?? {}) as FxlResponse;
+  } catch (e) {
+    throw new Error(`FakturaXL returned unparsable XML: ${(e as Error).message}`);
+  }
+}
+
 /**
  * POSTs an XML body to a FakturaXL endpoint and returns the parsed
  * `<dokument>` / `<dokumenty>` payload.
  */
-export async function fxl(endpoint: string, xmlBody: string): Promise<FxlResponse> {
+export async function fxlRaw(endpoint: string, xmlBody: string, root = "dokument"): Promise<string> {
   const token = Deno.env.get("FAKTURAXL_API_TOKEN");
   if (!token) throw new Error("FAKTURAXL_API_TOKEN is not configured");
 
+  // The token is alphanumeric and needs no escaping; some endpoints parse the
+  // XML naively and reject a CDATA-wrapped token with kod=3.
   const body = `<?xml version="1.0" encoding="UTF-8"?>
-<dokument>
-  <api_token>${cdata(token)}</api_token>
+<${root}>
+  <api_token>${token}</api_token>
 ${xmlBody}
-</dokument>`;
+</${root}>`;
 
   const res = await fetch(`${FXL_BASE}/${endpoint}.php`, {
     method: "POST",
     headers: { "Content-Type": "application/xml; charset=utf-8" },
     body,
   });
-
   const text = await res.text();
   if (!res.ok) {
     throw new Error(`FakturaXL ${endpoint} HTTP ${res.status}: ${text.slice(0, 500)}`);
   }
+  return text;
+}
+
+export async function fxl(endpoint: string, xmlBody: string, root = "dokument"): Promise<FxlResponse> {
+  const text = await fxlRaw(endpoint, xmlBody, root);
+
+
 
   let parsed: FxlResponse;
   try {

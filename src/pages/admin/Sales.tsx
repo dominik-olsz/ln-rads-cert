@@ -241,6 +241,25 @@ const AdminSales = () => {
 
 
 
+  const [driftOpen, setDriftOpen] = useState(false);
+  const [drift, setDrift] = useState<any | null>(null);
+
+  const runDriftCheck = async () => {
+    setBusy(true);
+    setDrift(null);
+    setDriftOpen(true);
+    const { data, error } = await supabase.functions.invoke('invoice-actions', {
+      body: { action: 'fxl_orphans' },
+    });
+    setBusy(false);
+    if (error) {
+      setDriftOpen(false);
+      toast({ title: 'Check failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setDrift(data);
+  };
+
   const doRefund = async () => {
     if (!selected) return;
     setBusy(true);
@@ -322,10 +341,15 @@ const AdminSales = () => {
 
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <h1 className="text-4xl font-bold">Sales &amp; Invoices</h1>
-          <Button variant="outline" onClick={exportCsv}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" disabled={busy} onClick={runDriftCheck}>
+              Check FakturaXL sync
+            </Button>
+            <Button variant="outline" onClick={exportCsv}>
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -693,7 +717,71 @@ const AdminSales = () => {
         </DialogContent>
 
       </Dialog>
+
+      <Dialog open={driftOpen} onOpenChange={setDriftOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>FakturaXL sync check</DialogTitle>
+            <DialogDescription>
+              Compares this month&apos;s FakturaXL documents with the invoices stored here.
+            </DialogDescription>
+          </DialogHeader>
+          {!drift ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Checking…
+            </div>
+          ) : (
+            <div className="space-y-4 text-sm">
+              <p className="text-muted-foreground">
+                {drift.from} – {drift.to} · {drift.verified} invoice(s) verified in FakturaXL
+              </p>
+
+              {drift.listing_available ? (
+                drift.orphans?.length ? (
+                  <div className="space-y-1">
+                    <p className="font-medium text-destructive">
+                      Documents in FakturaXL with no invoice here:
+                    </p>
+                    {drift.orphans.map((o: any) => (
+                      <div key={o.document_id ?? o.invoice_number}>
+                        {o.invoice_number} · doc {o.document_id} · {o.gross}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p>No unmatched FakturaXL documents.</p>
+                )
+              ) : (
+                <p className="text-muted-foreground">
+                  FakturaXL did not return a document list (code {drift.list_code ?? '—'}), so
+                  only invoices recorded here could be verified.
+                </p>
+              )}
+
+              {drift.mismatches?.length ? (
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">Mismatches:</p>
+                  {drift.mismatches.map((m: any) => (
+                    <div key={m.invoice_id}>
+                      {m.invoice_number} · doc {m.document_id} · {m.issue}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>No mismatches found.</p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDriftOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 
