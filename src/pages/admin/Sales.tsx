@@ -133,7 +133,7 @@ const AdminSales = () => {
   const [to, setTo] = useState('');
   const [selected, setSelected] = useState<Invoice | null>(null);
   const [refundOpen, setRefundOpen] = useState(false);
-  const [refundAmount, setRefundAmount] = useState('');
+  const [refundAmount, setRefundAmount] = useState('0.00');
   const [busy, setBusy] = useState(false);
 
   const fetchInvoices = async () => {
@@ -322,7 +322,7 @@ const AdminSales = () => {
       return;
     }
     setRefundOpen(false);
-    setRefundAmount('');
+    setRefundAmount('0.00');
     toast({
       title: 'Refund issued',
       description: 'A correction invoice is being generated.',
@@ -751,7 +751,7 @@ const AdminSales = () => {
                       busy || (corrections.get(selected.id) ?? 0) >= selected.gross_amount
                     }
                     onClick={() => {
-                      setRefundAmount('');
+                      setRefundAmount('0.00');
                       setRefundOpen(true);
                     }}
                   >
@@ -770,7 +770,7 @@ const AdminSales = () => {
           <DialogHeader>
             <DialogTitle>Refund payment</DialogTitle>
             <DialogDescription>
-              Leave the amount empty for a full refund. A correction invoice is generated
+              Leave the amount at 0 for a full refund. A correction invoice is generated
               automatically and a full refund removes the buyer&apos;s access.
             </DialogDescription>
           </DialogHeader>
