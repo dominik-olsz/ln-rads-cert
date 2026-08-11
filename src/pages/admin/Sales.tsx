@@ -322,7 +322,7 @@ const AdminSales = () => {
       return;
     }
     setRefundOpen(false);
-    setRefundAmount('');
+    setRefundAmount('0.00');
     toast({
       title: 'Refund issued',
       description: 'A correction invoice is being generated.',
