@@ -27,6 +27,7 @@ import AdminSales from "./pages/admin/Sales";
 
 import Dashboard from "./pages/Dashboard";
 import Account from "./pages/Account";
+import Payments from "./pages/Payments";
 import ResetPassword from "./pages/ResetPassword";
 import AuthConfirm from "./pages/AuthConfirm";
 
