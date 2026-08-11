@@ -34,6 +34,10 @@ interface Profile {
 const money = (cents: number | null | undefined) =>
   `€${(((cents ?? 0) as number) / 100).toFixed(2)}`;
 
+// course_purchases.amount_paid is stored in whole euros; everything else in cents.
+const euros = (amount: number | null | undefined) =>
+  `€${Number(amount ?? 0).toFixed(2)}`;
+
 const dateStr = (v: string | null | undefined) =>
   v ? new Date(v).toLocaleDateString() : '—';
 
@@ -249,7 +253,7 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
                       <div className="font-medium">{course.title}</div>
                       <div className="text-xs text-muted-foreground">
                         {purchase
-                          ? `${purchase.granted_by_admin ? 'Granted by admin' : `Purchased ${dateStr(purchase.purchased_at)}`} · ${money(purchase.amount_paid)}`
+                          ? `${purchase.granted_by_admin ? 'Granted by admin' : `Purchased ${dateStr(purchase.purchased_at)}`} · ${euros(purchase.amount_paid)}`
                           : 'No access'}
                       </div>
                     </div>
@@ -318,7 +322,7 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
                     <div>
                       <div className="font-medium">{course?.title || 'Course'}</div>
                       <div className="text-xs text-muted-foreground">
-                        {dateStr(purchase.purchased_at)} · {money(purchase.amount_paid)}
+                        {dateStr(purchase.purchased_at)} · {euros(purchase.amount_paid)}
                         {purchase.refunded_amount > 0 ? ` · refunded ${money(purchase.refunded_amount)}` : ''}
                         {purchase.discount_summary ? ` · ${purchase.discount_summary}` : ''}
                       </div>
