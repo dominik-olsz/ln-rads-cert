@@ -48,10 +48,10 @@ serve(async (req) => {
         .from("course_purchases")
         .delete()
         .eq("user_id", userId)
-        .eq("course_id", courseId)
-        .eq("granted_by_admin", true);
+        .eq("course_id", courseId);
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true, action });
+
     }
 
     const { data: existing } = await admin
