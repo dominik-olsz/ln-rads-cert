@@ -614,6 +614,15 @@ const CourseDetail = () => {
           </div>
         </div>
       </section>
+
+      {user && (
+        <BillingDialog
+          open={billingOpen}
+          onOpenChange={setBillingOpen}
+          userId={user.id}
+          onConfirmed={startCheckout}
+        />
+      )}
     </div>
   );
 };
