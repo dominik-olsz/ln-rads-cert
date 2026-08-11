@@ -475,7 +475,9 @@ const AdminSales = () => {
                       <TableHead className="text-right">VAT</TableHead>
                       <TableHead className="text-right">Gross</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead>KSeF</TableHead>
+
                       <TableHead />
                     </TableRow>
                   </TableHeader>
