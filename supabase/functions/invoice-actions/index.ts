@@ -104,14 +104,30 @@ serve(async (req) => {
       }
 
       // Reverse direction (always available): our rows that reference a FakturaXL
-      // document, verified one by one against dokument_odczytaj.
+      // document, verified one by one against dokument_odczytaj — number and gross.
       const { data: ourRows } = await admin
         .from("invoices")
-        .select("id, invoice_number, gross_amount, fxl_document_id")
+        .select("id, invoice_number, doc_type, gross_amount, fxl_document_id")
         .not("fxl_document_id", "is", null)
         .gte("issued_at", `${from}T00:00:00Z`)
         .order("issued_at", { ascending: false })
         .limit(20);
+
+      // Rows that never made it into FakturaXL at all.
+      const { data: unsyncedRows } = await admin
+        .from("invoices")
+        .select("id, invoice_number, doc_type, gross_amount, fxl_status, ksef_error_desc")
+        .is("fxl_document_id", null)
+        .gte("issued_at", `${from}T00:00:00Z`)
+        .order("issued_at", { ascending: false });
+
+      const unsynced = (unsyncedRows ?? []).map((r: any) => ({
+        invoice_id: r.id,
+        invoice_number: r.invoice_number,
+        doc_type: r.doc_type,
+        status: r.fxl_status,
+        issue: r.ksef_error_desc ?? "not created in FakturaXL",
+      }));
 
       const mismatches: any[] = [];
       let verified = 0;
@@ -122,19 +138,30 @@ serve(async (req) => {
         ).catch(() => "");
         const doc = raw ? (xmlToObject(raw)?.dokument ?? {}) : {};
         const remoteNumber = doc?.numer_faktury != null ? String(doc.numer_faktury) : null;
+        const remoteGrossRaw =
+          doc?.wartosc_brutto ?? doc?.brutto ?? doc?.kwota_brutto ?? null;
+        const remoteGross =
+          remoteGrossRaw != null
+            ? Math.round(Number(String(remoteGrossRaw).replace(",", ".")) * 100)
+            : null;
+        const base = {
+          invoice_id: row.id,
+          invoice_number: row.invoice_number,
+          doc_type: row.doc_type,
+          document_id: String(row.fxl_document_id),
+        };
+
         if (!remoteNumber) {
-          mismatches.push({
-            invoice_id: row.id,
-            invoice_number: row.invoice_number,
-            document_id: String(row.fxl_document_id),
-            issue: "not found in FakturaXL",
-          });
+          mismatches.push({ ...base, issue: "not found in FakturaXL" });
         } else if (remoteNumber !== row.invoice_number) {
+          mismatches.push({ ...base, issue: `number differs in FakturaXL: ${remoteNumber}` });
+        } else if (
+          remoteGross != null &&
+          Math.abs(remoteGross) !== Math.abs(Number(row.gross_amount ?? 0))
+        ) {
           mismatches.push({
-            invoice_id: row.id,
-            invoice_number: row.invoice_number,
-            document_id: String(row.fxl_document_id),
-            issue: `number differs in FakturaXL: ${remoteNumber}`,
+            ...base,
+            issue: `gross differs: ours ${(Number(row.gross_amount ?? 0) / 100).toFixed(2)}, FakturaXL ${(remoteGross / 100).toFixed(2)}`,
           });
         } else {
           verified += 1;
@@ -152,7 +179,9 @@ serve(async (req) => {
         orphans,
         verified,
         mismatches,
+        unsynced,
       });
+
 
 
     }
