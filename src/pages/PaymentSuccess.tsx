@@ -102,7 +102,7 @@ const PaymentSuccess = () => {
     setDownloading(true);
     try {
       const { data, error } = await supabase.functions.invoke("invoice-actions", {
-        body: { action: "download", invoiceId: invoice.id },
+        body: { action: "signed_url", invoiceId: invoice.id },
       });
       if (error) throw error;
       if (!data?.url) throw new Error(data?.error ?? "No download link returned");
