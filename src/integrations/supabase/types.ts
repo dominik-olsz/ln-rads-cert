@@ -637,6 +637,10 @@ export type Database = {
           discount_summary: string | null
           doc_type: string
           fxl_document_id: string | null
+          fxl_exchange_rate: number | null
+          fxl_nbp_table: string | null
+          fxl_rate_date: string | null
+          fxl_status: string
           fxl_unique_code: string | null
           gross_amount: number
           id: string
@@ -652,6 +656,7 @@ export type Database = {
           net_amount: number
           notes: string | null
           original_invoice_id: string | null
+          payment_due_date: string | null
           pdf_path: string | null
           purchase_type: string
           refund_reason: string | null
@@ -663,6 +668,7 @@ export type Database = {
           updated_at: string
           user_id: string | null
           vat_amount: number
+          vat_amount_pln: number | null
           vat_rate: number
         }
         Insert: {
@@ -683,6 +689,10 @@ export type Database = {
           discount_summary?: string | null
           doc_type?: string
           fxl_document_id?: string | null
+          fxl_exchange_rate?: number | null
+          fxl_nbp_table?: string | null
+          fxl_rate_date?: string | null
+          fxl_status?: string
           fxl_unique_code?: string | null
           gross_amount?: number
           id?: string
@@ -698,6 +708,7 @@ export type Database = {
           net_amount?: number
           notes?: string | null
           original_invoice_id?: string | null
+          payment_due_date?: string | null
           pdf_path?: string | null
           purchase_type?: string
           refund_reason?: string | null
@@ -709,6 +720,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           vat_amount?: number
+          vat_amount_pln?: number | null
           vat_rate?: number
         }
         Update: {
@@ -729,6 +741,10 @@ export type Database = {
           discount_summary?: string | null
           doc_type?: string
           fxl_document_id?: string | null
+          fxl_exchange_rate?: number | null
+          fxl_nbp_table?: string | null
+          fxl_rate_date?: string | null
+          fxl_status?: string
           fxl_unique_code?: string | null
           gross_amount?: number
           id?: string
@@ -744,6 +760,7 @@ export type Database = {
           net_amount?: number
           notes?: string | null
           original_invoice_id?: string | null
+          payment_due_date?: string | null
           pdf_path?: string | null
           purchase_type?: string
           refund_reason?: string | null
@@ -755,6 +772,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           vat_amount?: number
+          vat_amount_pln?: number | null
           vat_rate?: number
         }
         Relationships: [
@@ -857,6 +875,7 @@ export type Database = {
           full_name: string | null
           id: string
           postal_code: string | null
+          stripe_customer_id: string | null
           terms_accepted_at: string | null
           terms_version: string | null
           updated_at: string | null
@@ -876,6 +895,7 @@ export type Database = {
           full_name?: string | null
           id: string
           postal_code?: string | null
+          stripe_customer_id?: string | null
           terms_accepted_at?: string | null
           terms_version?: string | null
           updated_at?: string | null
@@ -895,6 +915,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           postal_code?: string | null
+          stripe_customer_id?: string | null
           terms_accepted_at?: string | null
           terms_version?: string | null
           updated_at?: string | null
