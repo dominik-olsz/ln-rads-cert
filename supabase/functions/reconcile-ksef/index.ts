@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       .eq("ksef_status", 0)
       .not("fxl_document_id", "is", null)
       .order("created_at", { ascending: true })
-      .limit(50);
+      .limit(20);
     if (pendingError) throw pendingError;
 
     for (const row of pending ?? []) {
@@ -126,20 +126,21 @@ Deno.serve(async (req) => {
       await sleep(CALL_INTERVAL_MS);
     }
 
-    // 2. Invoices that never reached FakturaXL, with a retryable error.
+    // 2. Invoices that never reached FakturaXL, with a retryable error or no
+    //    error recorded at all (e.g. the push crashed before writing one).
     const { data: unsent, error: unsentError } = await admin
       .from("invoices")
       .select("*")
       .is("fxl_document_id", null)
       .lt("ksef_attempts", 5)
-      .not("ksef_error_code", "is", null)
       .order("created_at", { ascending: true })
-      .limit(50);
+      .limit(20);
     if (unsentError) throw unsentError;
 
     for (const row of unsent ?? []) {
       if (!requiresKsef(row)) continue;
-      if (!isRetryable(row.ksef_error_code)) continue;
+      if (row.ksef_error_code != null && !isRetryable(row.ksef_error_code)) continue;
+
       await pushInvoiceToKsef(admin, row);
       result.retried += 1;
       await sleep(CALL_INTERVAL_MS);
