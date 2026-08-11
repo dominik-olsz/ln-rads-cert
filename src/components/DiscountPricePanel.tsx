@@ -70,8 +70,16 @@ const DiscountPricePanel = ({
               {formatEuro(basePrice)}
             </span>
           )}
+          {!quote?.isFree && (
+            <span className="text-sm text-muted-foreground pb-1">excl. VAT</span>
+          )}
         </div>
         <p className="text-sm text-muted-foreground">{subtitle}</p>
+        {!quote?.isFree && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            VAT is calculated at checkout based on your billing country.
+          </p>
+        )}
 
         {countdownUntil && (
           <p className="mt-2 text-sm font-medium text-accent">
@@ -116,7 +124,7 @@ const DiscountPricePanel = ({
             </div>
           )}
           <div className="flex justify-between font-semibold pt-1 border-t">
-            <span>Total</span>
+            <span>Total (excl. VAT)</span>
             <span>{quote.isFree ? "Free" : formatEuroCents(quote.finalCents)}</span>
           </div>
         </div>
