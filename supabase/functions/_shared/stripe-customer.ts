@@ -38,8 +38,11 @@ export async function syncStripeCustomer(
   if (!email) return undefined;
 
   try {
-    const savedVatId = (profile?.vat_id ?? "").trim();
-    const isCompany = Boolean(savedVatId) || profile?.buyer_type === "company";
+    // The buyer type chosen on the website decides whether a VAT number is
+    // attached at all — a private buyer must never carry one, otherwise Stripe
+    // hides the tax-ID field and can treat the sale as reverse charge.
+    const isCompany = profile?.buyer_type === "company";
+    const savedVatId = isCompany ? (profile?.vat_id ?? "").trim() : "";
     const hasAddress = Boolean(
       profile?.address_line1 && profile?.postal_code && profile?.city && profile?.country,
     );
