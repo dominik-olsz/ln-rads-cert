@@ -1,7 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { invoiceFileSlug, renderInvoicePdf, sendInvoiceEmail } from "../_shared/invoice.ts";
-import { pushInvoiceToKsef } from "../_shared/fakturaxl.ts";
+import {
+  FXL_ENDPOINTS,
+  cdata,
+  fxl,
+  fxlRaw,
+  pushInvoiceToKsef,
+} from "../_shared/fakturaxl.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
