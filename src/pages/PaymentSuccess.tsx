@@ -3,9 +3,10 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Download, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -15,6 +16,11 @@ const PaymentSuccess = () => {
   const purchaseType = searchParams.get("type");
   const isRetake = purchaseType === "certification_retake";
   const [status, setStatus] = useState<"pending" | "confirmed" | "timeout">("pending");
+  // Invoice fallback: the buyer must be able to get the document here even if
+  // the email never reaches their mailbox.
+  const [invoice, setInvoice] = useState<{ id: string; invoice_number: string } | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
 
   useEffect(() => {
     if (!user) return;
