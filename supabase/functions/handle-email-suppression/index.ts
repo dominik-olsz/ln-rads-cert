@@ -263,9 +263,10 @@ Deno.serve(async (req) => {
         idempotencyKey: `delivery-alert-${reason}-${payload.data?.email_id ?? normalizedEmail}`,
         templateData: {
           affectedEmail: normalizedEmail,
-          eventType: reason,
+          eventType: isTransientBounce ? 'temporary rejection (not suppressed)' : reason,
           reason: sendLogMessage,
-          templateName: String(payload.data?.subject ?? ''),
+          templateName: originalTemplate ?? String(payload.data?.subject ?? ''),
+          invoiceNumber: reference ?? '',
           occurredAt: payload.created_at ?? new Date().toISOString(),
         },
       },
@@ -274,11 +275,14 @@ Deno.serve(async (req) => {
     console.warn('Failed to send admin delivery alert', { alertError })
   }
 
-  console.log('Suppression processed', {
+  console.log('Delivery event processed', {
     email_redacted: redacted,
     reason,
     event: payload.type,
+    transient: isTransientBounce,
+    suppressed: !isTransientBounce,
   })
 
   return jsonResponse({ success: true })
+
 })
