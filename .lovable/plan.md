@@ -37,6 +37,11 @@ Why the invoice mail looks more "commercial" to WP's filter than the reset mail:
 6. **Fallback so the buyer is never left without the invoice**
    - On the purchase success screen, always show a direct "Download invoice" action for the invoice just issued, independent of email delivery.
 
+7. **All links in every email point at `cert.lnrads.com`**
+   - The invoice link, and every link in auth and app emails, must use the `https://cert.lnrads.com` origin — never a preview URL, the `lovable.app` published URL, or a backend function URL. I will check the existing templates and link builders and correct any that do not.
+
+
+
 ## Not part of this change
 
 The `€60.00` total on invoice `FV EDU/9` is a separate issue from the VAT/Stripe Tax work — I am not touching pricing here.
