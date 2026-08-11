@@ -1131,6 +1131,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_cron_secret_vault: { Args: never; Returns: Json }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
