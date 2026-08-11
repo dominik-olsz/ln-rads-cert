@@ -68,6 +68,15 @@ const parser = new XMLParser({
 
 export type FxlResponse = Record<string, any>;
 
+/** Parses a FakturaXL XML response into a plain object. */
+export function xmlToObject(text: string): FxlResponse {
+  try {
+    return (parser.parse(text) ?? {}) as FxlResponse;
+  } catch (e) {
+    throw new Error(`FakturaXL returned unparsable XML: ${(e as Error).message}`);
+  }
+}
+
 /**
  * POSTs an XML body to a FakturaXL endpoint and returns the parsed
  * `<dokument>` / `<dokumenty>` payload.

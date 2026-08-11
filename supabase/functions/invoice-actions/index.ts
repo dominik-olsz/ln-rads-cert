@@ -4,8 +4,8 @@ import { invoiceFileSlug, renderInvoicePdf, sendInvoiceEmail } from "../_shared/
 import {
   FXL_ENDPOINTS,
   cdata,
-  fxl,
   fxlRaw,
+  xmlToObject,
   pushInvoiceToKsef,
 } from "../_shared/fakturaxl.ts";
 
