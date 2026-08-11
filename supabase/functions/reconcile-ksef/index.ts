@@ -3,12 +3,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   FXL_ENDPOINTS,
-  cdata,
   fxl,
   fxlErrorMessage,
   isRetryable,
-  pushInvoiceToKsef,
-  requiresKsef,
+  pushInvoiceToFakturaXL,
 } from "../_shared/fakturaxl.ts";
 
 const corsHeaders = {
@@ -73,7 +71,7 @@ Deno.serve(async (req) => {
       try {
         const read = await fxl(
           FXL_ENDPOINTS.readDocument,
-          `  <dokument_id>${cdata(row.fxl_document_id)}</dokument_id>`,
+          `  <dokument_id>${row.fxl_document_id}</dokument_id>`,
         );
         const ksef = read?.ksef ?? read?.dokument?.ksef;
         const status = String(ksef?.status ?? "");
@@ -138,10 +136,9 @@ Deno.serve(async (req) => {
     if (unsentError) throw unsentError;
 
     for (const row of unsent ?? []) {
-      if (!requiresKsef(row)) continue;
       if (row.ksef_error_code != null && !isRetryable(row.ksef_error_code)) continue;
 
-      await pushInvoiceToKsef(admin, row);
+      await pushInvoiceToFakturaXL(admin, row);
       result.retried += 1;
       await sleep(CALL_INTERVAL_MS);
     }

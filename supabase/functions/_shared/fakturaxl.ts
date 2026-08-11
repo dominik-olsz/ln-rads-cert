@@ -151,11 +151,21 @@ export function requiresKsef(invoiceRow: {
   return country === "PL" && vatId.length > 0;
 }
 
+/** Splits a full name on the last space: "Anna Maria Kowalska" -> imie/nazwisko. */
+export function splitBuyerName(full: string | null | undefined): { imie: string; nazwisko: string } | null {
+  const name = String(full ?? "").trim().replace(/\s+/g, " ");
+  const idx = name.lastIndexOf(" ");
+  if (idx <= 0 || idx === name.length - 1) return null;
+  return { imie: name.slice(0, idx), nazwisko: name.slice(idx + 1) };
+}
+
 /**
- * Issues an already-persisted invoice row in FakturaXL and pushes it to KSeF.
+ * Creates an already-persisted invoice row as a document in FakturaXL, and — only
+ * for domestic Polish B2B invoices — submits it to KSeF and polls for its number.
  * Never throws: every failure is recorded on the invoice row.
  */
-export async function pushInvoiceToKsef(admin: any, invoiceRow: any): Promise<void> {
+export async function pushInvoiceToFakturaXL(admin: any, invoiceRow: any): Promise<void> {
+
   const invoiceId = invoiceRow.id;
   // One attempt per push, not per HTTP call: a single push makes up to five
   // API calls and the reconciler filters on ksef_attempts < 5.
@@ -212,17 +222,19 @@ export async function pushInvoiceToKsef(admin: any, invoiceRow: any): Promise<vo
 
     // Line items are repeated document-level <faktura_pozycje> elements —
     // there is no <pozycje> wrapper and no <pozycja> element.
+    // Numeric fields are sent bare; only free text keeps CDATA.
     const renderPositions = (list: any[], tag = "faktura_pozycje", indent = "  ") =>
       list
         .map(
           (item) => `${indent}<${tag}>
 ${indent}  <nazwa>${cdata(item.description ?? "")}</nazwa>
-${indent}  <ilosc>${cdata(item.quantity ?? 1)}</ilosc>
-${indent}  <vat>${cdata(vatRate)}</vat>
-${indent}  <wartosc_brutto>${cdata(decimal(item.gross ?? 0))}</wartosc_brutto>
+${indent}  <ilosc>${Number(item.quantity ?? 1)}</ilosc>
+${indent}  <vat>${vatRate}</vat>
+${indent}  <wartosc_brutto>${decimal(item.gross ?? 0)}</wartosc_brutto>
 ${indent}</${tag}>`,
         )
         .join("\n");
+
 
     const positions = renderPositions(items);
 
@@ -250,40 +262,67 @@ ${renderPositions(shouldBe, "faktura_pozycje_powinno_byc")}`;
 
       correctionSection = `
   <korekta>
-    <id_faktury_korygowanej>${cdata(original.fxl_document_id)}</id_faktury_korygowanej>
+    <id_faktury_korygowanej>${original.fxl_document_id}</id_faktury_korygowanej>
     <przyczyna_korekty>${cdata(invoiceRow.refund_reason ?? "Zwrot płatności")}</przyczyna_korekty>
   </korekta>${amountsBlock}`;
     }
 
+    // Private persons need imie + nazwisko (kod 38 / 39 when empty); companies use nazwa.
+    let buyerIdentity: string;
+    if (isCompany) {
+      buyerIdentity = `    <nazwa>${cdata(
+        invoiceRow.buyer_company || invoiceRow.buyer_name || "",
+      )}</nazwa>
+    <nip>${stripVatCountryPrefix(invoiceRow.buyer_vat_id)}</nip>`;
+    } else {
+      const parts = splitBuyerName(invoiceRow.buyer_name);
+      if (!parts) {
+        await update({
+          ksef_error_code: "buyer_name_required",
+          ksef_error_desc:
+            "Buyer's full name (first name and surname) is required to issue this invoice in FakturaXL",
+        });
+        return;
+      }
+      buyerIdentity = `    <imie>${cdata(parts.imie)}</imie>
+    <nazwisko>${cdata(parts.nazwisko)}</nazwisko>`;
+    }
+
+    // Omit address elements entirely when we don't have them.
+    const optional = (tag: string, value: unknown, raw = false) => {
+      const text = String(value ?? "").trim();
+      if (!text) return "";
+      return `\n    <${tag}>${raw ? text : cdata(text)}</${tag}>`;
+    };
+
     const addBody = `  <typ_faktury>${isCorrection ? 4 : 0}</typ_faktury>
-  <id_dzialy_firmy>${cdata(FXL_DIVISION_ID)}</id_dzialy_firmy>
+  <id_dzialy_firmy>${FXL_DIVISION_ID}</id_dzialy_firmy>
   <obliczaj_wartosc_faktury_od>1</obliczaj_wartosc_faktury_od>
   <numer_faktury>${cdata(invoiceRow.invoice_number)}</numer_faktury>
-  <waluta>${cdata(currency)}</waluta>${
+  <waluta>${currency}</waluta>${
       currency !== "PLN" ? "\n  <rodzaj_przeliczania_waluty>1</rodzaj_przeliczania_waluty>" : ""
     }
-  <data_wystawienia>${cdata(issued)}</data_wystawienia>
-  <data_sprzedazy>${cdata(issued)}</data_sprzedazy>
-  <termin_platnosci_data>${cdata(issued)}</termin_platnosci_data>
+  <data_wystawienia>${issued}</data_wystawienia>
+  <data_sprzedazy>${issued}</data_sprzedazy>
+  <termin_platnosci_data>${issued}</termin_platnosci_data>
   <rodzaj_platnosci>${cdata("Karta płatnicza")}</rodzaj_platnosci>
-  <kwota_oplacona>${cdata(gross)}</kwota_oplacona>
+  <kwota_oplacona>${gross}</kwota_oplacona>
   <status>2</status>
-  <data_oplacenia>${cdata(issued)}</data_oplacenia>
+  <data_oplacenia>${issued}</data_oplacenia>
   <wyslij_dokument_do_klienta_emailem>0</wyslij_dokument_do_klienta_emailem>${correctionSection}
   <nabywca>
     <firma_lub_osoba_prywatna>${isCompany ? 0 : 1}</firma_lub_osoba_prywatna>
-    <nazwa>${cdata(invoiceRow.buyer_company || invoiceRow.buyer_name || "")}</nazwa>
-    <nip>${cdata(stripVatCountryPrefix(invoiceRow.buyer_vat_id))}</nip>
-    <ulica_i_numer>${cdata(invoiceRow.buyer_address_line1 ?? "")}</ulica_i_numer>
-    <kod_pocztowy>${cdata(invoiceRow.buyer_postal_code ?? "")}</kod_pocztowy>
-    <miejscowosc>${cdata(invoiceRow.buyer_city ?? "")}</miejscowosc>
-    <kraj>${cdata(invoiceRow.buyer_country ?? "")}</kraj>
-    <email>${cdata(invoiceRow.buyer_email ?? "")}</email>
+${buyerIdentity}${optional("ulica_i_numer", invoiceRow.buyer_address_line1)}${
+      optional("kod_pocztowy", invoiceRow.buyer_postal_code, true)
+    }${optional("miejscowosc", invoiceRow.buyer_city)}${
+      optional("kraj", (invoiceRow.buyer_country ?? "").toUpperCase(), true)
+    }${optional("email", invoiceRow.buyer_email, true)}
   </nabywca>${
       // Corrections: FakturaXL pulls positions from the corrected document
       // (or from the before/after blocks above for partial credits).
       isCorrection ? "" : `\n${positions}`
     }`;
+
 
 
 
@@ -315,11 +354,16 @@ ${renderPositions(shouldBe, "faktura_pozycje_powinno_byc")}`;
       return;
     }
 
-    // 2. Send to KSeF. 49 / 51 / 72 all mean KSeF has the document.
+    // 2. KSeF is only for domestic Polish B2B. Everyone else stops here with a
+    //    FakturaXL document and ksef_status null (not applicable, not an error).
+    if (!requiresKsef(invoiceRow)) return;
+
+    // 49 / 51 / 72 all mean KSeF has the document.
     const sent = await call(
       FXL_ENDPOINTS.sendToKsef,
-      `  <dokument_id>${cdata(documentId)}</dokument_id>`,
+      `  <dokument_id>${documentId}</dokument_id>`,
     );
+
     const sendCode = String(sent?.kod ?? "");
     if (sendCode === "52") {
       // The KSeF connection isn't authenticated yet. Expected state, not a
@@ -349,7 +393,7 @@ ${renderPositions(shouldBe, "faktura_pozycje_powinno_byc")}`;
       await sleep(1500);
       const read = await call(
         FXL_ENDPOINTS.readDocument,
-        `  <dokument_id>${cdata(documentId)}</dokument_id>`,
+        `  <dokument_id>${documentId}</dokument_id>`,
       );
       const ksef = read?.ksef ?? read?.dokument?.ksef;
       const status = String(ksef?.status ?? "");

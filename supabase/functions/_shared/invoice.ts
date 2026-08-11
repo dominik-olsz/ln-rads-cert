@@ -1,6 +1,6 @@
 // Shared invoicing helpers: VAT logic, PDF rendering, storage upload, email.
 import { PDFDocument, rgb } from "https://esm.sh/pdf-lib@1.17.1?target=deno";
-import { pushInvoiceToKsef, requiresKsef } from "./fakturaxl.ts";
+import { pushInvoiceToFakturaXL } from "./fakturaxl.ts";
 import fontkit from "https://esm.sh/@pdf-lib/fontkit@1.1.1?target=deno";
 
 export const EU_COUNTRIES = [
@@ -402,13 +402,12 @@ export async function createInvoice(
     );
   }
 
-  // KSeF submission is best-effort: the invoice is already created, stored and emailed.
-  // Failures are recorded on the row so they can be retried or handled manually.
-  if (requiresKsef(inserted)) {
-    await pushInvoiceToKsef(admin, inserted).catch((e) =>
-      console.error("KSeF push failed (non-blocking):", e),
-    );
-  }
+  // Every invoice becomes a FakturaXL document so the accounting record is complete.
+  // KSeF submission happens inside, only for domestic Polish B2B. Best-effort:
+  // failures are recorded on the row so they can be retried or handled manually.
+  await pushInvoiceToFakturaXL(admin, inserted).catch((e) =>
+    console.error("FakturaXL push failed (non-blocking):", e),
+  );
 
   return { ...inserted, pdf_path: path, pdf };
 }
