@@ -110,7 +110,7 @@ const PaymentSuccess = () => {
     } catch (e: any) {
       toast({
         title: "Could not open the invoice",
-        description: e?.message ?? "Please try again from My payments.",
+        description: e?.message ?? "Please try again from My Payments.",
         variant: "destructive",
       });
     } finally {
@@ -175,7 +175,7 @@ const PaymentSuccess = () => {
                   <p className="text-xs text-muted-foreground">
                     Your VAT invoice is always available on the{" "}
                     <Link to="/payments" className="underline">
-                      My payments
+                      My Payments
                     </Link>{" "}
                     page.
                   </p>

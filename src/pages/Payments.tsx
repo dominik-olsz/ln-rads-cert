@@ -168,7 +168,7 @@ export default function Payments() {
       <Navbar />
       <main className="container mx-auto px-4 py-10 max-w-4xl">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">My payments</h1>
+          <h1 className="text-3xl font-bold tracking-tight">My Payments</h1>
           <p className="text-muted-foreground mt-2">
             Everything you have purchased, with the VAT invoice for each payment.
           </p>

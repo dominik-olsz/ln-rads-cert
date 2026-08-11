@@ -76,7 +76,7 @@ export default function Unsubscribe() {
               {state === "already" && "This address is already unsubscribed."}
               {state === "invalid" && "This unsubscribe link is invalid or has expired."}
               {state === "done" &&
-                "We will not send you any further emails. Invoices remain available in My payments."}
+                "We will not send you any further emails. Invoices remain available in My Payments."}
             </CardDescription>
           </CardHeader>
           <CardContent>

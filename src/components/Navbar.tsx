@@ -89,7 +89,7 @@ const Navbar = () => {
                   </DropdownMenuItem>
                   {!isAdmin && (
                     <DropdownMenuItem asChild>
-                      <Link to="/payments" className="cursor-pointer">My payments</Link>
+                      <Link to="/payments" className="cursor-pointer">My Payments</Link>
                     </DropdownMenuItem>
                   )}
 
@@ -157,7 +157,7 @@ const Navbar = () => {
                     </Link>
                     {!isAdmin && (
                       <Link to="/payments" className="text-sm font-medium hover:text-primary transition-colors">
-                        My payments
+                        My Payments
                       </Link>
                     )}
 
