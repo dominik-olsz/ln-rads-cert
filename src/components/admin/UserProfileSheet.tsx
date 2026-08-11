@@ -258,18 +258,23 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
                       </div>
                     </div>
                     {purchase ? (
-                      purchase.granted_by_admin ? (
-                        <Button variant="outline" size="sm" disabled={busy} onClick={() => setAccess(course.id, 'revoke')}>
+                      <div className="flex items-center gap-2">
+                        {!purchase.granted_by_admin && <Badge variant="secondary">Paid</Badge>}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => setAccess(course.id, 'revoke', !purchase.granted_by_admin)}
+                        >
                           <X className="h-4 w-4 mr-1" /> Remove access
                         </Button>
-                      ) : (
-                        <Badge variant="secondary">Paid</Badge>
-                      )
+                      </div>
                     ) : (
                       <Button size="sm" disabled={busy} onClick={() => setAccess(course.id, 'grant')}>
                         <Plus className="h-4 w-4 mr-1" /> Grant access
                       </Button>
                     )}
+
                   </div>
                 );
               })}
