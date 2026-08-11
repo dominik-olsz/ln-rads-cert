@@ -225,6 +225,8 @@ serve(async (req) => {
           buyer,
           currency,
           grossCents,
+          netCents,
+          vatCents,
           discountCodeId,
           discountSummary,
           lineItems: [
