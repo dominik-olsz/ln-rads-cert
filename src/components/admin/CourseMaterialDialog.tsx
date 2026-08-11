@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MATERIAL_BUCKET } from '@/lib/materialUrl';
+import { IMAGE_UPLOAD_ACCEPT, prepareImageForUpload } from '@/lib/imageUpload';
 
 
 interface CourseMaterial {
@@ -60,13 +61,14 @@ const CourseMaterialDialog = ({ open, onOpenChange, material, courseId, lessons,
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      const prepared = await prepareImageForUpload(file);
+      const fileExt = prepared.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `${courseId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from(MATERIAL_BUCKET)
-        .upload(filePath, file);
+        .upload(filePath, prepared);
 
       if (uploadError) throw uploadError;
 
@@ -78,11 +80,11 @@ const CourseMaterialDialog = ({ open, onOpenChange, material, courseId, lessons,
         title: 'Success',
         description: 'File uploaded successfully',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading file:', error);
       toast({
         title: 'Error',
-        description: 'Failed to upload file',
+        description: error?.message || 'Failed to upload file',
         variant: 'destructive',
       });
     } finally {
@@ -197,10 +199,10 @@ const CourseMaterialDialog = ({ open, onOpenChange, material, courseId, lessons,
               id="file"
               type="file"
               onChange={handleFileUpload}
-              accept="image/*,application/pdf,.doc,.docx"
+              accept={`${IMAGE_UPLOAD_ACCEPT},application/pdf,.doc,.docx`}
               disabled={uploading}
             />
-            {uploading && <p className="text-sm text-muted-foreground mt-1">Uploading...</p>}
+            {uploading && <p className="text-sm text-muted-foreground mt-1">Converting & uploading...</p>}
           </div>
 
           {fileUrl && (

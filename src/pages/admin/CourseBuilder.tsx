@@ -45,6 +45,7 @@ import {
 } from "@/lib/questionOptions";
 import { formatEuro } from "@/lib/pricing";
 import { Badge } from "@/components/ui/badge";
+import { IMAGE_UPLOAD_ACCEPT, prepareImageForUpload } from "@/lib/imageUpload";
 
 
 interface Lesson {
@@ -857,7 +858,7 @@ const CourseBuilder = () => {
                         <input
                           type="file"
                           className="hidden"
-                          accept="image/*"
+                          accept={IMAGE_UPLOAD_ACCEPT}
                           onChange={handleHeroImageUpload}
                           disabled={uploading}
                         />
@@ -1199,20 +1200,21 @@ const CourseBuilder = () => {
                                 <Label>Image (Optional)</Label>
                                 <Input
                                   type="file"
-                                  accept="image/*"
+                                  accept={IMAGE_UPLOAD_ACCEPT}
                                   onChange={async (e) => {
                                     const file = e.target.files?.[0];
                                     if (!file) return;
                                     
                                     setUploading(true);
                                     try {
-                                      const fileExt = file.name.split('.').pop();
+                                      const prepared = await prepareImageForUpload(file);
+                                      const fileExt = prepared.name.split('.').pop();
                                       const fileName = `${Math.random()}.${fileExt}`;
                                       const filePath = `question-images/${fileName}`;
 
                                       const { error: uploadError } = await supabase.storage
                                         .from('course-materials')
-                                        .upload(filePath, file);
+                                        .upload(filePath, prepared);
 
                                       if (uploadError) throw uploadError;
 
@@ -1430,19 +1432,20 @@ const CourseBuilder = () => {
                                   <Label>Image (Optional)</Label>
                                   <Input
                                     type="file"
-                                    accept="image/*"
+                                    accept={IMAGE_UPLOAD_ACCEPT}
                                     onChange={async (e) => {
                                       const file = e.target.files?.[0];
                                       if (!file) return;
 
                                       setUploading(true);
                                       try {
-                                        const fileExt = file.name.split('.').pop();
+                                        const prepared = await prepareImageForUpload(file);
+                                        const fileExt = prepared.name.split('.').pop();
                                         const filePath = `question-images/${Math.random()}.${fileExt}`;
 
                                         const { error: uploadError } = await supabase.storage
                                           .from('course-materials')
-                                          .upload(filePath, file);
+                                          .upload(filePath, prepared);
 
                                         if (uploadError) throw uploadError;
 

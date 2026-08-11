@@ -10,6 +10,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect, useRef } from 'react';
+import { IMAGE_UPLOAD_ACCEPT, prepareImageForUpload, isTiffFile } from '@/lib/imageUpload';
 
 interface RichTextEditorProps {
   content: string;
@@ -47,7 +48,7 @@ const RichTextEditor = ({ content, onChange, placeholder = "Start writing..." }:
       handleDrop: (view, event, slice, moved) => {
         if (!moved && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
           const file = event.dataTransfer.files[0];
-          if (file.type.startsWith('image/')) {
+          if (file.type.startsWith('image/') || isTiffFile(file)) {
             event.preventDefault();
             uploadAndInsertImage(file);
             return true;
@@ -88,13 +89,14 @@ const RichTextEditor = ({ content, onChange, placeholder = "Start writing..." }:
   const uploadAndInsertImage = async (file: File) => {
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      const prepared = await prepareImageForUpload(file);
+      const fileExt = prepared.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `lesson-images/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('course-materials')
-        .upload(filePath, file);
+        .upload(filePath, prepared);
 
       if (uploadError) throw uploadError;
 
@@ -122,7 +124,7 @@ const RichTextEditor = ({ content, onChange, placeholder = "Start writing..." }:
   const handleImageUpload = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*';
+    input.accept = IMAGE_UPLOAD_ACCEPT;
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
