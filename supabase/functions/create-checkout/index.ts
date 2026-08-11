@@ -86,7 +86,10 @@ serve(async (req) => {
     const buyerCompany = (profile?.company_name as string) ?? "";
     // Stripe only reports a tax ID when the buyer types one at checkout; the stored
     // billing profile is the fallback so domestic B2B invoices keep their NIP.
-    const buyerVatId = (profile?.vat_id as string) ?? "";
+    // Only a company purchase carries a VAT ID; private buyers stay
+    // standard-rated in their own country.
+    const isCompanyBuyer = profile?.buyer_type === "company";
+    const buyerVatId = isCompanyBuyer ? ((profile?.vat_id as string) ?? "") : "";
 
 
 
@@ -187,7 +190,9 @@ serve(async (req) => {
         customer_email: retakeCustomerId ? undefined : (user.email ?? undefined),
         customer_update: retakeCustomerId ? customerUpdate : undefined,
         billing_address_collection: "required",
-        tax_id_collection: { enabled: true },
+        // required: "if_supported" keeps the company/VAT field visible so a
+        // buyer can still switch to a business purchase in Checkout.
+        tax_id_collection: { enabled: true, required: "if_supported" },
         // Prices are net; Stripe Tax adds the buyer's VAT (and applies EU
         // reverse charge for validated business VAT IDs).
         automatic_tax: { enabled: true },
@@ -290,7 +295,7 @@ serve(async (req) => {
       customer_email: courseCustomerId ? undefined : (user.email ?? undefined),
       customer_update: courseCustomerId ? customerUpdate : undefined,
       billing_address_collection: "required",
-      tax_id_collection: { enabled: true },
+      tax_id_collection: { enabled: true, required: "if_supported" },
       // Prices are net; Stripe Tax adds the buyer's VAT at checkout.
       automatic_tax: { enabled: true },
       line_items: [
