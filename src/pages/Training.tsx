@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { optionLetter } from "@/lib/questionOptions";
 import { resolveMaterialUrls } from "@/lib/materialUrl";
+import ImageLightbox from "@/components/ImageLightbox";
 
 
 interface Lesson {
@@ -570,7 +571,16 @@ const Training = () => {
                     )}
 
                     {((currentCourseItem.data as Lesson).content_type === "text" || (currentCourseItem.data as Lesson).content_type === "mixed") && currentLessonContent?.content_text && (
-                      <div className="prose prose-sm max-w-none mb-4" dangerouslySetInnerHTML={{ __html: currentLessonContent.content_text }} />
+                      <div
+                        className="prose prose-sm max-w-none mb-4 [&_img]:cursor-zoom-in"
+                        onClick={(e) => {
+                          const target = e.target as HTMLElement;
+                          if (target.tagName === 'IMG') {
+                            setFullSizeImage((target as HTMLImageElement).src);
+                          }
+                        }}
+                        dangerouslySetInnerHTML={{ __html: currentLessonContent.content_text }}
+                      />
                     )}
 
 
@@ -590,7 +600,8 @@ const Training = () => {
                                   <img 
                                     src={material.file_url} 
                                     alt={material.title}
-                                    className="w-full max-h-[400px] object-contain rounded-lg"
+                                    className="w-full max-h-[400px] object-contain rounded-lg cursor-zoom-in"
+                                    onClick={() => setFullSizeImage(material.file_url)}
                                   />
                                 )}
                                 {material.file_type === 'video' && (
@@ -648,7 +659,7 @@ const Training = () => {
                                   <img 
                                     src={q.image_url} 
                                     alt="Question" 
-                                    className="w-full rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
+                                    className="w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
                                     onClick={() => setFullSizeImage(q.image_url)}
                                   />
                                 )}
@@ -812,27 +823,7 @@ const Training = () => {
         </div>
 
         {/* Full size image dialog */}
-        <Dialog open={!!fullSizeImage} onOpenChange={(open) => !open && setFullSizeImage(null)}>
-          <DialogContent className="max-w-[95vw] max-h-[95vh] p-0">
-            <div className="relative w-full h-full flex items-center justify-center bg-background">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 z-10"
-                onClick={() => setFullSizeImage(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-              {fullSizeImage && (
-                <img
-                  src={fullSizeImage}
-                  alt="Full size"
-                  className="max-w-full max-h-[95vh] object-contain"
-                />
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <ImageLightbox src={fullSizeImage} onClose={() => setFullSizeImage(null)} />
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 import { optionLetter } from "@/lib/questionOptions";
+import ImageLightbox from "@/components/ImageLightbox";
 
 interface TestQuestion {
   id: string;
@@ -63,6 +64,7 @@ const CertificationTest = () => {
   const [retakePrice, setRetakePrice] = useState<number>(6900);
   const [payLoading, setPayLoading] = useState(false);
   const [retakeCode, setRetakeCode] = useState('');
+  const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
   const [retakeQuote, setRetakeQuote] = useState<{ finalCents: number; userPercent: number; codePercent: number } | null>(null);
   const [checkingCode, setCheckingCode] = useState(false);
 
@@ -886,8 +888,10 @@ const CertificationTest = () => {
                     <img 
                       src={question.image_url} 
                       alt="Question" 
-                      className="max-w-full rounded-lg border"
+                      className="max-w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
+                      onClick={() => setFullSizeImage(question.image_url ?? null)}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">Click the image to zoom in</p>
                   </div>
                 )}
 
@@ -964,6 +968,8 @@ const CertificationTest = () => {
           </Card>
         </div>
       </div>
+
+      <ImageLightbox src={fullSizeImage} onClose={() => setFullSizeImage(null)} />
     </div>
   );
 };

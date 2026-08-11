@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import QuestionOptionsEditor from '@/components/admin/QuestionOptionsEditor';
+import { IMAGE_UPLOAD_ACCEPT, prepareImageForUpload } from '@/lib/imageUpload';
 import {
   QuestionOption,
   emptyOptions,
@@ -83,13 +84,14 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      const prepared = await prepareImageForUpload(file);
+      const fileExt = prepared.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `question-images/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('course-materials')
-        .upload(filePath, file);
+        .upload(filePath, prepared);
 
       if (uploadError) throw uploadError;
 
@@ -102,11 +104,11 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
         title: 'Success',
         description: 'Image uploaded successfully',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading image:', error);
       toast({
         title: 'Error',
-        description: 'Failed to upload image',
+        description: error?.message || 'Failed to upload image',
         variant: 'destructive',
       });
     } finally {
@@ -226,11 +228,11 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
               <Input
                 id="image"
                 type="file"
-                accept="image/*"
+                accept={IMAGE_UPLOAD_ACCEPT}
                 onChange={handleImageUpload}
                 disabled={uploading}
               />
-              {uploading && <span className="text-sm text-muted-foreground">Uploading...</span>}
+              {uploading && <span className="text-sm text-muted-foreground">Converting & uploading...</span>}
             </div>
             {imageUrl && (
               <div className="mt-2">
