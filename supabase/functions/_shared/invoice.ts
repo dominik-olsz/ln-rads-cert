@@ -402,6 +402,14 @@ export async function createInvoice(
     );
   }
 
+  // KSeF submission is best-effort: the invoice is already created, stored and emailed.
+  // Failures are recorded on the row so they can be retried or handled manually.
+  if (requiresKsef(inserted)) {
+    await pushInvoiceToKsef(admin, inserted).catch((e) =>
+      console.error("KSeF push failed (non-blocking):", e),
+    );
+  }
+
   return { ...inserted, pdf_path: path, pdf };
 }
 
