@@ -460,6 +460,6 @@ export function buyerFromSession(session: any): Buyer {
     postal_code: address.postal_code ?? null,
     city: address.city ?? null,
     country: address.country ?? null,
-    vat_id: taxIds.length ? (taxIds[0].value ?? null) : null,
+    vat_id: taxIds.length ? (taxIds[0].value ?? null) : (session.metadata?.buyer_vat_id || null),
   };
 }

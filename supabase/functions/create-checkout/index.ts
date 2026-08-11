@@ -131,6 +131,9 @@ serve(async (req) => {
 
     const customerUpdate = { address: "auto", name: "auto" } as const;
     const buyerCompany = (profile?.company_name as string) ?? "";
+    // Stripe only reports a tax ID when the buyer types one at checkout; the stored
+    // billing profile is the fallback so domestic B2B invoices keep their NIP.
+    const buyerVatId = (profile?.vat_id as string) ?? "";
 
     const redeemCode = async (extra: Record<string, unknown> = {}) => {
       if (!codeRow) return;
@@ -252,6 +255,8 @@ serve(async (req) => {
           course_id: retakeCourse.id,
           purchase_type: "certification_retake",
           buyer_company: buyerCompany,
+        buyer_vat_id: buyerVatId,
+          buyer_vat_id: buyerVatId,
           discount_code_id: pricing.codeId ?? "",
           discount_summary: pricing.discountSummary ?? "",
         },
@@ -351,6 +356,7 @@ serve(async (req) => {
         course_id: course.id,
         purchase_type: "course",
         buyer_company: buyerCompany,
+        buyer_vat_id: buyerVatId,
         discount_code_id: pricing.codeId ?? "",
         discount_summary: pricing.discountSummary ?? "",
       },
