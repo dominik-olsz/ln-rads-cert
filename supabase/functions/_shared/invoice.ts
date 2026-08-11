@@ -273,7 +273,7 @@ export async function renderInvoicePdf(inv: InvoiceRecord): Promise<Uint8Array> 
     y -= 12;
     text(`z dnia ${inv.fxl_rate_date ?? "—"}`, margin, 9, { color: grey });
     y -= 12;
-    text(`Przeliczona kwota VAT: ${plnAmount(Math.abs(inv.vat_amount_pln))}`, margin, 9, {
+    text(`Przeliczona kwota VAT: ${plnAmount(inv.vat_amount_pln)}`, margin, 9, {
       color: grey,
     });
     y -= 16;
