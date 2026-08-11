@@ -111,10 +111,19 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
     toast({ title: 'Saved', description: `Discount set to ${percent}%` });
   };
 
-  const setAccess = async (courseId: string, action: 'grant' | 'revoke') => {
+  const setAccess = async (courseId: string, action: 'grant' | 'revoke', wasPaid = false) => {
     if (!userId) return;
     if (action === 'grant' && !confirm('Grant access without payment? No charge is made and no invoice is issued.')) return;
-    if (action === 'revoke' && !confirm('Remove this manually granted access?')) return;
+    if (
+      action === 'revoke' &&
+      !confirm(
+        wasPaid
+          ? 'Remove access to this paid course? The purchase record is deleted (invoices are kept) and no refund is made automatically.'
+          : 'Remove this manually granted access?',
+      )
+    )
+      return;
+
     setBusy(true);
     const { error } = await supabase.functions.invoke('admin-course-access', {
       body: { userId, courseId, action },
