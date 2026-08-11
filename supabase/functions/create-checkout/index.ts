@@ -69,7 +69,7 @@ serve(async (req) => {
     const { data: profile } = await admin
       .from("profiles")
       .select(
-        "buyer_type, full_name, company_name, vat_id, address_line1, address_line2, postal_code, city, country",
+        "buyer_type, full_name, company_name, vat_id, address_line1, address_line2, postal_code, city, country, stripe_customer_id",
       )
       .eq("id", user.id)
       .maybeSingle();
@@ -88,37 +88,61 @@ serve(async (req) => {
       return null;
     };
 
-    /** Reuses or creates a Stripe customer pre-filled from the saved profile. */
+    /**
+     * Reuses the customer stored on the profile (or creates one once) and pre-fills
+     * it from the saved invoice details. A tax ID cannot be passed through session
+     * parameters — it has to live on the Customer object.
+     */
     const buildCustomer = async (stripe: Stripe): Promise<string | undefined> => {
-      if (!hasAddress || !user.email) return undefined;
+      if (!user.email) return undefined;
       try {
-        const existingList = await stripe.customers.list({ email: user.email, limit: 1 });
-        const address = {
-          line1: profile!.address_line1 as string,
-          line2: (profile!.address_line2 as string) || undefined,
-          postal_code: profile!.postal_code as string,
-          city: profile!.city as string,
-          country: (profile!.country as string).toUpperCase(),
-        };
-        const name =
-          profile!.buyer_type === "company"
-            ? (profile!.company_name as string) || (profile!.full_name as string) || user.email
-            : (profile!.full_name as string) || user.email;
+        const savedVatId = ((profile?.vat_id as string) ?? "").trim();
+        const isCompany = Boolean(savedVatId) || profile?.buyer_type === "company";
+        const address = hasAddress
+          ? {
+              line1: profile!.address_line1 as string,
+              line2: (profile!.address_line2 as string) || undefined,
+              postal_code: profile!.postal_code as string,
+              city: profile!.city as string,
+              country: (profile!.country as string).toUpperCase(),
+            }
+          : undefined;
+        const name = isCompany
+          ? (profile?.company_name as string) || (profile?.full_name as string) || user.email
+          : (profile?.full_name as string) || user.email;
 
-        let customerId = existingList.data[0]?.id;
+        let customerId = (profile?.stripe_customer_id as string) ?? undefined;
         if (customerId) {
-          await stripe.customers.update(customerId, { name, address });
-        } else {
-          const created = await stripe.customers.create({ email: user.email, name, address });
-          customerId = created.id;
+          await stripe.customers.update(customerId, { name, address }).catch(async (e) => {
+            console.error("Stored customer unusable, creating a new one:", e);
+            customerId = undefined;
+          });
+        }
+        if (!customerId) {
+          const existingList = await stripe.customers.list({ email: user.email, limit: 1 });
+          customerId = existingList.data[0]?.id;
+          if (customerId) {
+            await stripe.customers.update(customerId, { name, address });
+          } else {
+            const created = await stripe.customers.create({ email: user.email, name, address });
+            customerId = created.id;
+          }
+        }
+        if (customerId && customerId !== profile?.stripe_customer_id) {
+          await admin
+            .from("profiles")
+            .update({ stripe_customer_id: customerId })
+            .eq("id", user.id);
         }
 
-        const vatId = ((profile!.vat_id as string) ?? "").trim();
-        const taxType = vatTaxType(profile!.country as string);
-        if (profile!.buyer_type === "company" && vatId && taxType) {
-          const taxIds = await stripe.customers.listTaxIds(customerId, { limit: 10 });
-          if (!taxIds.data.some((t) => t.value?.replace(/\s/g, "") === vatId.replace(/\s/g, ""))) {
-            await stripe.customers.createTaxId(customerId, { type: taxType as any, value: vatId })
+        const taxType = vatTaxType(profile?.country as string);
+        if (isCompany && savedVatId && taxType) {
+          const taxIds = await stripe.customers.listTaxIds(customerId!, { limit: 10 });
+          if (
+            !taxIds.data.some((t) => t.value?.replace(/\s/g, "") === savedVatId.replace(/\s/g, ""))
+          ) {
+            await stripe.customers
+              .createTaxId(customerId!, { type: taxType as any, value: savedVatId })
               .catch((e) => console.error("Tax ID prefill failed:", e));
           }
         }
@@ -128,6 +152,7 @@ serve(async (req) => {
         return undefined;
       }
     };
+
 
     const customerUpdate = { address: "auto", name: "auto" } as const;
     const buyerCompany = (profile?.company_name as string) ?? "";
