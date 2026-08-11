@@ -115,6 +115,20 @@ export function stripVatCountryPrefix(vatId: string | null | undefined): string 
 }
 
 /**
+ * KSeF is mandatory only for domestic Polish B2B invoices.
+ * Consumers (no VAT ID) and foreign buyers — including EU reverse-charge —
+ * are skipped, leaving ksef_status null so they are distinguishable from failures.
+ */
+export function requiresKsef(invoiceRow: {
+  buyer_country?: string | null;
+  buyer_vat_id?: string | null;
+}): boolean {
+  const country = String(invoiceRow.buyer_country ?? "").trim().toUpperCase();
+  const vatId = String(invoiceRow.buyer_vat_id ?? "").trim();
+  return country === "PL" && vatId.length > 0;
+}
+
+/**
  * Issues an already-persisted invoice row in FakturaXL and pushes it to KSeF.
  * Never throws: every failure is recorded on the invoice row.
  */
