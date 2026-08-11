@@ -519,6 +519,39 @@ const AdminSales = () => {
                   </div>
                 </div>
 
+                {(() => {
+                  const ksef = ksefStateOf(selected);
+                  if (ksef.kind === 'skipped') return null;
+                  return (
+                    <div>
+                      <h3 className="font-semibold mb-2">KSeF</h3>
+                      {ksef.kind === 'assigned' && (
+                        <div className="text-muted-foreground font-mono text-xs break-all">
+                          {ksef.number}
+                        </div>
+                      )}
+                      {ksef.kind === 'pending' && (
+                        <div className="text-muted-foreground">pending</div>
+                      )}
+                      {ksef.kind === 'failed' && (
+                        <div className="space-y-2">
+                          <div className="text-destructive">{ksef.message}</div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busy}
+                            onClick={() => retryKsef(selected)}
+                          >
+                            Retry KSeF
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+
+
                 <div>
                   <h3 className="font-semibold mb-2">Purchase</h3>
                   <div className="text-muted-foreground space-y-0.5">
