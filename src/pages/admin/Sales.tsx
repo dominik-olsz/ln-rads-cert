@@ -421,26 +421,33 @@ const AdminSales = () => {
 
         <Card className="mb-6">
           <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                className="pl-9"
-                placeholder="Buyer, email, invoice number…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+            <div>
+              <Label className="text-xs text-muted-foreground">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="Buyer, email, invoice number…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="partial">Partially refunded</SelectItem>
-                <SelectItem value="refunded">Refunded</SelectItem>
-              </SelectContent>
-            </Select>
+            <div>
+              <Label className="text-xs text-muted-foreground">Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="partial">Partially refunded</SelectItem>
+                  <SelectItem value="refunded">Refunded</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div>
               <Label className="text-xs text-muted-foreground">From</Label>
               <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
