@@ -46,46 +46,17 @@ export const emptyBilling: BillingProfile = {
   country: "",
 };
 
-export const billingSchema = z
-  .object({
-    buyer_type: z.enum(["private", "company"]),
-    full_name: z.string().trim().min(2, "Please enter your full name").max(120),
-    company_name: z.string().trim().max(160).optional().or(z.literal("")),
-    vat_id: z.string().trim().max(40).optional().or(z.literal("")),
-    address_line1: z.string().trim().max(160).optional().or(z.literal("")),
-    address_line2: z.string().trim().max(160).optional().or(z.literal("")),
-    postal_code: z.string().trim().max(20).optional().or(z.literal("")),
-    city: z.string().trim().max(80).optional().or(z.literal("")),
-    country: z.string().trim().max(2).optional().or(z.literal("")),
-  })
-  .refine((v) => v.buyer_type !== "company" || !!v.company_name?.trim(), {
-    message: "Company name is required",
-    path: ["company_name"],
-  })
-  .refine((v) => v.buyer_type !== "company" || !!v.vat_id?.trim(), {
-    message: "VAT number is required for companies",
-    path: ["vat_id"],
-  })
-  .refine(
-    (v) => v.buyer_type !== "company" || /^[A-Za-z0-9\-. ]{6,20}$/.test((v.vat_id ?? "").trim()),
-    { message: "This VAT number does not look valid", path: ["vat_id"] },
-  )
-  .refine((v) => v.buyer_type !== "company" || (v.address_line1 ?? "").trim().length >= 3, {
-    message: "Please enter your address",
-    path: ["address_line1"],
-  })
-  .refine((v) => v.buyer_type !== "company" || (v.postal_code ?? "").trim().length >= 2, {
-    message: "Please enter your postal code",
-    path: ["postal_code"],
-  })
-  .refine((v) => v.buyer_type !== "company" || (v.city ?? "").trim().length >= 2, {
-    message: "Please enter your city",
-    path: ["city"],
-  })
-  .refine((v) => v.buyer_type !== "company" || (v.country ?? "").trim().length === 2, {
-    message: "Please choose your country",
-    path: ["country"],
-  });
+export const billingSchema = z.object({
+  buyer_type: z.enum(["private", "company"]),
+  full_name: z.string().trim().min(2, "Please enter your full name").max(120),
+  company_name: z.string().trim().max(160).optional().or(z.literal("")),
+  vat_id: z.string().trim().max(40).optional().or(z.literal("")),
+  address_line1: z.string().trim().max(160).optional().or(z.literal("")),
+  address_line2: z.string().trim().max(160).optional().or(z.literal("")),
+  postal_code: z.string().trim().max(20).optional().or(z.literal("")),
+  city: z.string().trim().max(80).optional().or(z.literal("")),
+  country: z.string().trim().max(2).optional().or(z.literal("")),
+});
 
 
 export function BillingFields({
