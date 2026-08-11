@@ -358,6 +358,10 @@ export async function createInvoice(
     buyer: Buyer;
     lineItems: { description: string; quantity: number; gross: number }[];
     grossCents: number;
+    /** Exact figures as charged by Stripe (Stripe Tax); overrides backwards VAT extraction. */
+    netCents?: number | null;
+    vatCents?: number | null;
+    vatRate?: number | null;
     currency?: string;
     discountCodeId?: string | null;
     discountSummary?: string | null;
@@ -369,7 +373,23 @@ export async function createInvoice(
   const docType = params.docType ?? "FV";
   const currency = (params.currency ?? "eur").toLowerCase();
   const [seller, standardRate] = await Promise.all([getSeller(admin), getVatRate(admin)]);
-  const amounts = computeAmounts(params.grossCents, params.buyer, standardRate);
+  const derived = computeAmounts(params.grossCents, params.buyer, standardRate);
+  // Prefer what Stripe actually charged, so invoice and payment always match.
+  const amounts =
+    params.netCents != null && params.vatCents != null
+      ? {
+          reverse_charge: Number(params.vatCents) === 0 && derived.reverse_charge,
+          vat_rate:
+            params.vatRate != null
+              ? Number(params.vatRate)
+              : Number(params.netCents) !== 0
+              ? Math.round((Number(params.vatCents) / Number(params.netCents)) * 100)
+              : 0,
+          net_amount: Number(params.netCents),
+          vat_amount: Number(params.vatCents),
+          gross_amount: params.grossCents,
+        }
+      : derived;
 
   const { data: numberData, error: numberError } = await admin.rpc("next_invoice_number", {
     _doc_type: docType,
