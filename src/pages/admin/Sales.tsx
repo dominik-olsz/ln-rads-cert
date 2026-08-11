@@ -771,6 +771,21 @@ const AdminSales = () => {
               ) : (
                 <p>No mismatches found.</p>
               )}
+
+              {drift.unsynced?.length ? (
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">
+                    Invoices here with no FakturaXL document:
+                  </p>
+                  {drift.unsynced.map((u: any) => (
+                    <div key={u.invoice_id}>
+                      {u.invoice_number} · {u.doc_type} · {u.issue}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>Every invoice recorded here has a FakturaXL document.</p>
+              )}
             </div>
           )}
           <DialogFooter>
