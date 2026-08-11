@@ -90,24 +90,35 @@ export default function Payments() {
         };
       };
 
-      const courseRows: PaymentRow[] = (coursesRes.data ?? []).map((p: any) => ({
-        id: `course-${p.id}`,
-        date: p.purchased_at,
-        description: p.courses?.title ?? "Online course",
-        // course_purchases stores whole euros, retakes store cents.
-        amountCents: Number(p.amount_paid ?? 0) * 100,
-        currency: "eur",
-        ...attach((inv) => inv.course_purchase_id === p.id),
-      }));
+      const courseRows: PaymentRow[] = (coursesRes.data ?? []).map((p: any) => {
+        const attached = attach((inv) => inv.course_purchase_id === p.id);
+        return {
+          id: `course-${p.id}`,
+          date: p.purchased_at,
+          description: p.courses?.title ?? "Online course",
+          // The invoice holds the exact gross (incl. VAT); course_purchases only
+          // stores a rounded amount in whole euros.
+          amountCents: attached.invoice
+            ? Number(attached.invoice.gross_amount ?? 0)
+            : Number(p.amount_paid ?? 0) * 100,
+          currency: attached.invoice?.currency ?? "eur",
+          ...attached,
+        };
+      });
 
-      const retakeRows: PaymentRow[] = (retakesRes.data ?? []).map((p: any) => ({
-        id: `retake-${p.id}`,
-        date: p.created_at,
-        description: `Certification exam retake — ${p.courses?.title ?? "Certification"}`,
-        amountCents: Number(p.amount_paid ?? 0),
-        currency: "eur",
-        ...attach((inv) => inv.retake_purchase_id === p.id),
-      }));
+      const retakeRows: PaymentRow[] = (retakesRes.data ?? []).map((p: any) => {
+        const attached = attach((inv) => inv.retake_purchase_id === p.id);
+        return {
+          id: `retake-${p.id}`,
+          date: p.created_at,
+          description: `Certification exam retake — ${p.courses?.title ?? "Certification"}`,
+          amountCents: attached.invoice
+            ? Number(attached.invoice.gross_amount ?? 0)
+            : Number(p.amount_paid ?? 0),
+          currency: attached.invoice?.currency ?? "eur",
+          ...attached,
+        };
+      });
 
       const all = [...courseRows, ...retakeRows].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
