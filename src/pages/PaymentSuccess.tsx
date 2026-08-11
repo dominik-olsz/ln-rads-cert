@@ -3,9 +3,10 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Download, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -15,6 +16,11 @@ const PaymentSuccess = () => {
   const purchaseType = searchParams.get("type");
   const isRetake = purchaseType === "certification_retake";
   const [status, setStatus] = useState<"pending" | "confirmed" | "timeout">("pending");
+  // Invoice fallback: the buyer must be able to get the document here even if
+  // the email never reaches their mailbox.
+  const [invoice, setInvoice] = useState<{ id: string; invoice_number: string } | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
 
   useEffect(() => {
     if (!user) return;
@@ -60,6 +66,60 @@ const PaymentSuccess = () => {
     };
   }, [user, courseId, isRetake]);
 
+  // Poll briefly for the issued invoice so the buyer can download it right away.
+  useEffect(() => {
+    if (!user || status !== "confirmed") return;
+    let cancelled = false;
+    let attempts = 0;
+
+    const poll = async () => {
+      attempts += 1;
+      const { data } = await supabase
+        .from("invoices")
+        .select("id, invoice_number, pdf_path")
+        .eq("user_id", user.id)
+        .not("pdf_path", "is", null)
+        .order("issued_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        setInvoice({ id: data.id, invoice_number: data.invoice_number });
+        return;
+      }
+      if (attempts >= 10) return;
+      setTimeout(poll, 3000);
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, status]);
+
+  const downloadInvoice = async () => {
+    if (!invoice) return;
+    setDownloading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("invoice-actions", {
+        body: { action: "download", invoiceId: invoice.id },
+      });
+      if (error) throw error;
+      if (!data?.url) throw new Error(data?.error ?? "No download link returned");
+      window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      toast({
+        title: "Could not open the invoice",
+        description: e?.message ?? "Please try again from My payments.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,7 +162,25 @@ const PaymentSuccess = () => {
                   <Button variant="outline" asChild>
                     <Link to="/dashboard">Go to dashboard</Link>
                   </Button>
+                  {invoice && (
+                    <Button variant="ghost" onClick={downloadInvoice} disabled={downloading}>
+                      {downloading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
+                      Download invoice {invoice.invoice_number}
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Your VAT invoice is always available on the{" "}
+                    <Link to="/payments" className="underline">
+                      My payments
+                    </Link>{" "}
+                    page.
+                  </p>
                 </div>
+
               </>
             )}
 

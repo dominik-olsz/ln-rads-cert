@@ -3,13 +3,12 @@
 import * as React from 'npm:react@18.3.1'
 import {
   Body,
-  Button,
   Container,
   Head,
   Heading,
   Hr,
   Html,
-  Preview,
+  Link,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
@@ -24,64 +23,75 @@ interface InvoiceIssuedProps {
 }
 
 const SITE = 'LN-RADS Certification'
+// Every link in our email must stay on the canonical app domain.
+const CANONICAL_PAYMENTS_URL = 'https://cert.lnrads.com/payments'
 
+// Deliberately plain, document-style markup. o2.pl / wp.pl rejected the earlier
+// version as spam (554 5.3.0) because of the coloured call-to-action button,
+// the shaded amount box and the invisible preview-padding block that
+// <Preview> emits. Keep this template free of those elements.
 const InvoiceIssuedEmail = ({
   invoiceNumber = '',
   docType = 'FV',
   amount = '',
   description = '',
-  downloadUrl = 'https://cert.lnrads.com/payments',
+  downloadUrl = CANONICAL_PAYMENTS_URL,
   buyerName = '',
 }: InvoiceIssuedProps) => {
   const isCorrection = docType === 'FK'
   const title = isCorrection ? 'Your correction invoice' : 'Your VAT invoice'
+  const href = downloadUrl.startsWith('https://cert.lnrads.com')
+    ? downloadUrl
+    : CANONICAL_PAYMENTS_URL
 
   return (
     <Html lang="en" dir="ltr">
       <Head />
-      <Preview>{`${title} ${invoiceNumber}`}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Heading style={h1}>{title}</Heading>
-          <Text style={text}>
-            {buyerName ? `Hello ${buyerName},` : 'Hello,'}
-          </Text>
+
+          <Text style={text}>{buyerName ? `Hello ${buyerName},` : 'Hello,'}</Text>
+
           <Text style={text}>
             {isCorrection
               ? 'A correction invoice has been issued for your purchase.'
               : 'Thank you for your purchase. Your VAT invoice is ready.'}
           </Text>
 
-          <Text style={meta}>
-            <strong>Invoice:</strong> {invoiceNumber}
+          <Text style={text}>
+            Invoice number: {invoiceNumber}
             {description ? (
               <>
                 <br />
-                <strong>Item:</strong> {description}
+                Item: {description}
               </>
             ) : null}
             {amount ? (
               <>
                 <br />
-                <strong>Total:</strong> {amount}
+                Total: {amount}
               </>
             ) : null}
           </Text>
 
-          <Button style={button} href={downloadUrl}>
-            Download invoice
-          </Button>
+          <Text style={text}>
+            You can download the invoice document here:
+            <br />
+            <Link href={href} style={link}>
+              {href}
+            </Link>
+          </Text>
 
           <Text style={text}>
-            The link opens <em>My payments</em> in {SITE}, where you can download
-            this invoice and all your previous ones at any time. You may be asked
-            to sign in first.
+            That page lists this invoice and all your earlier ones in {SITE}. You
+            may be asked to sign in first.
           </Text>
 
           <Hr style={hr} />
           <Text style={footer}>
-            Praktyka Lekarska Cezary Chudobiński · Questions? Reply to this email
-            or write to cert@lnrads.com.
+            Praktyka Lekarska Cezary Chudobiński. Questions? Reply to this
+            message or write to cert@lnrads.com.
           </Text>
         </Container>
       </Body>
@@ -99,7 +109,7 @@ export const template = {
     docType: 'FV',
     amount: '59.04 EUR',
     description: 'LN-RADS Certification',
-    downloadUrl: 'https://cert.lnrads.com/payments',
+    downloadUrl: CANONICAL_PAYMENTS_URL,
     buyerName: 'Dominik Olszewski',
   },
 } satisfies TemplateEntry
@@ -107,35 +117,19 @@ export const template = {
 export default InvoiceIssuedEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, Helvetica, sans-serif' }
-const container = { padding: '32px 28px', borderTop: '4px solid hsl(178, 100%, 16%)' }
+const container = { padding: '24px 24px' }
 const h1 = {
-  fontSize: '22px',
+  fontSize: '18px',
   fontWeight: 'bold' as const,
-  color: 'hsl(215, 25%, 15%)',
-  margin: '0 0 20px',
+  color: '#1a2430',
+  margin: '0 0 16px',
 }
 const text = {
   fontSize: '14px',
-  color: 'hsl(215, 16%, 47%)',
-  lineHeight: '1.5',
-  margin: '0 0 20px',
+  color: '#333333',
+  lineHeight: '1.6',
+  margin: '0 0 16px',
 }
-const meta = {
-  fontSize: '14px',
-  color: 'hsl(215, 25%, 15%)',
-  lineHeight: '1.7',
-  backgroundColor: '#f5f7f7',
-  borderRadius: '4px',
-  padding: '14px 16px',
-  margin: '0 0 24px',
-}
-const button = {
-  backgroundColor: 'hsl(178, 100%, 16%)',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '4px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const hr = { borderColor: '#eeeeee', margin: '30px 0 16px' }
-const footer = { fontSize: '12px', color: '#999999', margin: '0' }
+const link = { color: '#00534f', fontSize: '14px' }
+const hr = { borderColor: '#dddddd', margin: '24px 0 12px' }
+const footer = { fontSize: '12px', color: '#777777', margin: '0' }

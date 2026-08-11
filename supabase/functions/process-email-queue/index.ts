@@ -28,7 +28,12 @@ async function sendViaResend(
   resendApiKey: string
 ): Promise<string | null> {
   const headers: Record<string, string> = {}
-  if (payload.unsubscribe_token) {
+  // Machine-generated mail: tells receivers this is system mail, not a bulk
+  // campaign. wp.pl/o2.pl weigh this when scoring.
+  headers['Auto-Submitted'] = 'auto-generated'
+  // Documents such as invoices are not a mailing list — sending
+  // List-Unsubscribe on them makes filters treat them as bulk mail.
+  if (payload.unsubscribe_token && payload.no_unsubscribe !== true) {
     const unsubscribeUrl = `${APP_ORIGIN}/unsubscribe?token=${payload.unsubscribe_token}`
     headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`
     headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
@@ -52,12 +57,13 @@ async function sendViaResend(
       subject: payload.subject,
       html: payload.html,
       text: payload.text,
-      ...(Object.keys(headers).length > 0 ? { headers } : {}),
+      headers,
       tags: payload.label
         ? [{ name: 'label', value: String(payload.label).slice(0, 50) }]
         : undefined,
     }),
   })
+
 
   if (!response.ok) {
     const body = await response.text()
@@ -317,13 +323,19 @@ Deno.serve(async (req) => {
         const providerId = await sendViaResend(payload, resendApiKey)
 
         // Log success
+        // Log success. `reference` carries the business key (e.g. invoice
+        // number) so admin views can show delivery state per document.
         await supabase.from('email_send_log').insert({
           message_id: payload.message_id,
           template_name: payload.label || queue,
           recipient_email: payload.to,
           status: 'sent',
-          metadata: providerId ? { provider: 'resend', provider_id: providerId } : null,
+          metadata: {
+            ...(providerId ? { provider: 'resend', provider_id: providerId } : {}),
+            ...(payload.reference ? { reference: String(payload.reference) } : {}),
+          },
         })
+
 
 
         // Delete from queue

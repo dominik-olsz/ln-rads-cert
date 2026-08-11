@@ -99,8 +99,33 @@ const ksefStateOf = (i: Invoice): KsefState => {
   return { kind: 'skipped' };
 };
 
+// Latest delivery state of the invoice email, keyed by invoice number.
+type Delivery = { status: string; error: string | null; at: string };
+
+const deliveryLabel = (d?: Delivery) => {
+  if (!d) return null;
+  switch (d.status) {
+    case 'sent':
+      return { label: 'Sent', className: 'text-muted-foreground' };
+    case 'pending':
+      return { label: 'Sending…', className: 'text-muted-foreground' };
+    case 'bounced':
+      return { label: 'Bounced', className: 'text-destructive' };
+    case 'complained':
+      return { label: 'Marked as spam', className: 'text-destructive' };
+    case 'suppressed':
+      return { label: 'Blocked (suppressed)', className: 'text-amber-600' };
+    case 'dlq':
+    case 'failed':
+      return { label: 'Failed', className: 'text-destructive' };
+    default:
+      return { label: d.status, className: 'text-muted-foreground' };
+  }
+};
+
 const AdminSales = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [deliveries, setDeliveries] = useState<Record<string, Delivery>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -124,9 +149,32 @@ const AdminSales = () => {
     setLoading(false);
   };
 
+  // Delivery state per invoice. Rows are append-only, so the newest row for an
+  // invoice number wins — that is what the buyer's mailbox actually saw.
+  const fetchDeliveries = async () => {
+    const { data } = await supabase
+      .from('email_send_log')
+      .select('template_name, status, error_message, metadata, created_at')
+      .order('created_at', { ascending: true })
+      .limit(2000);
+    const map: Record<string, Delivery> = {};
+    (data ?? []).forEach((row: any) => {
+      const ref = row?.metadata?.reference;
+      if (typeof ref !== 'string' || !ref) return;
+      map[ref] = {
+        status: row.status,
+        error: row.error_message ?? null,
+        at: row.created_at,
+      };
+    });
+    setDeliveries(map);
+  };
+
   useEffect(() => {
     fetchInvoices();
+    fetchDeliveries();
   }, []);
+
 
   const corrections = useMemo(() => {
     const map = new Map<string, number>();
@@ -427,7 +475,9 @@ const AdminSales = () => {
                       <TableHead className="text-right">VAT</TableHead>
                       <TableHead className="text-right">Gross</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead>KSeF</TableHead>
+
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -435,6 +485,8 @@ const AdminSales = () => {
                     {sales.map((i) => {
                       const status = statusOf(i);
                       const ksef = ksefStateOf(i);
+                      const delivery = deliveryLabel(deliveries[i.invoice_number]);
+
                       return (
                         <TableRow
                           key={i.id}
@@ -473,6 +525,23 @@ const AdminSales = () => {
                           <TableCell>
                             <Badge variant={status.variant}>{status.label}</Badge>
                           </TableCell>
+                          <TableCell className="max-w-[180px]">
+                            {delivery ? (
+                              <>
+                                <div className={`text-xs ${delivery.className}`}>
+                                  {delivery.label}
+                                </div>
+                                {deliveries[i.invoice_number]?.error && (
+                                  <div className="text-[11px] text-muted-foreground line-clamp-2">
+                                    {deliveries[i.invoice_number].error}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+
                           <TableCell className="max-w-[200px]">
                             {ksef.kind === 'skipped' && (
                               <span className="text-muted-foreground">—</span>
