@@ -93,6 +93,14 @@ serve(async (req) => {
       const vatCents = session.total_details?.amount_tax ?? null;
       const netCents = vatCents != null ? grossCents - vatCents : null;
 
+      // A registered country charging 0% VAT almost always means Stripe Tax is
+      // misconfigured (missing or exempt registration) — make it loud.
+      if (vatCents === 0 && grossCents > 0 && !buyer.vat_id) {
+        console.error(
+          `Stripe Tax returned 0% VAT for session ${session.id} (country=${buyer.country ?? "?"}). Check the Tax registrations in Stripe.`,
+        );
+      }
+
       // The buyer's latest entry in Checkout is the most current, so /account is
       // always refreshed from the completed session.
       if (userId && buyer.address_line1) {
