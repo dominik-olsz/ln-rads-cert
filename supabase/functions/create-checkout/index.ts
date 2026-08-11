@@ -186,6 +186,10 @@ serve(async (req) => {
         customer_update: retakeCustomerId ? customerUpdate : undefined,
         billing_address_collection: "required",
         tax_id_collection: { enabled: true },
+        // Prices are net; Stripe Tax adds the buyer's VAT (and applies EU
+        // reverse charge for validated business VAT IDs).
+        automatic_tax: { enabled: true },
+        custom_text: billingSummary ? { submit: { message: billingSummary } } : undefined,
 
         line_items: [
           {
@@ -193,6 +197,7 @@ serve(async (req) => {
             price_data: {
               currency: "eur",
               unit_amount: pricing.finalCents,
+              tax_behavior: "exclusive",
               product_data: {
                 name: `Certification exam retake — ${retakeCourse.title}`,
                 description: pricing.discountSummary
