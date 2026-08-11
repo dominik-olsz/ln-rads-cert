@@ -1,5 +1,6 @@
 // Shared invoicing helpers: VAT logic, PDF rendering, storage upload, email.
 import { PDFDocument, rgb } from "https://esm.sh/pdf-lib@1.17.1?target=deno";
+import { pushInvoiceToKsef, requiresKsef } from "./fakturaxl.ts";
 import fontkit from "https://esm.sh/@pdf-lib/fontkit@1.1.1?target=deno";
 
 export const EU_COUNTRIES = [
@@ -398,6 +399,14 @@ export async function createInvoice(
   if (params.email !== false && params.buyer.email) {
     await sendInvoiceEmail(params.buyer.email, invoiceNumber, pdf, docType).catch((e) =>
       console.error("Invoice email failed:", e),
+    );
+  }
+
+  // KSeF submission is best-effort: the invoice is already created, stored and emailed.
+  // Failures are recorded on the row so they can be retried or handled manually.
+  if (requiresKsef(inserted)) {
+    await pushInvoiceToKsef(admin, inserted).catch((e) =>
+      console.error("KSeF push failed (non-blocking):", e),
     );
   }
 
