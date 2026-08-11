@@ -68,6 +68,7 @@ type Invoice = {
   pdf_path: string | null;
   refund_reason: string | null;
   fxl_document_id: string | null;
+  fxl_status: string | null;
   ksef_status: number | null;
   ksef_number: string | null;
   ksef_error_desc: string | null;
@@ -442,6 +443,11 @@ const AdminSales = () => {
                         >
                           <TableCell className="font-medium whitespace-nowrap">
                             {i.invoice_number}
+                            {i.fxl_status === 'pending' && (
+                              <div className="text-xs font-normal text-amber-600">
+                                Pending — PDF not issued yet
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
                             {new Date(i.issued_at).toLocaleDateString()}
@@ -770,6 +776,21 @@ const AdminSales = () => {
                 </div>
               ) : (
                 <p>No mismatches found.</p>
+              )}
+
+              {drift.unsynced?.length ? (
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">
+                    Invoices here with no FakturaXL document:
+                  </p>
+                  {drift.unsynced.map((u: any) => (
+                    <div key={u.invoice_id}>
+                      {u.invoice_number} · {u.doc_type} · {u.issue}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>Every invoice recorded here has a FakturaXL document.</p>
               )}
             </div>
           )}

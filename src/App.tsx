@@ -27,6 +27,7 @@ import AdminSales from "./pages/admin/Sales";
 
 import Dashboard from "./pages/Dashboard";
 import Account from "./pages/Account";
+import Payments from "./pages/Payments";
 import ResetPassword from "./pages/ResetPassword";
 import AuthConfirm from "./pages/AuthConfirm";
 
@@ -52,6 +53,7 @@ const router = createBrowserRouter([
 
       { path: "/dashboard", element: <Dashboard /> },
       { path: "/account", element: <Account /> },
+      { path: "/payments", element: <Payments /> },
       { path: "/courses", element: <Courses /> },
       { path: "/course/:id", element: <CourseDetail /> },
       { path: "/payment-success", element: <PaymentSuccess /> },
