@@ -149,25 +149,91 @@ export async function pushInvoiceToKsef(admin: any, invoiceRow: any): Promise<vo
   };
 
   try {
-    const currency = String(invoiceRow.currency ?? "eur").toUpperCase();
+    const isCorrection = String(invoiceRow.doc_type ?? "").toUpperCase() === "FK";
+
+    // Corrections need the FakturaXL id of the document they correct.
+    let original: any = null;
+    if (isCorrection) {
+      if (!invoiceRow.original_invoice_id) {
+        await update({
+          ksef_error_code: "no_original_invoice",
+          ksef_error_desc: "Correction has no original_invoice_id — nothing to correct in KSeF",
+        });
+        return;
+      }
+      const { data } = await admin
+        .from("invoices")
+        .select("id, fxl_document_id, currency, gross_amount, line_items")
+        .eq("id", invoiceRow.original_invoice_id)
+        .maybeSingle();
+      original = data;
+      if (!original?.fxl_document_id) {
+        await update({
+          ksef_error_code: "original_not_in_ksef",
+          ksef_error_desc:
+            "Original invoice was never pushed to FakturaXL/KSeF (e.g. consumer invoice) — no correction sent",
+        });
+        return;
+      }
+    }
+
+    // FakturaXL rejects a correction whose currency differs from the original (kod=41).
+    const currency = String(
+      (isCorrection ? original?.currency : null) ?? invoiceRow.currency ?? "eur",
+    ).toUpperCase();
     const isCompany = Boolean((invoiceRow.buyer_vat_id ?? "").trim());
     const issued = day(invoiceRow.issued_at);
     const gross = decimal(invoiceRow.gross_amount);
     const vatRate = String(invoiceRow.vat_rate ?? 0);
     const items: any[] = Array.isArray(invoiceRow.line_items) ? invoiceRow.line_items : [];
 
-    const positions = items
-      .map(
-        (item) => `    <pozycja>
-      <nazwa>${cdata(item.description ?? "")}</nazwa>
-      <ilosc>${cdata(item.quantity ?? 1)}</ilosc>
-      <vat>${cdata(vatRate)}</vat>
-      <wartosc_brutto>${cdata(decimal(item.gross ?? 0))}</wartosc_brutto>
-    </pozycja>`,
-      )
-      .join("\n");
+    const renderPositions = (list: any[], indent = "    ") =>
+      list
+        .map(
+          (item) => `${indent}<pozycja>
+${indent}  <nazwa>${cdata(item.description ?? "")}</nazwa>
+${indent}  <ilosc>${cdata(item.quantity ?? 1)}</ilosc>
+${indent}  <vat>${cdata(vatRate)}</vat>
+${indent}  <wartosc_brutto>${cdata(decimal(item.gross ?? 0))}</wartosc_brutto>
+${indent}</pozycja>`,
+        )
+        .join("\n");
 
-    const addBody = `  <typ_faktury>0</typ_faktury>
+    const positions = renderPositions(items);
+
+    let correctionSection = "";
+    if (isCorrection) {
+      const originalGross = Math.abs(Number(original?.gross_amount ?? 0));
+      const creditedGross = Math.abs(Number(invoiceRow.gross_amount ?? 0));
+      const isPartial = creditedGross > 0 && creditedGross < originalGross;
+
+      let amountsBlock = "";
+      if (isPartial) {
+        // Partial refund: FakturaXL needs the before/after values explicitly.
+        // "powinno_byc" carries what remains, not what was credited.
+        const originalItems: any[] = Array.isArray(original?.line_items) ? original.line_items : [];
+        const remaining = originalGross - creditedGross;
+        const shouldBe = originalItems.length
+          ? [{ ...originalItems[0], gross: remaining }]
+          : [{ description: items[0]?.description ?? "Correction", quantity: 1, gross: remaining }];
+        amountsBlock = `
+    <faktura_pozycje_bylo>
+${renderPositions(originalItems.length ? originalItems : shouldBe, "      ")}
+    </faktura_pozycje_bylo>
+    <faktura_pozycje_powinno_byc>
+${renderPositions(shouldBe, "      ")}
+    </faktura_pozycje_powinno_byc>`;
+      }
+      // Full credit: positions are pulled from the corrected document by FakturaXL.
+
+      correctionSection = `
+  <korekta>
+    <id_faktury_korygowanej>${cdata(original.fxl_document_id)}</id_faktury_korygowanej>
+    <przyczyna_korekty>${cdata(invoiceRow.refund_reason ?? "Zwrot płatności")}</przyczyna_korekty>${amountsBlock}
+  </korekta>`;
+    }
+
+    const addBody = `  <typ_faktury>${isCorrection ? 4 : 0}</typ_faktury>
   <id_dzialy_firmy>${cdata(FXL_DIVISION_ID)}</id_dzialy_firmy>
   <obliczaj_wartosc_faktury_od>1</obliczaj_wartosc_faktury_od>
   <numer_faktury>${cdata(invoiceRow.invoice_number)}</numer_faktury>
@@ -180,7 +246,7 @@ export async function pushInvoiceToKsef(admin: any, invoiceRow: any): Promise<vo
   <rodzaj_platnosci>${cdata("Karta płatnicza")}</rodzaj_platnosci>
   <kwota_oplacona>${cdata(gross)}</kwota_oplacona>
   <status>2</status>
-  <wyslij_dokument_do_klienta_emailem>0</wyslij_dokument_do_klienta_emailem>
+  <wyslij_dokument_do_klienta_emailem>0</wyslij_dokument_do_klienta_emailem>${correctionSection}
   <nabywca>
     <firma_lub_osoba_prywatna>${isCompany ? 0 : 1}</firma_lub_osoba_prywatna>
     <nazwa>${cdata(invoiceRow.buyer_company || invoiceRow.buyer_name || "")}</nazwa>
@@ -190,12 +256,17 @@ export async function pushInvoiceToKsef(admin: any, invoiceRow: any): Promise<vo
     <miasto>${cdata(invoiceRow.buyer_city ?? "")}</miasto>
     <kraj>${cdata(invoiceRow.buyer_country ?? "")}</kraj>
     <email>${cdata(invoiceRow.buyer_email ?? "")}</email>
-  </nabywca>
+  </nabywca>${
+      isCorrection && !correctionSection.includes("faktura_pozycje_powinno_byc")
+        ? ""
+        : `
   <pozycje>
 ${positions}
-  </pozycje>`;
+  </pozycje>`
+    }`;
 
     const added = await call(FXL_ENDPOINTS.addDocument, addBody);
+
     const addCode = String(added?.kod ?? "");
     if (addCode !== "1") {
       await update({
