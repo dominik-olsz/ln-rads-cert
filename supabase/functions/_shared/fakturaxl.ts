@@ -257,13 +257,16 @@ ${renderPositions(shouldBe, "      ")}
     <kraj>${cdata(invoiceRow.buyer_country ?? "")}</kraj>
     <email>${cdata(invoiceRow.buyer_email ?? "")}</email>
   </nabywca>${
-      isCorrection && !correctionSection.includes("faktura_pozycje_powinno_byc")
+      // Corrections carry their positions in <korekta>; FakturaXL pulls the rest
+      // from the corrected document.
+      isCorrection
         ? ""
         : `
   <pozycje>
 ${positions}
   </pozycje>`
     }`;
+
 
     const added = await call(FXL_ENDPOINTS.addDocument, addBody);
 
