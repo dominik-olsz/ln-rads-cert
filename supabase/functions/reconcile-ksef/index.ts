@@ -124,24 +124,43 @@ Deno.serve(async (req) => {
       await sleep(CALL_INTERVAL_MS);
     }
 
-    // 2. Invoices that never reached FakturaXL, with a retryable error or no
-    //    error recorded at all (e.g. the push crashed before writing one).
+    // 2. Invoices that never completed the FakturaXL step: retry the push, read the
+    //    NBP rate back, then render, upload and email the PDF. Nothing is emailed
+    //    before the document exists, so no customer receives a non-compliant invoice.
     const { data: unsent, error: unsentError } = await admin
       .from("invoices")
       .select("*")
-      .is("fxl_document_id", null)
+      .eq("fxl_status", "pending")
       .lt("ksef_attempts", 5)
       .order("created_at", { ascending: true })
       .limit(20);
     if (unsentError) throw unsentError;
 
     for (const row of unsent ?? []) {
-      if (row.ksef_error_code != null && !isRetryable(row.ksef_error_code)) continue;
+      if (!row.fxl_document_id && row.ksef_error_code != null && !isRetryable(row.ksef_error_code)) {
+        continue;
+      }
 
-      await pushInvoiceToFakturaXL(admin, row);
+      let originalNumber: string | null = null;
+      if (row.original_invoice_id) {
+        const { data: orig } = await admin
+          .from("invoices")
+          .select("invoice_number")
+          .eq("id", row.original_invoice_id)
+          .maybeSingle();
+        originalNumber = orig?.invoice_number ?? null;
+      }
+
+      const outcome = await finalizeInvoice(admin, row, {
+        originalInvoiceNumber: originalNumber,
+      }).catch((e) => ({ fxl_status: "pending", error: (e as Error).message }));
       result.retried += 1;
+      if (outcome.fxl_status !== "synced" && outcome.error) {
+        result.errors.push(`${row.id}: ${String(outcome.error).slice(0, 200)}`);
+      }
       await sleep(CALL_INTERVAL_MS);
     }
+
 
     return json(result);
   } catch (e) {
