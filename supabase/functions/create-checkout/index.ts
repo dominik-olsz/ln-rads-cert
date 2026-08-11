@@ -202,8 +202,6 @@ serve(async (req) => {
         // Prices are net; Stripe Tax adds the buyer's VAT (and applies EU
         // reverse charge for validated business VAT IDs).
         automatic_tax: { enabled: true },
-        custom_text: billingSummary ? { submit: { message: billingSummary } } : undefined,
-
         line_items: [
           {
             quantity: 1,
@@ -306,7 +304,6 @@ serve(async (req) => {
       tax_id_collection: { enabled: true },
       // Prices are net; Stripe Tax adds the buyer's VAT at checkout.
       automatic_tax: { enabled: true },
-      custom_text: billingSummary ? { submit: { message: billingSummary } } : undefined,
       line_items: [
 
         {
