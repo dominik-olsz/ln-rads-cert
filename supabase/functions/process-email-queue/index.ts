@@ -372,15 +372,14 @@ Deno.serve(async (req) => {
           )
         }
 
-        // 403s are permanent configuration or authorization failures for this
-        // message, so move straight to DLQ and stop processing the rest of the batch.
-        if (isForbidden(error)) {
+        // Non-429 4xx responses are permanent rejections for this message
+        // (unverified sender, invalid recipient, bad API key). Retrying cannot
+        // help, so DLQ this message and keep processing the rest of the batch.
+        if (isFatal(error)) {
           await moveToDlq(supabase, queue, msg, errorMsg.slice(0, 1000))
-          return new Response(
-            JSON.stringify({ processed: totalProcessed, stopped: 'forbidden' }),
-            { headers: { 'Content-Type': 'application/json' } }
-          )
+          continue
         }
+
 
         // Log non-429 failures to track real retry attempts.
         await supabase.from('email_send_log').insert({
