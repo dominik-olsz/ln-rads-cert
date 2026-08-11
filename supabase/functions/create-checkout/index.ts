@@ -190,9 +190,10 @@ serve(async (req) => {
         customer_email: retakeCustomerId ? undefined : (user.email ?? undefined),
         customer_update: retakeCustomerId ? customerUpdate : undefined,
         billing_address_collection: "required",
-        // Optional: the VAT field stays visible so a buyer can add a business
-        // tax ID, but private persons are never forced to provide one.
-        tax_id_collection: { enabled: true },
+        // Required: every buyer must either enter a business tax ID or
+        // explicitly confirm they are not a business, so the private vs
+        // company (VAT invoice) choice is impossible to miss.
+        tax_id_collection: { enabled: true, required: "if_supported" },
         // Prices are net; Stripe Tax adds the buyer's VAT (and applies EU
         // reverse charge for validated business VAT IDs).
         // This seller issues its own Polish invoices, so Stripe must calculate
