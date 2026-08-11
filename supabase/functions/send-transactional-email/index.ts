@@ -4,18 +4,11 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 
-// Configuration baked in at scaffold time — do NOT change these manually.
-// To update, re-run the email domain setup flow.
-const SITE_NAME = "ln-rads-cert"
-// SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.example.com").
-// It MUST match the subdomain delegated to Lovable's nameservers — never the root domain.
-// The email API looks up this exact domain; a mismatch causes "No email domain record found".
-const SENDER_DOMAIN = "notify.mail.lnrads.com"
-// FROM_DOMAIN is the domain shown in the From: header. It is kept equal to
-// SENDER_DOMAIN so SPF/DKIM are aligned with the actually published records:
-// mail.lnrads.com publishes an SPF "-all" record without Mailgun, which makes
-// strict receivers (o2.pl, wp.pl, interia.pl) reject mail sent as @mail.lnrads.com.
-const FROM_DOMAIN = SENDER_DOMAIN
+// All mail is delivered through Resend from the verified lnrads.com domain.
+const SITE_NAME = "LN-RADS Certification"
+const FROM_ADDRESS = "cert@lnrads.com"
+const FROM = `${SITE_NAME} <${FROM_ADDRESS}>`
+
 
 
 // Generate a cryptographically random 32-byte hex token
