@@ -50,17 +50,19 @@ serve(async (req) => {
     const rawAction = String(body?.action ?? "");
 
     // Admin-only FakturaXL maintenance actions (no invoiceId).
-    if (["fxl_read", "fxl_delete", "fxl_orphans"].includes(rawAction)) {
+    if (["fxl_read", "fxl_orphans"].includes(rawAction)) {
       if (!isAdmin) return json({ error: "Forbidden" }, 403);
 
-      if (rawAction === "fxl_read" || rawAction === "fxl_delete") {
+      if (rawAction === "fxl_read") {
         const documentId = String(body?.documentId ?? "").trim();
         if (!/^\d+$/.test(documentId)) return json({ error: "documentId is required" }, 400);
-        const endpoint =
-          rawAction === "fxl_read" ? FXL_ENDPOINTS.readDocument : FXL_ENDPOINTS.deleteDocument;
-        const raw = await fxlRaw(endpoint, `  <dokument_id>${documentId}</dokument_id>`);
-        return json({ ok: true, endpoint, raw });
+        const raw = await fxlRaw(
+          FXL_ENDPOINTS.readDocument,
+          `  <dokument_id>${documentId}</dokument_id>`,
+        );
+        return json({ ok: true, endpoint: FXL_ENDPOINTS.readDocument, raw });
       }
+
 
       // Orphan check: FakturaXL documents with no matching invoices row.
       const now = new Date();
