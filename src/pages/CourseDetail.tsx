@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import DiscountPricePanel, { PricingQuote } from "@/components/DiscountPricePanel";
 import { getEffectivePrice } from "@/lib/pricing";
+import BillingDialog from "@/components/BillingDialog";
 
 interface Course {
   id: string;
