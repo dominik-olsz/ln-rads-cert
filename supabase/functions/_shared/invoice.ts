@@ -495,7 +495,8 @@ export async function finalizeInvoice(
     fxl_nbp_table: needsRate ? details.nbp_table : null,
     fxl_rate_date: needsRate ? details.rate_date : null,
     vat_amount_pln: vatAmountPln,
-    payment_due_date: details.due_date ?? String(invoiceRow.issued_at ?? "").slice(0, 10) || null,
+    payment_due_date:
+      details.due_date ?? (String(invoiceRow.issued_at ?? "").slice(0, 10) || null),
   };
   await admin.from("invoices").update(patch).eq("id", invoiceId);
 
