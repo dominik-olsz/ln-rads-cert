@@ -63,6 +63,10 @@ export function computeAmounts(grossCents: number, buyer: Buyer, standardRate = 
 const money = (cents: number, currency = "eur") =>
   `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
 
+/** Filesystem-safe slug for invoice numbers like "FV EDU/15/08/2026" -> "FV-EDU-15-08-2026". */
+export const invoiceFileSlug = (invoiceNumber: string) =>
+  invoiceNumber.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
 let fontCache: { regular: Uint8Array; bold: Uint8Array } | null = null;
 async function loadFonts() {
   if (fontCache) return fontCache;
@@ -384,7 +388,7 @@ export async function createInvoice(
     original_invoice_number: params.originalInvoiceNumber ?? null,
   });
 
-  const path = `${invoiceNumber.replace(/\//g, "-")}.pdf`;
+  const path = `${invoiceFileSlug(invoiceNumber)}.pdf`;
   const { error: uploadError } = await admin.storage
     .from("invoices")
     .upload(path, pdf, { contentType: "application/pdf", upsert: true });
@@ -423,7 +427,7 @@ export async function sendInvoiceEmail(
       html: `<p>Hello,</p><p>Please find attached ${
         isCorrection ? "a correction invoice" : "your invoice"
       } <strong>${invoiceNumber}</strong>.</p><p>Praktyka Lekarska Cezary Chudobiński</p>`,
-      attachments: [{ filename: `${invoiceNumber.replace(/\//g, "-")}.pdf`, content: base64 }],
+      attachments: [{ filename: `${invoiceFileSlug(invoiceNumber)}.pdf`, content: base64 }],
     }),
   });
   if (!res.ok) console.error("Resend error:", res.status, await res.text());
