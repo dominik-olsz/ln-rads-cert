@@ -485,6 +485,8 @@ const AdminSales = () => {
                     {sales.map((i) => {
                       const status = statusOf(i);
                       const ksef = ksefStateOf(i);
+                      const delivery = deliveryLabel(deliveries[i.invoice_number]);
+
                       return (
                         <TableRow
                           key={i.id}
