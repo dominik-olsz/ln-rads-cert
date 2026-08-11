@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       .eq("ksef_status", 0)
       .not("fxl_document_id", "is", null)
       .order("created_at", { ascending: true })
-      .limit(50);
+      .limit(20);
     if (pendingError) throw pendingError;
 
     for (const row of pending ?? []) {
