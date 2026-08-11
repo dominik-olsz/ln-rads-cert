@@ -6,8 +6,8 @@ import {
   fxl,
   fxlErrorMessage,
   isRetryable,
-  pushInvoiceToFakturaXL,
 } from "../_shared/fakturaxl.ts";
+import { finalizeInvoice } from "../_shared/invoice.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
