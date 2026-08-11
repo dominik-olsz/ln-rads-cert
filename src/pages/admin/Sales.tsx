@@ -751,7 +751,7 @@ const AdminSales = () => {
                       busy || (corrections.get(selected.id) ?? 0) >= selected.gross_amount
                     }
                     onClick={() => {
-                      setRefundAmount('');
+                      setRefundAmount('0.00');
                       setRefundOpen(true);
                     }}
                   >
