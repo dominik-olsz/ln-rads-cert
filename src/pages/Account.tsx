@@ -294,7 +294,7 @@ export default function Account() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xl">
-                <ReceiptText className="h-5 w-5 text-primary" /> Invoice details
+                <ReceiptText className="h-5 w-5 text-primary" /> Account details
               </CardTitle>
               <CardDescription>
                 Only your full name is kept here. Address, VAT and company details are entered in Stripe Checkout when you buy.
