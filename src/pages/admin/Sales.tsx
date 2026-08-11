@@ -67,10 +67,36 @@ type Invoice = {
   stripe_payment_intent_id: string | null;
   pdf_path: string | null;
   refund_reason: string | null;
+  fxl_document_id: string | null;
+  ksef_status: number | null;
+  ksef_number: string | null;
+  ksef_error_desc: string | null;
 };
 
 const fmt = (cents: number, currency = 'eur') =>
   `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
+
+// Mirrors requiresKsef in supabase/functions/_shared/fakturaxl.ts:
+// KSeF applies only to domestic Polish B2B invoices.
+const requiresKsef = (i: Invoice) =>
+  String(i.buyer_country ?? '').trim().toUpperCase() === 'PL' &&
+  String(i.buyer_vat_id ?? '').trim().length > 0;
+
+type KsefState =
+  | { kind: 'skipped' }
+  | { kind: 'pending' }
+  | { kind: 'assigned'; number: string }
+  | { kind: 'failed'; message: string };
+
+const ksefStateOf = (i: Invoice): KsefState => {
+  if (i.ksef_status === 0) return { kind: 'pending' };
+  if (i.ksef_status === 1) return { kind: 'assigned', number: i.ksef_number ?? '—' };
+  if (i.ksef_status === 2)
+    return { kind: 'failed', message: i.ksef_error_desc || 'KSeF submission failed' };
+  if (requiresKsef(i) && !i.fxl_document_id)
+    return { kind: 'failed', message: i.ksef_error_desc || 'Not submitted to KSeF' };
+  return { kind: 'skipped' };
+};
 
 const AdminSales = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
