@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
-import { buyerFromSession, createInvoice } from "../_shared/invoice.ts";
+import { buyerFromSession, createInvoice, isReverseCharge } from "../_shared/invoice.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -93,11 +93,16 @@ serve(async (req) => {
       const vatCents = session.total_details?.amount_tax ?? null;
       const netCents = vatCents != null ? grossCents - vatCents : null;
 
-      // A registered country charging 0% VAT almost always means Stripe Tax is
-      // misconfigured (missing or exempt registration) — make it loud.
-      if (vatCents === 0 && grossCents > 0 && !buyer.vat_id) {
+      // Never issue a 0% invoice for a transaction that is not legitimately
+      // reverse charged. This also catches Stripe incorrectly classifying a
+      // domestic Polish company purchase as cross-border reverse charge.
+      const taxCalculationComplete = session.automatic_tax?.status === "complete";
+      const taxAnomaly = grossCents > 0 && (
+        !taxCalculationComplete || (vatCents === 0 && !isReverseCharge(buyer))
+      );
+      if (taxAnomaly) {
         console.error(
-          `Stripe Tax returned 0% VAT for session ${session.id} (country=${buyer.country ?? "?"}). Check the Tax registrations in Stripe.`,
+          `Invoice blocked for session ${session.id}: Stripe Tax status=${session.automatic_tax?.status ?? "missing"}, VAT=${vatCents ?? "missing"}, buyer_country=${buyer.country ?? "?"}.`,
         );
       }
 
@@ -153,7 +158,7 @@ serve(async (req) => {
 
         await redeemDiscountCode();
 
-        if (retakeRow) {
+        if (retakeRow && !taxAnomaly) {
           const { data: course } = await admin
             .from("courses")
             .select("title")
@@ -217,7 +222,7 @@ serve(async (req) => {
 
       await redeemDiscountCode();
 
-      if (purchaseRow) {
+      if (purchaseRow && !taxAnomaly) {
         const { data: course } = await admin
           .from("courses")
           .select("title")

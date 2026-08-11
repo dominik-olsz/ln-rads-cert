@@ -195,6 +195,11 @@ serve(async (req) => {
         tax_id_collection: { enabled: true, required: "if_supported" },
         // Prices are net; Stripe Tax adds the buyer's VAT (and applies EU
         // reverse charge for validated business VAT IDs).
+        // This seller issues its own Polish invoices, so Stripe must calculate
+        // tax against the seller account. Account-level Managed Payments would
+        // make Stripe the liable merchant and can incorrectly reverse-charge a
+        // Polish buyer with a Polish VAT ID.
+        ...({ managed_payments: { enabled: false } } as any),
         automatic_tax: { enabled: true },
         line_items: [
           {
@@ -297,6 +302,10 @@ serve(async (req) => {
       billing_address_collection: "required",
       tax_id_collection: { enabled: true, required: "if_supported" },
       // Prices are net; Stripe Tax adds the buyer's VAT at checkout.
+      // Keep tax liability with this Polish seller. If Managed Payments is left
+      // to the account default, Stripe can classify domestic PL B2B sales as
+      // cross-border and return reverse-charge 0% VAT.
+      ...({ managed_payments: { enabled: false } } as any),
       automatic_tax: { enabled: true },
       line_items: [
 
