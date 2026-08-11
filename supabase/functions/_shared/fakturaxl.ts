@@ -6,6 +6,12 @@ const FXL_BASE = "https://program.fakturaxl.pl/api";
 /** Division ("oddział") id in the FakturaXL account that owns these documents. */
 export const FXL_DIVISION_ID = "261055";
 
+/**
+ * Document language sent as `jezyk` on every document.
+ * 2 = Polski/Angielski (Polish first), 3 = Angielski/Polski.
+ */
+export const FXL_LANGUAGE = 2;
+
 export const FXL_ENDPOINTS = {
   /** Create a document (invoice / correction). */
   addDocument: "dokument_dodaj",
@@ -15,7 +21,10 @@ export const FXL_ENDPOINTS = {
   readDocument: "dokument_odczytaj",
   /** List documents (supports date filters + pagination, 1 request / 5 s). */
   listDocuments: "lista_dokumentow",
+  /** Authenticated PDF download — returns base64 in <pdf>, 1 request / s. */
+  documentPdf: "pdf_p",
 } as const;
+
 
 
 
