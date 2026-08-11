@@ -220,6 +220,27 @@ const AdminSales = () => {
     }
   };
 
+  const retryKsef = async (invoice: Invoice) => {
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke('invoice-actions', {
+      body: { invoiceId: invoice.id, action: 'retry_ksef' },
+    });
+    setBusy(false);
+    if (error) {
+      toast({ title: 'KSeF retry failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({
+      title: 'KSeF retry submitted',
+      description: (data as any)?.ksef_number
+        ? `KSeF number: ${(data as any).ksef_number}`
+        : 'Status will update shortly.',
+    });
+    fetchInvoices();
+  };
+
+
+
   const doRefund = async () => {
     if (!selected) return;
     setBusy(true);
