@@ -409,6 +409,7 @@ export async function createInvoice(
     discount_summary: params.discountSummary ?? null,
     refund_reason: params.refundReason ?? null,
     notes: params.notes ?? null,
+    fxl_status: "pending",
     issued_at: new Date().toISOString(),
   };
 
@@ -419,35 +420,110 @@ export async function createInvoice(
     .single();
   if (insertError) throw new Error(`Invoice insert failed: ${insertError.message}`);
 
-  const pdf = await renderInvoicePdf({
-    ...(inserted as any),
-    seller,
-    line_items: params.lineItems,
-    original_invoice_number: params.originalInvoiceNumber ?? null,
+  // FakturaXL first: the exchange rate and payment due date only exist once the
+  // document has been created there, and our PDF must be a faithful copy of it.
+  const finalized = await finalizeInvoice(admin, inserted, {
+    originalInvoiceNumber: params.originalInvoiceNumber ?? null,
+    email: params.email !== false,
   });
 
-  const path = `${invoiceFileSlug(invoiceNumber)}.pdf`;
+  return { ...inserted, ...finalized };
+}
+
+/**
+ * Steps 3-8 of the invoice pipeline: push to FakturaXL, read the created document
+ * back, store the NBP rate, then render, upload and email the PDF.
+ *
+ * Never renders or emails a PDF without the rate note — a late invoice is
+ * acceptable, a non-compliant one is not. On failure the row stays
+ * `fxl_status = 'pending'` so /admin/sales shows it and the reconciler retries.
+ */
+export async function finalizeInvoice(
+  admin: any,
+  invoiceRow: any,
+  opts: { originalInvoiceNumber?: string | null; email?: boolean } = {},
+): Promise<{ pdf_path?: string; pdf?: Uint8Array; fxl_status: string; error?: string }> {
+  const invoiceId = invoiceRow.id;
+  const fail = async (error: string) => {
+    console.error(`Invoice ${invoiceRow.invoice_number} pending:`, error);
+    await admin.from("invoices").update({ fxl_status: "pending" }).eq("id", invoiceId);
+    return { fxl_status: "pending", error };
+  };
+
+  let documentId: string | null = invoiceRow.fxl_document_id ?? null;
+  if (!documentId) {
+    try {
+      await pushInvoiceToFakturaXL(admin, invoiceRow);
+    } catch (e) {
+      return await fail(`FakturaXL push threw: ${(e as Error).message}`);
+    }
+    const { data: pushed } = await admin
+      .from("invoices")
+      .select("fxl_document_id, ksef_error_code, ksef_error_desc")
+      .eq("id", invoiceId)
+      .maybeSingle();
+    documentId = pushed?.fxl_document_id ?? null;
+    if (!documentId) {
+      return await fail(
+        `FakturaXL did not create the document: ${pushed?.ksef_error_desc ?? "unknown error"}`,
+      );
+    }
+  }
+
+  let details: Awaited<ReturnType<typeof readFakturaXLDocument>> = null;
+  try {
+    details = await readFakturaXLDocument(documentId);
+  } catch (e) {
+    return await fail(`FakturaXL read failed: ${(e as Error).message}`);
+  }
+  if (!details) return await fail("FakturaXL document could not be read back");
+
+  const currency = String(invoiceRow.currency ?? "eur").toUpperCase();
+  const needsRate = currency !== "PLN";
+  if (needsRate && !details.exchange_rate) {
+    return await fail("FakturaXL returned no NBP exchange rate yet");
+  }
+
+  const vatAmountPln =
+    needsRate && details.exchange_rate
+      ? Math.round(Number(invoiceRow.vat_amount ?? 0) * Number(details.exchange_rate))
+      : Number(invoiceRow.vat_amount ?? 0);
+
+  const patch = {
+    fxl_status: "synced",
+    fxl_exchange_rate: needsRate ? details.exchange_rate : null,
+    fxl_nbp_table: needsRate ? details.nbp_table : null,
+    fxl_rate_date: needsRate ? details.rate_date : null,
+    vat_amount_pln: vatAmountPln,
+    payment_due_date: details.due_date ?? String(invoiceRow.issued_at ?? "").slice(0, 10) || null,
+  };
+  await admin.from("invoices").update(patch).eq("id", invoiceId);
+
+  const pdf = await renderInvoicePdf({
+    ...(invoiceRow as any),
+    ...patch,
+    original_invoice_number: opts.originalInvoiceNumber ?? null,
+  });
+
+  const path = `${invoiceFileSlug(invoiceRow.invoice_number)}.pdf`;
   const { error: uploadError } = await admin.storage
     .from("invoices")
     .upload(path, pdf, { contentType: "application/pdf", upsert: true });
   if (uploadError) console.error("Invoice upload failed:", uploadError);
-  else await admin.from("invoices").update({ pdf_path: path }).eq("id", inserted.id);
+  else await admin.from("invoices").update({ pdf_path: path }).eq("id", invoiceId);
 
-  if (params.email !== false && params.buyer.email) {
-    await sendInvoiceEmail(params.buyer.email, invoiceNumber, pdf, docType).catch((e) =>
-      console.error("Invoice email failed:", e),
-    );
+  if (opts.email !== false && invoiceRow.buyer_email) {
+    await sendInvoiceEmail(
+      invoiceRow.buyer_email,
+      invoiceRow.invoice_number,
+      pdf,
+      invoiceRow.doc_type,
+    ).catch((e) => console.error("Invoice email failed:", e));
   }
 
-  // Every invoice becomes a FakturaXL document so the accounting record is complete.
-  // KSeF submission happens inside, only for domestic Polish B2B. Best-effort:
-  // failures are recorded on the row so they can be retried or handled manually.
-  await pushInvoiceToFakturaXL(admin, inserted).catch((e) =>
-    console.error("FakturaXL push failed (non-blocking):", e),
-  );
-
-  return { ...inserted, pdf_path: path, pdf };
+  return { pdf_path: path, pdf, fxl_status: "synced", ...patch } as any;
 }
+
 
 export async function sendInvoiceEmail(
   to: string,
