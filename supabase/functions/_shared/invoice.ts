@@ -1,7 +1,12 @@
-// Shared invoicing helpers: VAT logic, PDF rendering, storage upload, email.
-import { PDFDocument, rgb } from "https://esm.sh/pdf-lib@1.17.1?target=deno";
-import { pushInvoiceToFakturaXL, readFakturaXLDocument } from "./fakturaxl.ts";
-import fontkit from "https://esm.sh/@pdf-lib/fontkit@1.1.1?target=deno";
+// Shared invoicing helpers: VAT logic, FakturaXL PDF storage, email.
+// The invoice PDF is always the document FakturaXL rendered — we never draw our
+// own, so buyer and accountant see exactly one document per sale.
+import {
+  fetchFakturaXLPdf,
+  pushInvoiceToFakturaXL,
+  readFakturaXLDocument,
+} from "./fakturaxl.ts";
+
 
 export const EU_COUNTRIES = [
   "AT","BE","BG","CY","CZ","DE","DK","EE","ES","FI","FR","GR","HR","HU","IE",
