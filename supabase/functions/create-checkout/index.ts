@@ -184,10 +184,9 @@ serve(async (req) => {
         customer_email: retakeCustomerId ? undefined : (user.email ?? undefined),
         customer_update: retakeCustomerId ? customerUpdate : undefined,
         billing_address_collection: "required",
-        // Required: every buyer must either enter a business tax ID or
-        // explicitly confirm they are not a business, so the private vs
-        // company (VAT invoice) choice is impossible to miss.
-        tax_id_collection: { enabled: true, required: "if_supported" },
+        // Optional: private buyers can continue without a VAT ID, while
+        // business buyers can choose to add one for their invoice.
+        tax_id_collection: { enabled: true },
         // Prices are net; Stripe Tax adds the buyer's VAT (and applies EU
         // reverse charge for validated business VAT IDs).
         // This seller issues its own Polish invoices, so Stripe must calculate
@@ -293,9 +292,9 @@ serve(async (req) => {
       customer_email: courseCustomerId ? undefined : (user.email ?? undefined),
       customer_update: courseCustomerId ? customerUpdate : undefined,
       billing_address_collection: "required",
-      // Required VAT field — buyers must enter a business tax ID or confirm
-      // they are not a business, making the invoice type an explicit choice.
-      tax_id_collection: { enabled: true, required: "if_supported" },
+      // Optional: private buyers can continue without a VAT ID, while
+      // business buyers can choose to add one for their invoice.
+      tax_id_collection: { enabled: true },
       // Prices are net; Stripe Tax adds the buyer's VAT at checkout.
       // Keep tax liability with this Polish seller. If Managed Payments is left
       // to the account default, Stripe can classify domestic PL B2B sales as
