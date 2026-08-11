@@ -75,10 +75,6 @@ serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
-    const hasAddress = Boolean(
-      profile?.address_line1 && profile?.postal_code && profile?.city && profile?.country,
-    );
-
     const buildCustomer = async (stripe: Stripe): Promise<string | undefined> =>
       await syncStripeCustomer(stripe, admin, {
         userId: user.id,
