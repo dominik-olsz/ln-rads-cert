@@ -247,6 +247,11 @@ export default function Payments() {
                         </>
                       ) : null}
                     </p>
+                    {row.corrections.length > 0 ? (
+                      <Badge variant="secondary" className="mt-2">
+                        Refunded — correction invoice issued
+                      </Badge>
+                    ) : null}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -264,12 +269,12 @@ export default function Payments() {
                         )}
                         Invoice
                       </Button>
-                    ) : (
+                    ) : row.invoice ? (
                       <Badge variant="secondary" className="gap-1">
                         <FileText className="h-3 w-3" />
                         Invoice is being issued
                       </Badge>
-                    )}
+                    ) : null}
 
                     {row.corrections
                       .filter((c) => c.pdf_path)
@@ -286,8 +291,9 @@ export default function Payments() {
                           ) : (
                             <Download className="h-4 w-4" />
                           )}
-                          Correction {c.invoice_number}
+                          Refund {c.invoice_number}
                         </Button>
+
                       ))}
                   </div>
                 </CardContent>
