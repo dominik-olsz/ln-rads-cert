@@ -262,40 +262,67 @@ ${renderPositions(shouldBe, "faktura_pozycje_powinno_byc")}`;
 
       correctionSection = `
   <korekta>
-    <id_faktury_korygowanej>${cdata(original.fxl_document_id)}</id_faktury_korygowanej>
+    <id_faktury_korygowanej>${original.fxl_document_id}</id_faktury_korygowanej>
     <przyczyna_korekty>${cdata(invoiceRow.refund_reason ?? "Zwrot płatności")}</przyczyna_korekty>
   </korekta>${amountsBlock}`;
     }
 
+    // Private persons need imie + nazwisko (kod 38 / 39 when empty); companies use nazwa.
+    let buyerIdentity: string;
+    if (isCompany) {
+      buyerIdentity = `    <nazwa>${cdata(
+        invoiceRow.buyer_company || invoiceRow.buyer_name || "",
+      )}</nazwa>
+    <nip>${stripVatCountryPrefix(invoiceRow.buyer_vat_id)}</nip>`;
+    } else {
+      const parts = splitBuyerName(invoiceRow.buyer_name);
+      if (!parts) {
+        await update({
+          ksef_error_code: "buyer_name_required",
+          ksef_error_desc:
+            "Buyer's full name (first name and surname) is required to issue this invoice in FakturaXL",
+        });
+        return;
+      }
+      buyerIdentity = `    <imie>${cdata(parts.imie)}</imie>
+    <nazwisko>${cdata(parts.nazwisko)}</nazwisko>`;
+    }
+
+    // Omit address elements entirely when we don't have them.
+    const optional = (tag: string, value: unknown, raw = false) => {
+      const text = String(value ?? "").trim();
+      if (!text) return "";
+      return `\n    <${tag}>${raw ? text : cdata(text)}</${tag}>`;
+    };
+
     const addBody = `  <typ_faktury>${isCorrection ? 4 : 0}</typ_faktury>
-  <id_dzialy_firmy>${cdata(FXL_DIVISION_ID)}</id_dzialy_firmy>
+  <id_dzialy_firmy>${FXL_DIVISION_ID}</id_dzialy_firmy>
   <obliczaj_wartosc_faktury_od>1</obliczaj_wartosc_faktury_od>
   <numer_faktury>${cdata(invoiceRow.invoice_number)}</numer_faktury>
-  <waluta>${cdata(currency)}</waluta>${
+  <waluta>${currency}</waluta>${
       currency !== "PLN" ? "\n  <rodzaj_przeliczania_waluty>1</rodzaj_przeliczania_waluty>" : ""
     }
-  <data_wystawienia>${cdata(issued)}</data_wystawienia>
-  <data_sprzedazy>${cdata(issued)}</data_sprzedazy>
-  <termin_platnosci_data>${cdata(issued)}</termin_platnosci_data>
+  <data_wystawienia>${issued}</data_wystawienia>
+  <data_sprzedazy>${issued}</data_sprzedazy>
+  <termin_platnosci_data>${issued}</termin_platnosci_data>
   <rodzaj_platnosci>${cdata("Karta płatnicza")}</rodzaj_platnosci>
-  <kwota_oplacona>${cdata(gross)}</kwota_oplacona>
+  <kwota_oplacona>${gross}</kwota_oplacona>
   <status>2</status>
-  <data_oplacenia>${cdata(issued)}</data_oplacenia>
+  <data_oplacenia>${issued}</data_oplacenia>
   <wyslij_dokument_do_klienta_emailem>0</wyslij_dokument_do_klienta_emailem>${correctionSection}
   <nabywca>
     <firma_lub_osoba_prywatna>${isCompany ? 0 : 1}</firma_lub_osoba_prywatna>
-    <nazwa>${cdata(invoiceRow.buyer_company || invoiceRow.buyer_name || "")}</nazwa>
-    <nip>${cdata(stripVatCountryPrefix(invoiceRow.buyer_vat_id))}</nip>
-    <ulica_i_numer>${cdata(invoiceRow.buyer_address_line1 ?? "")}</ulica_i_numer>
-    <kod_pocztowy>${cdata(invoiceRow.buyer_postal_code ?? "")}</kod_pocztowy>
-    <miejscowosc>${cdata(invoiceRow.buyer_city ?? "")}</miejscowosc>
-    <kraj>${cdata(invoiceRow.buyer_country ?? "")}</kraj>
-    <email>${cdata(invoiceRow.buyer_email ?? "")}</email>
+${buyerIdentity}${optional("ulica_i_numer", invoiceRow.buyer_address_line1)}${
+      optional("kod_pocztowy", invoiceRow.buyer_postal_code, true)
+    }${optional("miejscowosc", invoiceRow.buyer_city)}${
+      optional("kraj", (invoiceRow.buyer_country ?? "").toUpperCase(), true)
+    }${optional("email", invoiceRow.buyer_email, true)}
   </nabywca>${
       // Corrections: FakturaXL pulls positions from the corrected document
       // (or from the before/after blocks above for partial credits).
       isCorrection ? "" : `\n${positions}`
     }`;
+
 
 
 
