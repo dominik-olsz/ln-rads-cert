@@ -3,12 +3,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   FXL_ENDPOINTS,
-  cdata,
   fxl,
   fxlErrorMessage,
   isRetryable,
   pushInvoiceToFakturaXL,
-  requiresKsef,
 } from "../_shared/fakturaxl.ts";
 
 const corsHeaders = {
@@ -138,7 +136,6 @@ Deno.serve(async (req) => {
     if (unsentError) throw unsentError;
 
     for (const row of unsent ?? []) {
-      if (!requiresKsef(row)) continue;
       if (row.ksef_error_code != null && !isRetryable(row.ksef_error_code)) continue;
 
       await pushInvoiceToFakturaXL(admin, row);
