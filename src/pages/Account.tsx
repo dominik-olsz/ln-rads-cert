@@ -297,14 +297,14 @@ export default function Account() {
                 <ReceiptText className="h-5 w-5 text-primary" /> Invoice details
               </CardTitle>
               <CardDescription>
-                Saved here once, then filled in automatically every time you buy.
+                Only your full name is kept here. Address, VAT and company details are entered in Stripe Checkout when you buy.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <BillingFields value={billing} onChange={patch} errors={errors} />
               <Button onClick={saveBilling} disabled={savingBilling}>
                 {savingBilling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save invoice details
+                Save full name
               </Button>
             </CardContent>
           </Card>
