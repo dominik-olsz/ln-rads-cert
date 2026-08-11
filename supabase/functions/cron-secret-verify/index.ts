@@ -21,6 +21,9 @@ Deno.serve(async (req) => {
   const { error: vaultErr } = await admin.rpc("set_cron_secret", { _value: secret });
   out.vault_write = vaultErr ? `error: ${vaultErr.message}` : "ok";
 
+  const { data: vaultCheck, error: checkErr } = await admin.rpc("check_cron_secret_vault");
+  out.vault_readback = checkErr ? `error: ${checkErr.message}` : vaultCheck;
+
   const target = `${url}/functions/v1/reconcile-ksef`;
   const probe = async (headers: Record<string, string>) => {
     const r = await fetch(target, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: "{}" });
