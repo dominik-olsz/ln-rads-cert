@@ -770,7 +770,7 @@ const AdminSales = () => {
           <DialogHeader>
             <DialogTitle>Refund payment</DialogTitle>
             <DialogDescription>
-              Leave the amount empty for a full refund. A correction invoice is generated
+              Leave the amount at 0 for a full refund. A correction invoice is generated
               automatically and a full refund removes the buyer&apos;s access.
             </DialogDescription>
           </DialogHeader>
