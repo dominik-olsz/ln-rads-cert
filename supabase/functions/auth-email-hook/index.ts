@@ -36,9 +36,10 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration — all mail is delivered through Resend from the verified
-// lnrads.com domain, so the From address matches the app's own domain.
+// mail.lnrads.com sending domain; replies go to the real cert@ mailbox.
 const SITE_NAME = "LN-RADS Certification"
-const FROM_ADDRESS = "cert@lnrads.com"
+const FROM_ADDRESS = "noreply@mail.lnrads.com"
+const REPLY_TO_ADDRESS = "cert@lnrads.com"
 const FROM = `${SITE_NAME} <${FROM_ADDRESS}>`
 
 

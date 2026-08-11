@@ -46,7 +46,7 @@ serve(async (req) => {
 
     // Send email
     const { data, error } = await resend.emails.send({
-      from: 'LN-RADS Certification <cert@lnrads.com>',
+      from: 'LN-RADS Certification <noreply@mail.lnrads.com>',
       reply_to: 'cert@lnrads.com',
       to: [userEmail],
       subject: `Your LN-RADS Certificate - ${certificate.courses.title}`,

@@ -4,9 +4,10 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 
-// All mail is delivered through Resend from the verified lnrads.com domain.
+// All mail is delivered through Resend from the verified mail.lnrads.com domain.
 const SITE_NAME = "LN-RADS Certification"
-const FROM_ADDRESS = "cert@lnrads.com"
+const FROM_ADDRESS = "noreply@mail.lnrads.com"
+const REPLY_TO_ADDRESS = "cert@lnrads.com"
 const FROM = `${SITE_NAME} <${FROM_ADDRESS}>`
 
 
