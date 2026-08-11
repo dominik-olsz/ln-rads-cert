@@ -525,6 +525,23 @@ const AdminSales = () => {
                           <TableCell>
                             <Badge variant={status.variant}>{status.label}</Badge>
                           </TableCell>
+                          <TableCell className="max-w-[180px]">
+                            {delivery ? (
+                              <>
+                                <div className={`text-xs ${delivery.className}`}>
+                                  {delivery.label}
+                                </div>
+                                {deliveries[i.invoice_number]?.error && (
+                                  <div className="text-[11px] text-muted-foreground line-clamp-2">
+                                    {deliveries[i.invoice_number].error}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+
                           <TableCell className="max-w-[200px]">
                             {ksef.kind === 'skipped' && (
                               <span className="text-muted-foreground">—</span>
