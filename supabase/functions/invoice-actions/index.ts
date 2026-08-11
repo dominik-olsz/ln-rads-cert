@@ -206,6 +206,23 @@ serve(async (req) => {
     if (!invoice) return json({ error: "Invoice not found" }, 404);
     if (!isAdmin && invoice.user_id !== user.id) return json({ error: "Forbidden" }, 403);
 
+    // Owner (or admin) download: the bucket stays private and pdf_path is never
+    // returned to the browser — only a short-lived signed URL.
+    if (action === "signed_url") {
+      if (!invoice.pdf_path) {
+        return json({ error: "This invoice is still being issued", pending: true }, 409);
+      }
+      const { data: signed, error: signError } = await admin.storage
+        .from("invoices")
+        .createSignedUrl(invoice.pdf_path, 120, {
+          download: `${invoiceFileSlug(invoice.invoice_number)}.pdf`,
+        });
+      if (signError || !signed?.signedUrl) {
+        return json({ error: signError?.message ?? "Could not create download link" }, 500);
+      }
+      return json({ ok: true, url: signed.signedUrl });
+    }
+
     if (action === "retry_ksef") {
       if (!isAdmin) return json({ error: "Forbidden" }, 403);
       await pushInvoiceToFakturaXL(admin, invoice);
