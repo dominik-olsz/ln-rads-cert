@@ -64,6 +64,7 @@ const CertificationTest = () => {
   const [retakePrice, setRetakePrice] = useState<number>(6900);
   const [payLoading, setPayLoading] = useState(false);
   const [retakeCode, setRetakeCode] = useState('');
+  const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
   const [retakeQuote, setRetakeQuote] = useState<{ finalCents: number; userPercent: number; codePercent: number } | null>(null);
   const [checkingCode, setCheckingCode] = useState(false);
 
