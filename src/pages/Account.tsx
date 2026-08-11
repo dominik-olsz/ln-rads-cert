@@ -9,16 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { COUNTRIES } from "@/lib/countries";
 import { Building2, Loader2, Lock, Mail, ReceiptText } from "lucide-react";
 import { appUrl } from "@/lib/appUrl";
 
@@ -46,46 +37,17 @@ export const emptyBilling: BillingProfile = {
   country: "",
 };
 
-export const billingSchema = z
-  .object({
-    buyer_type: z.enum(["private", "company"]),
-    full_name: z.string().trim().min(2, "Please enter your full name").max(120),
-    company_name: z.string().trim().max(160).optional().or(z.literal("")),
-    vat_id: z.string().trim().max(40).optional().or(z.literal("")),
-    address_line1: z.string().trim().max(160).optional().or(z.literal("")),
-    address_line2: z.string().trim().max(160).optional().or(z.literal("")),
-    postal_code: z.string().trim().max(20).optional().or(z.literal("")),
-    city: z.string().trim().max(80).optional().or(z.literal("")),
-    country: z.string().trim().max(2).optional().or(z.literal("")),
-  })
-  .refine((v) => v.buyer_type !== "company" || !!v.company_name?.trim(), {
-    message: "Company name is required",
-    path: ["company_name"],
-  })
-  .refine((v) => v.buyer_type !== "company" || !!v.vat_id?.trim(), {
-    message: "VAT number is required for companies",
-    path: ["vat_id"],
-  })
-  .refine(
-    (v) => v.buyer_type !== "company" || /^[A-Za-z0-9\-. ]{6,20}$/.test((v.vat_id ?? "").trim()),
-    { message: "This VAT number does not look valid", path: ["vat_id"] },
-  )
-  .refine((v) => v.buyer_type !== "company" || (v.address_line1 ?? "").trim().length >= 3, {
-    message: "Please enter your address",
-    path: ["address_line1"],
-  })
-  .refine((v) => v.buyer_type !== "company" || (v.postal_code ?? "").trim().length >= 2, {
-    message: "Please enter your postal code",
-    path: ["postal_code"],
-  })
-  .refine((v) => v.buyer_type !== "company" || (v.city ?? "").trim().length >= 2, {
-    message: "Please enter your city",
-    path: ["city"],
-  })
-  .refine((v) => v.buyer_type !== "company" || (v.country ?? "").trim().length === 2, {
-    message: "Please choose your country",
-    path: ["country"],
-  });
+export const billingSchema = z.object({
+  buyer_type: z.enum(["private", "company"]),
+  full_name: z.string().trim().min(2, "Please enter your full name").max(120),
+  company_name: z.string().trim().max(160).optional().or(z.literal("")),
+  vat_id: z.string().trim().max(40).optional().or(z.literal("")),
+  address_line1: z.string().trim().max(160).optional().or(z.literal("")),
+  address_line2: z.string().trim().max(160).optional().or(z.literal("")),
+  postal_code: z.string().trim().max(20).optional().or(z.literal("")),
+  city: z.string().trim().max(80).optional().or(z.literal("")),
+  country: z.string().trim().max(2).optional().or(z.literal("")),
+});
 
 
 export function BillingFields({
@@ -97,137 +59,18 @@ export function BillingFields({
   onChange: (patch: Partial<BillingProfile>) => void;
   errors: Record<string, string>;
 }) {
-  const err = (k: string) =>
-    errors[k] ? <p className="text-xs text-destructive mt-1">{errors[k]}</p> : null;
-
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <Label>Buyer type</Label>
-        <RadioGroup
-          value={value.buyer_type}
-          onValueChange={(v) => onChange({ buyer_type: v as BillingProfile["buyer_type"] })}
-          className="flex gap-6"
-        >
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="private" id="bt-private" />
-            <Label htmlFor="bt-private" className="font-normal cursor-pointer">
-              Private person
-            </Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="company" id="bt-company" />
-            <Label htmlFor="bt-company" className="font-normal cursor-pointer">
-              Company
-            </Label>
-          </div>
-        </RadioGroup>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="full_name">Full name</Label>
-          <Input
-            id="full_name"
-            value={value.full_name}
-            onChange={(e) => onChange({ full_name: e.target.value })}
-            maxLength={120}
-          />
-          {err("full_name")}
-        </div>
-        <div>
-          <Label htmlFor="country">
-            Country{value.buyer_type === "private" ? " (optional)" : ""}
-          </Label>
-          <Select value={value.country} onValueChange={(v) => onChange({ country: v })}>
-            <SelectTrigger id="country">
-              <SelectValue placeholder="Choose country" />
-            </SelectTrigger>
-            <SelectContent className="max-h-72">
-              {COUNTRIES.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {err("country")}
-        </div>
-      </div>
-
-      {value.buyer_type === "company" && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="company_name">Company name</Label>
-            <Input
-              id="company_name"
-              value={value.company_name}
-              onChange={(e) => onChange({ company_name: e.target.value })}
-              maxLength={160}
-            />
-            {err("company_name")}
-          </div>
-          <div>
-            <Label htmlFor="vat_id">VAT number</Label>
-            <Input
-              id="vat_id"
-              value={value.vat_id}
-              onChange={(e) => onChange({ vat_id: e.target.value.toUpperCase() })}
-              placeholder="e.g. PL8291244164"
-              maxLength={40}
-            />
-            {err("vat_id")}
-          </div>
-        </div>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="address_line1">
-            Address{value.buyer_type === "private" ? " (optional)" : ""}
-          </Label>
-          <Input
-            id="address_line1"
-            value={value.address_line1}
-            onChange={(e) => onChange({ address_line1: e.target.value })}
-            maxLength={160}
-          />
-          {err("address_line1")}
-        </div>
-        <div>
-          <Label htmlFor="address_line2">Address line 2 (optional)</Label>
-          <Input
-            id="address_line2"
-            value={value.address_line2}
-            onChange={(e) => onChange({ address_line2: e.target.value })}
-            maxLength={160}
-          />
-        </div>
-        <div>
-          <Label htmlFor="postal_code">
-            Postal code{value.buyer_type === "private" ? " (optional)" : ""}
-          </Label>
-          <Input
-            id="postal_code"
-            value={value.postal_code}
-            onChange={(e) => onChange({ postal_code: e.target.value })}
-            maxLength={20}
-          />
-          {err("postal_code")}
-        </div>
-        <div>
-          <Label htmlFor="city">
-            City{value.buyer_type === "private" ? " (optional)" : ""}
-          </Label>
-          <Input
-            id="city"
-            value={value.city}
-            onChange={(e) => onChange({ city: e.target.value })}
-            maxLength={80}
-          />
-          {err("city")}
-        </div>
-      </div>
+    <div>
+      <Label htmlFor="full_name">Full name</Label>
+      <Input
+        id="full_name"
+        value={value.full_name}
+        onChange={(e) => onChange({ full_name: e.target.value })}
+        maxLength={120}
+      />
+      {errors.full_name ? (
+        <p className="text-xs text-destructive mt-1">{errors.full_name}</p>
+      ) : null}
     </div>
   );
 }
@@ -272,13 +115,7 @@ export default function Account() {
     if (!user) return;
     (async () => {
       const [{ data }, { data: adminData }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select(
-            "buyer_type, full_name, company_name, vat_id, address_line1, address_line2, postal_code, city, country",
-          )
-          .eq("id", user.id)
-          .maybeSingle(),
+        supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
         supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
       ]);
 
@@ -286,15 +123,8 @@ export default function Account() {
 
       if (data) {
         setBilling({
-          buyer_type: (data.buyer_type as BillingProfile["buyer_type"]) ?? "private",
+          ...emptyBilling,
           full_name: data.full_name ?? "",
-          company_name: data.company_name ?? "",
-          vat_id: data.vat_id ?? "",
-          address_line1: data.address_line1 ?? "",
-          address_line2: data.address_line2 ?? "",
-          postal_code: data.postal_code ?? "",
-          city: data.city ?? "",
-          country: data.country ?? "",
         });
       }
       setLoading(false);
@@ -312,35 +142,19 @@ export default function Account() {
     setSavingBilling(true);
     const { error } = await supabase
       .from("profiles")
-      .update({
-        buyer_type: billing.buyer_type,
-        full_name: billing.full_name.trim(),
-        company_name: billing.buyer_type === "company" ? billing.company_name.trim() : null,
-        vat_id: billing.buyer_type === "company" ? billing.vat_id.trim() : null,
-        address_line1: billing.address_line1.trim(),
-        address_line2: billing.address_line2.trim() || null,
-        postal_code: billing.postal_code.trim(),
-        city: billing.city.trim(),
-        country: billing.country,
-      })
+      .update({ full_name: billing.full_name.trim() })
       .eq("id", user!.id);
 
+    setSavingBilling(false);
+
     if (error) {
-      setSavingBilling(false);
       toast({ title: "Could not save", description: error.message, variant: "destructive" });
       return;
     }
 
-    // Push the same details to the payment provider so checkout is pre-filled
-    // with the buyer's name, address and VAT number.
-    const { data: sync } = await supabase.functions.invoke("sync-billing");
-    setSavingBilling(false);
-
     toast({
-      title: "Invoice details saved",
-      description: sync?.synced
-        ? "They are now in sync with checkout and will be used for your next purchase."
-        : "They will be used automatically for your next purchase.",
+      title: "Full name saved",
+      description: "Your name will be used on certificates and invoices.",
     });
   };
 
@@ -483,14 +297,14 @@ export default function Account() {
                 <ReceiptText className="h-5 w-5 text-primary" /> Invoice details
               </CardTitle>
               <CardDescription>
-                Saved here once, then filled in automatically every time you buy.
+                Only your full name is kept here. Address, VAT and company details are entered in Stripe Checkout when you buy.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <BillingFields value={billing} onChange={patch} errors={errors} />
               <Button onClick={saveBilling} disabled={savingBilling}>
                 {savingBilling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save invoice details
+                Save full name
               </Button>
             </CardContent>
           </Card>
