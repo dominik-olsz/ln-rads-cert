@@ -329,7 +329,7 @@ Deno.serve(async (req) => {
       message_id: messageId,
       to: effectiveRecipient,
       from: FROM,
-      reply_to: FROM_ADDRESS,
+      reply_to: REPLY_TO_ADDRESS,
 
       subject: resolvedSubject,
       html,

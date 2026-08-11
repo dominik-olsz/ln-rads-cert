@@ -315,7 +315,7 @@ async function handleWebhook(req: Request): Promise<Response> {
       message_id: messageId,
       to: payload.data.email,
       from: FROM,
-      reply_to: FROM_ADDRESS,
+      reply_to: REPLY_TO_ADDRESS,
 
       subject: EMAIL_SUBJECTS[emailType] || 'Notification',
       html,
