@@ -73,7 +73,56 @@ serve(async (req) => {
       );
     }
 
-    // Delete user using admin client (this will cascade delete related data)
+    // 1. Remove stored invoice PDFs for this user from the private invoices bucket
+    const { data: userInvoices } = await supabaseAdmin
+      .from('invoices')
+      .select('pdf_path')
+      .eq('user_id', userId);
+
+    const pdfPaths = (userInvoices || [])
+      .map((i: { pdf_path: string | null }) => i.pdf_path)
+      .filter((p: string | null): p is string => !!p);
+
+    if (pdfPaths.length > 0) {
+      const { error: storageError } = await supabaseAdmin.storage.from('invoices').remove(pdfPaths);
+      if (storageError) console.error('Error removing invoice PDFs:', storageError);
+    }
+
+    // 2. Delete all application data belonging to this user.
+    //    Ordered so child rows go before their parents.
+    const tablesInOrder = [
+      'certificates',
+      'certification_test_progress',
+      'invoices',
+      'test_attempts',
+      'user_progress',
+      'course_progress',
+      'course_bookmarks',
+      'course_purchases',
+      'certification_retake_purchases',
+      'user_roles',
+    ] as const;
+
+    for (const table of tablesInOrder) {
+      const { error: rowError } = await supabaseAdmin.from(table).delete().eq('user_id', userId);
+      if (rowError) {
+        console.error(`Error deleting from ${table}:`, rowError);
+        throw new Error(`Failed to delete ${table} data: ${rowError.message}`);
+      }
+    }
+
+    // 3. Release any discount codes this user redeemed
+    const { error: codeError } = await supabaseAdmin
+      .from('discount_codes')
+      .update({ redeemed_by: null, redeemed_at: null, redeemed_email: null })
+      .eq('redeemed_by', userId);
+    if (codeError) console.error('Error clearing redeemed discount codes:', codeError);
+
+    // 4. Delete the profile explicitly (also cascades from auth.users)
+    const { error: profileError } = await supabaseAdmin.from('profiles').delete().eq('id', userId);
+    if (profileError) console.error('Error deleting profile:', profileError);
+
+    // 5. Finally delete the auth user
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (deleteError) {
@@ -81,7 +130,7 @@ serve(async (req) => {
       throw deleteError;
     }
 
-    console.log('User deleted successfully:', userId);
+    console.log('User and all related data deleted successfully:', userId);
 
     return new Response(
       JSON.stringify({ success: true, message: 'User deleted successfully' }),
