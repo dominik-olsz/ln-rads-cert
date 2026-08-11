@@ -13,7 +13,12 @@ export const FXL_ENDPOINTS = {
   sendToKsef: "dokument_ksef_wyslanie",
   /** Read a document (status, KSeF number, PDF link). */
   readDocument: "dokument_odczytaj",
+  /** List documents (supports date filters + pagination, 1 request / 5 s). */
+  listDocuments: "lista_dokumentow",
+  /** Delete a document (only while not sent to KSeF). */
+  deleteDocument: "dokument_usun",
 } as const;
+
 
 /** Documented FakturaXL response codes mapped to readable messages. */
 export const FXL_ERRORS: Record<string, string> = {
