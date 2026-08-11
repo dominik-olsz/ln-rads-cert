@@ -251,7 +251,35 @@ export async function renderInvoicePdf(inv: InvoiceRecord): Promise<Uint8Array> 
   text("Do zapłaty / Total", 330, 12, { bold: true, color: dark });
   right(money(inv.gross_amount, inv.currency), 12, true);
 
-  y -= 34;
+  y -= 26;
+  const dueDate = (inv.payment_due_date ?? inv.issued_at ?? "").slice(0, 10);
+  if (dueDate) {
+    text(`Termin płatności / Payment due date: ${dueDate}`, margin, 9.5, { bold: true });
+    y -= 18;
+  }
+
+  // Polish law requires the VAT amount converted to PLN using the NBP average
+  // rate resolved by FakturaXL for the business day before the sale.
+  const rateValue = inv.fxl_exchange_rate != null ? Number(inv.fxl_exchange_rate) : null;
+  if (rateValue && inv.currency.toUpperCase() !== "PLN" && inv.vat_amount_pln != null) {
+    text(
+      `Kurs waluty ${inv.currency.toUpperCase()}/PLN ${rateValue}, tabela kursów średnich NBP nr ${
+        inv.fxl_nbp_table ?? "—"
+      }`,
+      margin,
+      9,
+      { color: grey },
+    );
+    y -= 12;
+    text(`z dnia ${inv.fxl_rate_date ?? "—"}`, margin, 9, { color: grey });
+    y -= 12;
+    text(`Przeliczona kwota VAT: ${plnAmount(Math.abs(inv.vat_amount_pln))}`, margin, 9, {
+      color: grey,
+    });
+    y -= 16;
+  }
+
+
   if (inv.reverse_charge) {
     text(
       "Odwrotne obciążenie — VAT rozlicza nabywca (art. 28b ustawy o VAT).",
