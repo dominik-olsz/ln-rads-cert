@@ -101,16 +101,6 @@ export async function fxl(endpoint: string, xmlBody: string, root = "dokument"):
   const text = await fxlRaw(endpoint, xmlBody, root);
 
 
-  const res = await fetch(`${FXL_BASE}/${endpoint}.php`, {
-    method: "POST",
-    headers: { "Content-Type": "application/xml; charset=utf-8" },
-    body,
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`FakturaXL ${endpoint} HTTP ${res.status}: ${text.slice(0, 500)}`);
-  }
 
   let parsed: FxlResponse;
   try {
