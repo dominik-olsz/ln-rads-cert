@@ -66,6 +66,60 @@ const PaymentSuccess = () => {
     };
   }, [user, courseId, isRetake]);
 
+  // Poll briefly for the issued invoice so the buyer can download it right away.
+  useEffect(() => {
+    if (!user || status !== "confirmed") return;
+    let cancelled = false;
+    let attempts = 0;
+
+    const poll = async () => {
+      attempts += 1;
+      const { data } = await supabase
+        .from("invoices")
+        .select("id, invoice_number, pdf_path")
+        .eq("user_id", user.id)
+        .not("pdf_path", "is", null)
+        .order("issued_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        setInvoice({ id: data.id, invoice_number: data.invoice_number });
+        return;
+      }
+      if (attempts >= 10) return;
+      setTimeout(poll, 3000);
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, status]);
+
+  const downloadInvoice = async () => {
+    if (!invoice) return;
+    setDownloading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("invoice-actions", {
+        body: { action: "download", invoiceId: invoice.id },
+      });
+      if (error) throw error;
+      if (!data?.url) throw new Error(data?.error ?? "No download link returned");
+      window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      toast({
+        title: "Could not open the invoice",
+        description: e?.message ?? "Please try again from My payments.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+
+
 
   return (
     <div className="min-h-screen bg-background">
