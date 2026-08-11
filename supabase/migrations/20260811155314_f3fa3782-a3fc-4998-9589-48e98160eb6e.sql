@@ -1,0 +1,1 @@
+DELETE FROM public.suppressed_emails WHERE email = 'dominik_olszewski@o2.pl';
