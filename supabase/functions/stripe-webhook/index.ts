@@ -163,6 +163,7 @@ serve(async (req) => {
             grossCents,
             netCents,
             vatCents,
+            discountCodeId,
             discountSummary,
             lineItems: [
               {
