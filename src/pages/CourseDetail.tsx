@@ -10,7 +10,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import DiscountPricePanel, { PricingQuote } from "@/components/DiscountPricePanel";
 import { getEffectivePrice } from "@/lib/pricing";
-import BillingDialog from "@/components/BillingDialog";
 
 interface Course {
   id: string;
@@ -57,7 +56,6 @@ const CourseDetail = () => {
   const [loading, setLoading] = useState(true);
   const [hasPurchased, setHasPurchased] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
-  const [billingOpen, setBillingOpen] = useState(false);
   const [courseQuestionsCount, setCourseQuestionsCount] = useState(0);
   const [quote, setQuote] = useState<PricingQuote | null>(null);
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
@@ -183,18 +181,13 @@ const CourseDetail = () => {
     }
   }, [id, user]);
 
-  // Buying starts with the invoice-details step so the buyer can choose
-  // private person vs company before Stripe calculates VAT.
-  const handleBuyCourse = () => {
+  const handleBuyCourse = async () => {
     if (!user) {
       toast.error('Please sign in to purchase this course');
       navigate('/auth');
       return;
     }
-    setBillingOpen(true);
-  };
 
-  const startCheckout = async () => {
     setPurchasing(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
@@ -616,14 +609,6 @@ const CourseDetail = () => {
         </div>
       </section>
 
-      {user && (
-        <BillingDialog
-          open={billingOpen}
-          onOpenChange={setBillingOpen}
-          userId={user.id}
-          onConfirmed={startCheckout}
-        />
-      )}
     </div>
   );
 };
