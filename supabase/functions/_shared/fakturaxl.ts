@@ -222,17 +222,19 @@ export async function pushInvoiceToFakturaXL(admin: any, invoiceRow: any): Promi
 
     // Line items are repeated document-level <faktura_pozycje> elements —
     // there is no <pozycje> wrapper and no <pozycja> element.
+    // Numeric fields are sent bare; only free text keeps CDATA.
     const renderPositions = (list: any[], tag = "faktura_pozycje", indent = "  ") =>
       list
         .map(
           (item) => `${indent}<${tag}>
 ${indent}  <nazwa>${cdata(item.description ?? "")}</nazwa>
-${indent}  <ilosc>${cdata(item.quantity ?? 1)}</ilosc>
-${indent}  <vat>${cdata(vatRate)}</vat>
-${indent}  <wartosc_brutto>${cdata(decimal(item.gross ?? 0))}</wartosc_brutto>
+${indent}  <ilosc>${Number(item.quantity ?? 1)}</ilosc>
+${indent}  <vat>${vatRate}</vat>
+${indent}  <wartosc_brutto>${decimal(item.gross ?? 0)}</wartosc_brutto>
 ${indent}</${tag}>`,
         )
         .join("\n");
+
 
     const positions = renderPositions(items);
 
