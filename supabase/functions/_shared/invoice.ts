@@ -214,11 +214,13 @@ export async function createInvoice(
 
 /**
  * Steps 3-8 of the invoice pipeline: push to FakturaXL, read the created document
- * back, store the NBP rate, then render, upload and email the PDF.
+ * back, store the NBP rate, then download FakturaXL's own PDF, store it and email
+ * the buyer a link.
  *
- * Never renders or emails a PDF without the rate note — a late invoice is
- * acceptable, a non-compliant one is not. On failure the row stays
- * `fxl_status = 'pending'` so /admin/sales shows it and the reconciler retries.
+ * Failure states are deliberately distinct so a retry never duplicates a
+ * document number (kod=7):
+ *  - `pending`     — no FakturaXL document yet, the whole push may be retried.
+ *  - `pdf_pending` — the document exists; only the PDF download is retried.
  */
 export async function finalizeInvoice(
   admin: any,
@@ -226,10 +228,10 @@ export async function finalizeInvoice(
   opts: { originalInvoiceNumber?: string | null; email?: boolean } = {},
 ): Promise<{ pdf_path?: string; pdf?: Uint8Array; fxl_status: string; error?: string }> {
   const invoiceId = invoiceRow.id;
-  const fail = async (error: string) => {
-    console.error(`Invoice ${invoiceRow.invoice_number} pending:`, error);
-    await admin.from("invoices").update({ fxl_status: "pending" }).eq("id", invoiceId);
-    return { fxl_status: "pending", error };
+  const fail = async (error: string, status: "pending" | "pdf_pending" = "pending") => {
+    console.error(`Invoice ${invoiceRow.invoice_number} ${status}:`, error);
+    await admin.from("invoices").update({ fxl_status: status }).eq("id", invoiceId);
+    return { fxl_status: status, error };
   };
 
   let documentId: string | null = invoiceRow.fxl_document_id ?? null;
@@ -252,18 +254,22 @@ export async function finalizeInvoice(
     }
   }
 
+  // From here on the document exists in FakturaXL: every failure is PDF-only,
+  // so a retry must never call dokument_dodaj again.
   let details: Awaited<ReturnType<typeof readFakturaXLDocument>> = null;
   try {
     details = await readFakturaXLDocument(documentId);
   } catch (e) {
-    return await fail(`FakturaXL read failed: ${(e as Error).message}`);
+    return await fail(`FakturaXL read failed: ${(e as Error).message}`, "pdf_pending");
   }
-  if (!details) return await fail("FakturaXL document could not be read back");
+  if (!details) {
+    return await fail("FakturaXL document could not be read back", "pdf_pending");
+  }
 
   const currency = String(invoiceRow.currency ?? "eur").toUpperCase();
   const needsRate = currency !== "PLN";
   if (needsRate && !details.exchange_rate) {
-    return await fail("FakturaXL returned no NBP exchange rate yet");
+    return await fail("FakturaXL returned no NBP exchange rate yet", "pdf_pending");
   }
 
   const vatAmountPln =
@@ -271,8 +277,9 @@ export async function finalizeInvoice(
       ? Math.round(Number(invoiceRow.vat_amount ?? 0) * Number(details.exchange_rate))
       : Number(invoiceRow.vat_amount ?? 0);
 
+  // The rate, NBP table and PLN VAT amount are still recorded for /admin/sales
+  // and the accountant, even though FakturaXL now prints them on the PDF itself.
   const patch = {
-    fxl_status: "synced",
     fxl_exchange_rate: needsRate ? details.exchange_rate : null,
     fxl_nbp_table: needsRate ? details.nbp_table : null,
     fxl_rate_date: needsRate ? details.rate_date : null,
@@ -282,18 +289,24 @@ export async function finalizeInvoice(
   };
   await admin.from("invoices").update(patch).eq("id", invoiceId);
 
-  const pdf = await renderInvoicePdf({
-    ...(invoiceRow as any),
-    ...patch,
-    original_invoice_number: opts.originalInvoiceNumber ?? null,
-  });
+  let pdf: Uint8Array;
+  try {
+    pdf = await fetchFakturaXLPdf(documentId);
+  } catch (e) {
+    return await fail(`FakturaXL PDF download failed: ${(e as Error).message}`, "pdf_pending");
+  }
 
   const path = `${invoiceFileSlug(invoiceRow.invoice_number)}.pdf`;
   const { error: uploadError } = await admin.storage
     .from("invoices")
     .upload(path, pdf, { contentType: "application/pdf", upsert: true });
-  if (uploadError) console.error("Invoice upload failed:", uploadError);
-  else await admin.from("invoices").update({ pdf_path: path }).eq("id", invoiceId);
+  if (uploadError) {
+    return await fail(`Invoice PDF upload failed: ${uploadError.message}`, "pdf_pending");
+  }
+  await admin
+    .from("invoices")
+    .update({ pdf_path: path, fxl_status: "synced" })
+    .eq("id", invoiceId);
 
   if (opts.email !== false && invoiceRow.buyer_email) {
     await sendInvoiceEmail(admin, { ...invoiceRow, ...patch }).catch((e) =>
@@ -303,6 +316,7 @@ export async function finalizeInvoice(
 
   return { pdf_path: path, pdf, fxl_status: "synced", ...patch } as any;
 }
+
 
 
 const APP_URL = "https://cert.lnrads.com";
