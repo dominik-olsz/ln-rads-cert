@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { renderInvoicePdf, sendInvoiceEmail } from "../_shared/invoice.ts";
+import { invoiceFileSlug, renderInvoicePdf, sendInvoiceEmail } from "../_shared/invoice.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,7 +58,7 @@ serve(async (req) => {
           .maybeSingle()
       : { data: null };
 
-    const path = invoice.pdf_path ?? `${invoice.invoice_number.replace(/\//g, "-")}.pdf`;
+    const path = invoice.pdf_path ?? `${invoiceFileSlug(invoice.invoice_number)}.pdf`;
     let pdf: Uint8Array | null = null;
 
     if (invoice.pdf_path && action === "resend") {
