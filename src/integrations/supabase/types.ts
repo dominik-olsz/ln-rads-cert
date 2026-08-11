@@ -1131,7 +1131,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      check_cron_secret_vault: { Args: never; Returns: Json }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -1166,7 +1165,6 @@ export type Database = {
           read_ct: number
         }[]
       }
-      set_cron_secret: { Args: { _value: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
