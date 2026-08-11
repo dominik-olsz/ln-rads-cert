@@ -324,15 +324,23 @@ export default function Account() {
         country: billing.country,
       })
       .eq("id", user!.id);
-    setSavingBilling(false);
 
     if (error) {
+      setSavingBilling(false);
       toast({ title: "Could not save", description: error.message, variant: "destructive" });
       return;
     }
+
+    // Push the same details to the payment provider so checkout is pre-filled
+    // with the buyer's name, address and VAT number.
+    const { data: sync } = await supabase.functions.invoke("sync-billing");
+    setSavingBilling(false);
+
     toast({
       title: "Invoice details saved",
-      description: "They will be used automatically for your next purchase.",
+      description: sync?.synced
+        ? "They are now in sync with checkout and will be used for your next purchase."
+        : "They will be used automatically for your next purchase.",
     });
   };
 
