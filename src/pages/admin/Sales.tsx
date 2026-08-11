@@ -442,6 +442,11 @@ const AdminSales = () => {
                         >
                           <TableCell className="font-medium whitespace-nowrap">
                             {i.invoice_number}
+                            {i.fxl_status === 'pending' && (
+                              <div className="text-xs font-normal text-amber-600">
+                                Pending — PDF not issued yet
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
                             {new Date(i.issued_at).toLocaleDateString()}
