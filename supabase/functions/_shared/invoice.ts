@@ -1,5 +1,6 @@
 // Shared invoicing helpers: VAT logic, PDF rendering, storage upload, email.
 import { PDFDocument, rgb } from "https://esm.sh/pdf-lib@1.17.1?target=deno";
+import { pushInvoiceToKsef, requiresKsef } from "./fakturaxl.ts";
 import fontkit from "https://esm.sh/@pdf-lib/fontkit@1.1.1?target=deno";
 
 export const EU_COUNTRIES = [
