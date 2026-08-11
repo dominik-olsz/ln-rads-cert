@@ -155,9 +155,12 @@ const Navbar = () => {
                     <Link to="/account" className="text-sm font-medium hover:text-primary transition-colors">
                       Account settings
                     </Link>
-                    <Link to="/payments" className="text-sm font-medium hover:text-primary transition-colors">
-                      My payments
-                    </Link>
+                    {!isAdmin && (
+                      <Link to="/payments" className="text-sm font-medium hover:text-primary transition-colors">
+                        My payments
+                      </Link>
+                    )}
+
                     <Button variant="outline" onClick={signOut} className="justify-center border-2 mt-4 rounded-xl">
                       Sign Out
                     </Button>
