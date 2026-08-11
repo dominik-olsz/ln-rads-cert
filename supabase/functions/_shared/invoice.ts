@@ -104,7 +104,16 @@ export type InvoiceRecord = {
   original_invoice_number?: string | null;
   refund_reason?: string | null;
   notes?: string | null;
+  payment_due_date?: string | null;
+  fxl_exchange_rate?: number | string | null;
+  fxl_nbp_table?: string | null;
+  fxl_rate_date?: string | null;
+  vat_amount_pln?: number | null;
 };
+
+/** "59,39 PLN" — Polish decimal comma, amount given in grosze. */
+const plnAmount = (grosze: number) =>
+  `${(grosze / 100).toFixed(2).replace(".", ",")} PLN`;
 
 export async function renderInvoicePdf(inv: InvoiceRecord): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
