@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(null);
 
       // Full reload to ensure clean state
-      window.location.href = '/';
+      window.location.href = '/auth';
     } catch (err) {
       console.error('Sign out fatal error:', err);
       // Ensure logout UX even if an exception occurs
@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .forEach((k) => localStorage.removeItem(k));
       setUser(null);
       setSession(null);
-      window.location.href = '/';
+      window.location.href = '/auth';
     }
   };
 
