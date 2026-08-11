@@ -68,10 +68,14 @@ serve(async (req) => {
       const now = new Date();
       const from = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
       const to = now.toISOString().slice(0, 10);
+      const params =
+        typeof body?.params === "string" && body.params.trim()
+          ? body.params
+          : `  <data_dodania_od>${cdata(from)}</data_dodania_od>
+  <data_dodania_do>${cdata(to)}</data_dodania_do>`;
       const rawXml = await fxlRaw(
         FXL_ENDPOINTS.listDocuments,
-        `  <data_dodania_od>${cdata(from)}</data_dodania_od>
-  <data_dodania_do>${cdata(to)}</data_dodania_do>`,
+        params,
         String(body?.root ?? "dokumenty"),
       );
       const parsed = xmlToObject(rawXml);
