@@ -315,12 +315,22 @@ Deno.serve(async (req) => {
   // 5. Enqueue the pre-rendered email for async processing by the dispatcher.
   // The dispatcher (process-email-queue) handles sending, retries, and rate-limit backoff.
 
+  // Business reference for admin delivery views (invoice number when present).
+  const reference =
+    typeof templateData?.invoiceNumber === 'string' && templateData.invoiceNumber
+      ? templateData.invoiceNumber
+      : null
+
+  // Invoices and other documents are not a mailing — no List-Unsubscribe.
+  const isDocument = templateName === 'invoice-issued'
+
   // Log pending BEFORE enqueue so we have a record even if enqueue crashes
   await supabase.from('email_send_log').insert({
     message_id: messageId,
     template_name: templateName,
     recipient_email: effectiveRecipient,
     status: 'pending',
+    metadata: reference ? { reference } : null,
   })
 
   const { error: enqueueError } = await supabase.rpc('enqueue_email', {
@@ -336,11 +346,14 @@ Deno.serve(async (req) => {
       text: plainText,
       purpose: 'transactional',
       label: templateName,
+      reference,
+      no_unsubscribe: isDocument,
       idempotency_key: idempotencyKey,
       unsubscribe_token: unsubscribeToken,
       queued_at: new Date().toISOString(),
     },
   })
+
 
   if (enqueueError) {
     console.error('Failed to enqueue email', {
