@@ -35,11 +35,11 @@ The webhook log for this purchase shows:
 Resend error: 403 — The lnrads.com domain is not verified
 ```
 
-Invoices are being emailed through Resend on an unverified domain, so every invoice email is rejected. Your verified Lovable sending domain (`notify.mail.lnrads.com`) is the one that actually works, and the auth emails already use it.
+Invoices are being emailed through Resend on an unverified domain, so every invoice email is rejected. Your working sender is the verified Lovable domain already used for auth emails, sending as `noreply@mail.lnrads.com`.
 
 Changes:
 
-- Move invoice emails onto your own verified email infrastructure, off Resend.
+- Move invoice emails onto your own verified email infrastructure, off Resend, sent from `noreply@mail.lnrads.com` with a reply-to of `cert@lnrads.com`.
 - Branded invoice email containing a **download link** that opens the invoice in *My payments* after sign-in (secure, no public file exposure).
 - **Constraint on the attachment:** file attachments are not supported by the built-in email system. So the email will be link-only rather than link + PDF. If you want the PDF physically attached, that needs a verified third-party provider on a separate subdomain — tell me and I will plan that separately.
 - Correction invoices (FK) and the admin "resend" action use the same path.
