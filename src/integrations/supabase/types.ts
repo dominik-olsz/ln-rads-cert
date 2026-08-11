@@ -1165,6 +1165,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      set_cron_secret: { Args: { _value: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
