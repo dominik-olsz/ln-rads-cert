@@ -124,16 +124,19 @@ Deno.serve(async (req) => {
       await sleep(CALL_INTERVAL_MS);
     }
 
-    // 2. Invoices that never completed the FakturaXL step: retry the push, read the
-    //    NBP rate back, then render, upload and email the PDF. Nothing is emailed
-    //    before the document exists, so no customer receives a non-compliant invoice.
+    // 2. Invoices that never completed the FakturaXL step: 'pending' retries the
+    //    push, 'pdf_pending' means the document already exists and only its PDF
+    //    download is retried — the document is never created twice (kod=7).
+    //    Nothing is emailed before the document exists, so no customer receives a
+    //    non-compliant invoice.
     const { data: unsent, error: unsentError } = await admin
       .from("invoices")
       .select("*")
-      .eq("fxl_status", "pending")
+      .in("fxl_status", ["pending", "pdf_pending"])
       .lt("ksef_attempts", 5)
       .order("created_at", { ascending: true })
       .limit(20);
+
     if (unsentError) throw unsentError;
 
     for (const row of unsent ?? []) {

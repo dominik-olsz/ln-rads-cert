@@ -497,9 +497,15 @@ const AdminSales = () => {
                             {i.invoice_number}
                             {i.fxl_status === 'pending' && (
                               <div className="text-xs font-normal text-amber-600">
-                                Pending — PDF not issued yet
+                                Pending — not issued in FakturaXL yet
                               </div>
                             )}
+                            {i.fxl_status === 'pdf_pending' && (
+                              <div className="text-xs font-normal text-amber-600">
+                                Issued — PDF download pending
+                              </div>
+                            )}
+
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
                             {new Date(i.issued_at).toLocaleDateString()}

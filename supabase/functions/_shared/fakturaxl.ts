@@ -6,6 +6,12 @@ const FXL_BASE = "https://program.fakturaxl.pl/api";
 /** Division ("oddział") id in the FakturaXL account that owns these documents. */
 export const FXL_DIVISION_ID = "261055";
 
+/**
+ * Document language sent as `jezyk` on every document.
+ * 2 = Polski/Angielski (Polish first), 3 = Angielski/Polski.
+ */
+export const FXL_LANGUAGE = 2;
+
 export const FXL_ENDPOINTS = {
   /** Create a document (invoice / correction). */
   addDocument: "dokument_dodaj",
@@ -15,7 +21,10 @@ export const FXL_ENDPOINTS = {
   readDocument: "dokument_odczytaj",
   /** List documents (supports date filters + pagination, 1 request / 5 s). */
   listDocuments: "lista_dokumentow",
+  /** Authenticated PDF download — returns base64 in <pdf>, 1 request / s. */
+  documentPdf: "pdf_p",
 } as const;
+
 
 
 
@@ -297,7 +306,9 @@ ${renderPositions(shouldBe, "faktura_pozycje_powinno_byc")}`;
 
     const addBody = `  <typ_faktury>${isCorrection ? 4 : 0}</typ_faktury>
   <id_dzialy_firmy>${FXL_DIVISION_ID}</id_dzialy_firmy>
+  <jezyk>${FXL_LANGUAGE}</jezyk>
   <obliczaj_wartosc_faktury_od>1</obliczaj_wartosc_faktury_od>
+
   <numer_faktury>${cdata(invoiceRow.invoice_number)}</numer_faktury>
   <waluta>${currency}</waluta>${
       currency !== "PLN" ? "\n  <rodzaj_przeliczania_waluty>1</rodzaj_przeliczania_waluty>" : ""
@@ -488,4 +499,42 @@ export async function readFakturaXLDocument(
     due_date: date(firstValue(doc, ["termin_platnosci_data", "termin_platnosci"])),
     currency: firstValue(doc, ["waluta"]),
   };
+}
+
+/**
+ * Downloads the PDF FakturaXL rendered for a document, using the authenticated
+ * pdf_p.php endpoint (api_token + dokument_id). The public
+ * pdf.php?k=<unikatowy_kod> link is deliberately NOT used: it exposes buyer
+ * personal data to anyone holding the URL.
+ *
+ * FakturaXL allows one request per second, so callers get a built-in pause.
+ * Returns the decoded PDF bytes, or throws with the reported reason.
+ */
+export async function fetchFakturaXLPdf(documentId: string): Promise<Uint8Array> {
+  await sleep(1100);
+  const raw = await fxlRaw(
+    FXL_ENDPOINTS.documentPdf,
+    `  <dokument_id>${documentId}</dokument_id>`,
+  );
+
+  const base64 = raw.match(/<pdf>([\s\S]*?)<\/pdf>/i)?.[1]
+    ?.replace(/<!\[CDATA\[|\]\]>/g, "")
+    .replace(/\s+/g, "");
+  if (!base64) {
+    const code = raw.match(/<kod>([^<]*)<\/kod>/i)?.[1]?.trim() ?? null;
+    throw new Error(
+      `FakturaXL returned no PDF for document ${documentId}: ${fxlErrorMessage(
+        code,
+        raw.slice(0, 200),
+      )}`,
+    );
+  }
+
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  if (bytes.length < 1000 || String.fromCharCode(...bytes.slice(0, 4)) !== "%PDF") {
+    throw new Error(`FakturaXL PDF for document ${documentId} is not a valid PDF file`);
+  }
+  return bytes;
 }
