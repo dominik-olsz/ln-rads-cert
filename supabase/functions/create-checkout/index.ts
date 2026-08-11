@@ -255,7 +255,6 @@ serve(async (req) => {
           course_id: retakeCourse.id,
           purchase_type: "certification_retake",
           buyer_company: buyerCompany,
-        buyer_vat_id: buyerVatId,
           buyer_vat_id: buyerVatId,
           discount_code_id: pricing.codeId ?? "",
           discount_summary: pricing.discountSummary ?? "",
