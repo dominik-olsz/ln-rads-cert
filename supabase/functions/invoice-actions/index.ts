@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { invoiceFileSlug, renderInvoicePdf, sendInvoiceEmail } from "../_shared/invoice.ts";
+import { pushInvoiceToKsef } from "../_shared/fakturaxl.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,7 +40,12 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const invoiceId = typeof body?.invoiceId === "string" ? body.invoiceId : null;
-    const action = body?.action === "resend" ? "resend" : "regenerate";
+    const action =
+      body?.action === "resend"
+        ? "resend"
+        : body?.action === "retry_ksef"
+          ? "retry_ksef"
+          : "regenerate";
     if (!invoiceId) return json({ error: "invoiceId is required" }, 400);
 
     const { data: invoice } = await admin
@@ -49,6 +55,17 @@ serve(async (req) => {
       .maybeSingle();
     if (!invoice) return json({ error: "Invoice not found" }, 404);
     if (!isAdmin && invoice.user_id !== user.id) return json({ error: "Forbidden" }, 403);
+
+    if (action === "retry_ksef") {
+      if (!isAdmin) return json({ error: "Forbidden" }, 403);
+      await pushInvoiceToKsef(admin, invoice);
+      const { data: refreshed } = await admin
+        .from("invoices")
+        .select("ksef_status, ksef_number, ksef_error_code, ksef_error_desc, fxl_document_id")
+        .eq("id", invoice.id)
+        .maybeSingle();
+      return json({ ok: true, ...(refreshed ?? {}) });
+    }
 
     const { data: originalRef } = invoice.original_invoice_id
       ? await admin
