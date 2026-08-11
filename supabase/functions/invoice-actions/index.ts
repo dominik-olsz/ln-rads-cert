@@ -6,7 +6,7 @@ import {
   cdata,
   fxlRaw,
   xmlToObject,
-  pushInvoiceToKsef,
+  pushInvoiceToFakturaXL,
 } from "../_shared/fakturaxl.ts";
 
 
@@ -71,8 +71,8 @@ serve(async (req) => {
 
       const listXml = await fxlRaw(
         FXL_ENDPOINTS.listDocuments,
-        `  <data_dodania_od>${cdata(from)}</data_dodania_od>
-  <data_dodania_do>${cdata(to)}</data_dodania_do>`,
+        `  <data_od>${from}</data_od>
+  <data_do>${to}</data_do>`,
         "dokumenty",
       ).catch(() => "");
       const parsed = listXml ? xmlToObject(listXml) : {};
@@ -173,7 +173,7 @@ serve(async (req) => {
 
     if (action === "retry_ksef") {
       if (!isAdmin) return json({ error: "Forbidden" }, 403);
-      await pushInvoiceToKsef(admin, invoice);
+      await pushInvoiceToFakturaXL(admin, invoice);
       const { data: refreshed } = await admin
         .from("invoices")
         .select("ksef_status, ksef_number, ksef_error_code, ksef_error_desc, fxl_document_id")

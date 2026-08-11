@@ -393,7 +393,7 @@ ${buyerIdentity}${optional("ulica_i_numer", invoiceRow.buyer_address_line1)}${
       await sleep(1500);
       const read = await call(
         FXL_ENDPOINTS.readDocument,
-        `  <dokument_id>${cdata(documentId)}</dokument_id>`,
+        `  <dokument_id>${documentId}</dokument_id>`,
       );
       const ksef = read?.ksef ?? read?.dokument?.ksef;
       const status = String(ksef?.status ?? "");
