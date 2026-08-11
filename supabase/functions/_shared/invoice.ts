@@ -391,6 +391,17 @@ export async function createInvoice(
         }
       : derived;
 
+  if (
+    params.grossCents > 0 &&
+    !derived.reverse_charge &&
+    amounts.vat_amount === 0 &&
+    standardRate > 0
+  ) {
+    throw new Error(
+      `VAT mismatch: 0% received for a non-reverse-charge buyer in ${params.buyer.country ?? "unknown country"}; expected ${standardRate}%`,
+    );
+  }
+
   const { data: numberData, error: numberError } = await admin.rpc("next_invoice_number", {
     _doc_type: docType,
   });
