@@ -189,15 +189,17 @@ export async function pushInvoiceToKsef(admin: any, invoiceRow: any): Promise<vo
     const vatRate = String(invoiceRow.vat_rate ?? 0);
     const items: any[] = Array.isArray(invoiceRow.line_items) ? invoiceRow.line_items : [];
 
-    const renderPositions = (list: any[], indent = "    ") =>
+    // Line items are repeated document-level <faktura_pozycje> elements —
+    // there is no <pozycje> wrapper and no <pozycja> element.
+    const renderPositions = (list: any[], tag = "faktura_pozycje", indent = "  ") =>
       list
         .map(
-          (item) => `${indent}<pozycja>
+          (item) => `${indent}<${tag}>
 ${indent}  <nazwa>${cdata(item.description ?? "")}</nazwa>
 ${indent}  <ilosc>${cdata(item.quantity ?? 1)}</ilosc>
 ${indent}  <vat>${cdata(vatRate)}</vat>
 ${indent}  <wartosc_brutto>${cdata(decimal(item.gross ?? 0))}</wartosc_brutto>
-${indent}</pozycja>`,
+${indent}</${tag}>`,
         )
         .join("\n");
 
@@ -218,21 +220,18 @@ ${indent}</pozycja>`,
         const shouldBe = originalItems.length
           ? [{ ...originalItems[0], gross: remaining }]
           : [{ description: items[0]?.description ?? "Correction", quantity: 1, gross: remaining }];
+        // Document-level elements, not children of <korekta>.
         amountsBlock = `
-    <faktura_pozycje_bylo>
-${renderPositions(originalItems.length ? originalItems : shouldBe, "      ")}
-    </faktura_pozycje_bylo>
-    <faktura_pozycje_powinno_byc>
-${renderPositions(shouldBe, "      ")}
-    </faktura_pozycje_powinno_byc>`;
+${renderPositions(originalItems.length ? originalItems : shouldBe, "faktura_pozycje_bylo")}
+${renderPositions(shouldBe, "faktura_pozycje_powinno_byc")}`;
       }
       // Full credit: positions are pulled from the corrected document by FakturaXL.
 
       correctionSection = `
   <korekta>
     <id_faktury_korygowanej>${cdata(original.fxl_document_id)}</id_faktury_korygowanej>
-    <przyczyna_korekty>${cdata(invoiceRow.refund_reason ?? "Zwrot płatności")}</przyczyna_korekty>${amountsBlock}
-  </korekta>`;
+    <przyczyna_korekty>${cdata(invoiceRow.refund_reason ?? "Zwrot płatności")}</przyczyna_korekty>
+  </korekta>${amountsBlock}`;
     }
 
     const addBody = `  <typ_faktury>${isCorrection ? 4 : 0}</typ_faktury>
@@ -244,10 +243,11 @@ ${renderPositions(shouldBe, "      ")}
     }
   <data_wystawienia>${cdata(issued)}</data_wystawienia>
   <data_sprzedazy>${cdata(issued)}</data_sprzedazy>
-  <termin_platnosci>${cdata(issued)}</termin_platnosci>
+  <termin_platnosci_data>${cdata(issued)}</termin_platnosci_data>
   <rodzaj_platnosci>${cdata("Karta płatnicza")}</rodzaj_platnosci>
   <kwota_oplacona>${cdata(gross)}</kwota_oplacona>
   <status>2</status>
+  <data_oplacenia>${cdata(issued)}</data_oplacenia>
   <wyslij_dokument_do_klienta_emailem>0</wyslij_dokument_do_klienta_emailem>${correctionSection}
   <nabywca>
     <firma_lub_osoba_prywatna>${isCompany ? 0 : 1}</firma_lub_osoba_prywatna>
@@ -255,19 +255,15 @@ ${renderPositions(shouldBe, "      ")}
     <nip>${cdata(stripVatCountryPrefix(invoiceRow.buyer_vat_id))}</nip>
     <ulica_i_numer>${cdata(invoiceRow.buyer_address_line1 ?? "")}</ulica_i_numer>
     <kod_pocztowy>${cdata(invoiceRow.buyer_postal_code ?? "")}</kod_pocztowy>
-    <miasto>${cdata(invoiceRow.buyer_city ?? "")}</miasto>
+    <miejscowosc>${cdata(invoiceRow.buyer_city ?? "")}</miejscowosc>
     <kraj>${cdata(invoiceRow.buyer_country ?? "")}</kraj>
     <email>${cdata(invoiceRow.buyer_email ?? "")}</email>
   </nabywca>${
-      // Corrections carry their positions in <korekta>; FakturaXL pulls the rest
-      // from the corrected document.
-      isCorrection
-        ? ""
-        : `
-  <pozycje>
-${positions}
-  </pozycje>`
+      // Corrections: FakturaXL pulls positions from the corrected document
+      // (or from the before/after blocks above for partial credits).
+      isCorrection ? "" : `\n${positions}`
     }`;
+
 
 
     const added = await call(FXL_ENDPOINTS.addDocument, addBody);
