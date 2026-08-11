@@ -87,6 +87,19 @@ serve(async (req) => {
     // Stripe only reports a tax ID when the buyer types one at checkout; the stored
     // billing profile is the fallback so domestic B2B invoices keep their NIP.
     const buyerVatId = (profile?.vat_id as string) ?? "";
+    // Stripe cannot pre-fill the tax ID field, so we surface the stored billing
+    // details in the Checkout page so the buyer can confirm or correct them.
+    const billingSummary = (() => {
+      if (!profile) return "";
+      const parts = [
+        profile.buyer_type === "company" ? profile.company_name : profile.full_name,
+        buyerVatId ? `VAT ID ${buyerVatId}` : "",
+        [profile.postal_code, profile.city, profile.country].filter(Boolean).join(" "),
+      ].filter(Boolean);
+      return parts.length
+        ? `Billing details from your account: ${parts.join(" · ")}. Update them above if anything changed.`
+        : "";
+    })();
 
     const redeemCode = async (extra: Record<string, unknown> = {}) => {
       if (!codeRow) return;
