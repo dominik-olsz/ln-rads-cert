@@ -306,7 +306,9 @@ ${renderPositions(shouldBe, "faktura_pozycje_powinno_byc")}`;
 
     const addBody = `  <typ_faktury>${isCorrection ? 4 : 0}</typ_faktury>
   <id_dzialy_firmy>${FXL_DIVISION_ID}</id_dzialy_firmy>
+  <jezyk>${FXL_LANGUAGE}</jezyk>
   <obliczaj_wartosc_faktury_od>1</obliczaj_wartosc_faktury_od>
+
   <numer_faktury>${cdata(invoiceRow.invoice_number)}</numer_faktury>
   <waluta>${currency}</waluta>${
       currency !== "PLN" ? "\n  <rodzaj_przeliczania_waluty>1</rodzaj_przeliczania_waluty>" : ""
