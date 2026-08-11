@@ -11,10 +11,12 @@ const SITE_NAME = "ln-rads-cert"
 // It MUST match the subdomain delegated to Lovable's nameservers — never the root domain.
 // The email API looks up this exact domain; a mismatch causes "No email domain record found".
 const SENDER_DOMAIN = "notify.mail.lnrads.com"
-// FROM_DOMAIN is the domain shown in the From: header (e.g., "example.com").
-// When display_from_root is enabled, this can be the root domain for cleaner branding,
-// even though actual sending uses the subdomain above.
-const FROM_DOMAIN = "mail.lnrads.com"
+// FROM_DOMAIN is the domain shown in the From: header. It is kept equal to
+// SENDER_DOMAIN so SPF/DKIM are aligned with the actually published records:
+// mail.lnrads.com publishes an SPF "-all" record without Mailgun, which makes
+// strict receivers (o2.pl, wp.pl, interia.pl) reject mail sent as @mail.lnrads.com.
+const FROM_DOMAIN = SENDER_DOMAIN
+
 
 // Generate a cryptographically random 32-byte hex token
 function generateToken(): string {
@@ -151,6 +153,29 @@ Deno.serve(async (req) => {
     })
 
     console.log('Email suppressed', { effectiveRecipient, templateName })
+
+    // Tell the admin, so a customer never silently misses an invoice.
+    if (templateName !== 'admin-delivery-alert') {
+      try {
+        await supabase.functions.invoke('send-transactional-email', {
+          body: {
+            templateName: 'admin-delivery-alert',
+            idempotencyKey: `delivery-alert-suppressed-${messageId}`,
+            templateData: {
+              affectedEmail: effectiveRecipient,
+              eventType: 'suppressed (previous bounce/complaint/unsubscribe)',
+              reason: 'Address is on the suppression list, so nothing was sent',
+              templateName,
+              invoiceNumber: templateData?.invoiceNumber ?? '',
+              occurredAt: new Date().toISOString(),
+            },
+          },
+        })
+      } catch (alertError) {
+        console.warn('Failed to send admin delivery alert', { alertError })
+      }
+    }
+
     return new Response(
       JSON.stringify({ success: false, reason: 'email_suppressed' }),
       {
@@ -159,6 +184,7 @@ Deno.serve(async (req) => {
       }
     )
   }
+
 
   // 3. Get or create unsubscribe token (one token per email address)
   const normalizedEmail = effectiveRecipient.toLowerCase()

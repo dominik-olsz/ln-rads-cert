@@ -2,6 +2,7 @@
 
 import * as React from 'npm:react@18.3.1'
 import { template as invoiceIssued } from './invoice-issued.tsx'
+import { template as adminDeliveryAlert } from './admin-delivery-alert.tsx'
 
 export type TemplateEntry = {
   component: React.ComponentType<any>
@@ -13,4 +14,5 @@ export type TemplateEntry = {
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'invoice-issued': invoiceIssued,
+  'admin-delivery-alert': adminDeliveryAlert,
 }
