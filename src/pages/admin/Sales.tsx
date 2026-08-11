@@ -241,6 +241,25 @@ const AdminSales = () => {
 
 
 
+  const [driftOpen, setDriftOpen] = useState(false);
+  const [drift, setDrift] = useState<any | null>(null);
+
+  const runDriftCheck = async () => {
+    setBusy(true);
+    setDrift(null);
+    setDriftOpen(true);
+    const { data, error } = await supabase.functions.invoke('invoice-actions', {
+      body: { action: 'fxl_orphans' },
+    });
+    setBusy(false);
+    if (error) {
+      setDriftOpen(false);
+      toast({ title: 'Check failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setDrift(data);
+  };
+
   const doRefund = async () => {
     if (!selected) return;
     setBusy(true);
@@ -322,10 +341,15 @@ const AdminSales = () => {
 
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <h1 className="text-4xl font-bold">Sales &amp; Invoices</h1>
-          <Button variant="outline" onClick={exportCsv}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" disabled={busy} onClick={runDriftCheck}>
+              Check FakturaXL sync
+            </Button>
+            <Button variant="outline" onClick={exportCsv}>
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
