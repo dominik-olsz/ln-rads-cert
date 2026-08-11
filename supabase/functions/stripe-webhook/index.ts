@@ -89,6 +89,9 @@ serve(async (req) => {
       };
       const grossCents = session.amount_total ?? 0;
       const currency = session.currency ?? "eur";
+      // Stripe Tax figures: the invoice must mirror exactly what was charged.
+      const vatCents = session.total_details?.amount_tax ?? null;
+      const netCents = vatCents != null ? grossCents - vatCents : null;
 
       // The buyer's latest entry in Checkout is the most current, so /account is
       // always refreshed from the completed session.
@@ -158,6 +161,8 @@ serve(async (req) => {
             buyer,
             currency,
             grossCents,
+            netCents,
+            vatCents,
             discountCodeId,
             discountSummary,
             lineItems: [
@@ -220,6 +225,8 @@ serve(async (req) => {
           buyer,
           currency,
           grossCents,
+          netCents,
+          vatCents,
           discountCodeId,
           discountSummary,
           lineItems: [

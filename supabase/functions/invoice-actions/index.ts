@@ -263,7 +263,7 @@ serve(async (req) => {
 
     if (action === "resend") {
       if (!invoice.buyer_email) return json({ error: "No buyer email on this invoice" }, 400);
-      await sendInvoiceEmail(invoice.buyer_email, invoice.invoice_number, pdf, invoice.doc_type);
+      await sendInvoiceEmail(admin, invoice, { resend: true });
     }
 
     return json({ ok: true, pdf_path: path });

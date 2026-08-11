@@ -87,6 +87,19 @@ serve(async (req) => {
     // Stripe only reports a tax ID when the buyer types one at checkout; the stored
     // billing profile is the fallback so domestic B2B invoices keep their NIP.
     const buyerVatId = (profile?.vat_id as string) ?? "";
+    // Stripe cannot pre-fill the tax ID field, so we surface the stored billing
+    // details in the Checkout page so the buyer can confirm or correct them.
+    const billingSummary = (() => {
+      if (!profile) return "";
+      const parts = [
+        profile.buyer_type === "company" ? profile.company_name : profile.full_name,
+        buyerVatId ? `VAT ID ${buyerVatId}` : "",
+        [profile.postal_code, profile.city, profile.country].filter(Boolean).join(" "),
+      ].filter(Boolean);
+      return parts.length
+        ? `Billing details from your account: ${parts.join(" · ")}. Update them above if anything changed.`
+        : "";
+    })();
 
     const redeemCode = async (extra: Record<string, unknown> = {}) => {
       if (!codeRow) return;
@@ -186,6 +199,10 @@ serve(async (req) => {
         customer_update: retakeCustomerId ? customerUpdate : undefined,
         billing_address_collection: "required",
         tax_id_collection: { enabled: true },
+        // Prices are net; Stripe Tax adds the buyer's VAT (and applies EU
+        // reverse charge for validated business VAT IDs).
+        automatic_tax: { enabled: true },
+        custom_text: billingSummary ? { submit: { message: billingSummary } } : undefined,
 
         line_items: [
           {
@@ -193,6 +210,7 @@ serve(async (req) => {
             price_data: {
               currency: "eur",
               unit_amount: pricing.finalCents,
+              tax_behavior: "exclusive",
               product_data: {
                 name: `Certification exam retake — ${retakeCourse.title}`,
                 description: pricing.discountSummary
@@ -286,6 +304,9 @@ serve(async (req) => {
       customer_update: courseCustomerId ? customerUpdate : undefined,
       billing_address_collection: "required",
       tax_id_collection: { enabled: true },
+      // Prices are net; Stripe Tax adds the buyer's VAT at checkout.
+      automatic_tax: { enabled: true },
+      custom_text: billingSummary ? { submit: { message: billingSummary } } : undefined,
       line_items: [
 
         {
@@ -293,6 +314,7 @@ serve(async (req) => {
           price_data: {
             currency: "eur",
             unit_amount: pricing.finalCents,
+            tax_behavior: "exclusive",
             product_data: {
               name: course.title,
               description: pricing.discountSummary

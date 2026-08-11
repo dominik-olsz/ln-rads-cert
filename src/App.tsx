@@ -34,6 +34,7 @@ import AuthConfirm from "./pages/AuthConfirm";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
+import Unsubscribe from "./pages/Unsubscribe";
 
 const Layout = () => (
   <>
@@ -64,6 +65,7 @@ const router = createBrowserRouter([
       { path: "/faq", element: <FAQ /> },
       { path: "/privacy-policy", element: <PrivacyPolicy /> },
       { path: "/terms", element: <Terms /> },
+      { path: "/unsubscribe", element: <Unsubscribe /> },
 
       { path: "/admin/dashboard", element: <AdminRoute><AdminDashboard /></AdminRoute> },
       { path: "/admin/users", element: <AdminRoute><AdminUsers /></AdminRoute> },

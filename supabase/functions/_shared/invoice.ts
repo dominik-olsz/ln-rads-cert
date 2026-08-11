@@ -358,6 +358,10 @@ export async function createInvoice(
     buyer: Buyer;
     lineItems: { description: string; quantity: number; gross: number }[];
     grossCents: number;
+    /** Exact figures as charged by Stripe (Stripe Tax); overrides backwards VAT extraction. */
+    netCents?: number | null;
+    vatCents?: number | null;
+    vatRate?: number | null;
     currency?: string;
     discountCodeId?: string | null;
     discountSummary?: string | null;
@@ -369,7 +373,23 @@ export async function createInvoice(
   const docType = params.docType ?? "FV";
   const currency = (params.currency ?? "eur").toLowerCase();
   const [seller, standardRate] = await Promise.all([getSeller(admin), getVatRate(admin)]);
-  const amounts = computeAmounts(params.grossCents, params.buyer, standardRate);
+  const derived = computeAmounts(params.grossCents, params.buyer, standardRate);
+  // Prefer what Stripe actually charged, so invoice and payment always match.
+  const amounts =
+    params.netCents != null && params.vatCents != null
+      ? {
+          reverse_charge: Number(params.vatCents) === 0 && derived.reverse_charge,
+          vat_rate:
+            params.vatRate != null
+              ? Number(params.vatRate)
+              : Number(params.netCents) !== 0
+              ? Math.round((Number(params.vatCents) / Number(params.netCents)) * 100)
+              : 0,
+          net_amount: Number(params.netCents),
+          vat_amount: Number(params.vatCents),
+          gross_amount: params.grossCents,
+        }
+      : derived;
 
   const { data: numberData, error: numberError } = await admin.rpc("next_invoice_number", {
     _doc_type: docType,
@@ -514,51 +534,50 @@ export async function finalizeInvoice(
   else await admin.from("invoices").update({ pdf_path: path }).eq("id", invoiceId);
 
   if (opts.email !== false && invoiceRow.buyer_email) {
-    await sendInvoiceEmail(
-      invoiceRow.buyer_email,
-      invoiceRow.invoice_number,
-      pdf,
-      invoiceRow.doc_type,
-    ).catch((e) => console.error("Invoice email failed:", e));
+    await sendInvoiceEmail(admin, { ...invoiceRow, ...patch }).catch((e) =>
+      console.error("Invoice email failed:", e),
+    );
   }
 
   return { pdf_path: path, pdf, fxl_status: "synced", ...patch } as any;
 }
 
 
-export async function sendInvoiceEmail(
-  to: string,
-  invoiceNumber: string,
-  pdf: Uint8Array,
-  docType = "FV",
-) {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
-  if (!apiKey) {
-    console.warn("RESEND_API_KEY missing, skipping invoice email");
-    return;
-  }
-  // Chunked: spreading a whole PDF into String.fromCharCode blows the call stack.
-  let binary = "";
-  const CHUNK = 8192;
-  for (let i = 0; i < pdf.length; i += CHUNK) {
-    binary += String.fromCharCode(...pdf.subarray(i, i + CHUNK));
-  }
-  const base64 = btoa(binary);
-  const isCorrection = docType === "FK";
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: "LN-RADS Certification <cert@lnrads.com>",
-      to: [to],
-      subject: `${isCorrection ? "Correction invoice" : "Invoice"} ${invoiceNumber}`,
-      html: `<p>Hello,</p><p>Please find attached ${
-        isCorrection ? "a correction invoice" : "your invoice"
-      } <strong>${invoiceNumber}</strong>.</p><p>Praktyka Lekarska Cezary Chudobiński</p>`,
-      attachments: [{ filename: `${invoiceFileSlug(invoiceNumber)}.pdf`, content: base64 }],
-    }),
+const APP_URL = "https://cert.lnrads.com";
+
+/**
+ * Emails the buyer a link to their invoice through the project's own verified
+ * sending domain (queued + retried by the email infrastructure). The PDF itself
+ * stays in the private bucket and is fetched with a signed URL from /payments.
+ */
+export async function sendInvoiceEmail(admin: any, invoice: any, opts: { resend?: boolean } = {}) {
+  const to = invoice?.buyer_email;
+  if (!to) return;
+
+  const currency = String(invoice.currency ?? "eur").toUpperCase();
+  const gross = Math.abs(Number(invoice.gross_amount ?? 0));
+  const description = Array.isArray(invoice.line_items) && invoice.line_items[0]?.description
+    ? String(invoice.line_items[0].description)
+    : "";
+  const key = `invoice-issued-${invoice.id ?? invoice.invoice_number}` +
+    (opts.resend ? `-resend-${Date.now()}` : "");
+
+  const { error } = await admin.functions.invoke("send-transactional-email", {
+    body: {
+      templateName: "invoice-issued",
+      recipientEmail: to,
+      idempotencyKey: key,
+      templateData: {
+        invoiceNumber: invoice.invoice_number,
+        docType: invoice.doc_type ?? "FV",
+        amount: `${(gross / 100).toFixed(2)} ${currency}`,
+        description,
+        buyerName: invoice.buyer_name ?? "",
+        downloadUrl: `${APP_URL}/payments?invoice=${invoice.id ?? ""}`,
+      },
+    },
   });
-  if (!res.ok) console.error("Resend error:", res.status, await res.text());
+  if (error) console.error("Invoice email failed:", error);
 }
 
 export function buyerFromSession(session: any): Buyer {
