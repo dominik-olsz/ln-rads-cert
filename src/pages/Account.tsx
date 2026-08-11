@@ -68,137 +68,18 @@ export function BillingFields({
   onChange: (patch: Partial<BillingProfile>) => void;
   errors: Record<string, string>;
 }) {
-  const err = (k: string) =>
-    errors[k] ? <p className="text-xs text-destructive mt-1">{errors[k]}</p> : null;
-
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <Label>Buyer type</Label>
-        <RadioGroup
-          value={value.buyer_type}
-          onValueChange={(v) => onChange({ buyer_type: v as BillingProfile["buyer_type"] })}
-          className="flex gap-6"
-        >
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="private" id="bt-private" />
-            <Label htmlFor="bt-private" className="font-normal cursor-pointer">
-              Private person
-            </Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="company" id="bt-company" />
-            <Label htmlFor="bt-company" className="font-normal cursor-pointer">
-              Company
-            </Label>
-          </div>
-        </RadioGroup>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="full_name">Full name</Label>
-          <Input
-            id="full_name"
-            value={value.full_name}
-            onChange={(e) => onChange({ full_name: e.target.value })}
-            maxLength={120}
-          />
-          {err("full_name")}
-        </div>
-        <div>
-          <Label htmlFor="country">
-            Country{value.buyer_type === "private" ? " (optional)" : ""}
-          </Label>
-          <Select value={value.country} onValueChange={(v) => onChange({ country: v })}>
-            <SelectTrigger id="country">
-              <SelectValue placeholder="Choose country" />
-            </SelectTrigger>
-            <SelectContent className="max-h-72">
-              {COUNTRIES.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {err("country")}
-        </div>
-      </div>
-
-      {value.buyer_type === "company" && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="company_name">Company name</Label>
-            <Input
-              id="company_name"
-              value={value.company_name}
-              onChange={(e) => onChange({ company_name: e.target.value })}
-              maxLength={160}
-            />
-            {err("company_name")}
-          </div>
-          <div>
-            <Label htmlFor="vat_id">VAT number</Label>
-            <Input
-              id="vat_id"
-              value={value.vat_id}
-              onChange={(e) => onChange({ vat_id: e.target.value.toUpperCase() })}
-              placeholder="e.g. PL8291244164"
-              maxLength={40}
-            />
-            {err("vat_id")}
-          </div>
-        </div>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="address_line1">
-            Address{value.buyer_type === "private" ? " (optional)" : ""}
-          </Label>
-          <Input
-            id="address_line1"
-            value={value.address_line1}
-            onChange={(e) => onChange({ address_line1: e.target.value })}
-            maxLength={160}
-          />
-          {err("address_line1")}
-        </div>
-        <div>
-          <Label htmlFor="address_line2">Address line 2 (optional)</Label>
-          <Input
-            id="address_line2"
-            value={value.address_line2}
-            onChange={(e) => onChange({ address_line2: e.target.value })}
-            maxLength={160}
-          />
-        </div>
-        <div>
-          <Label htmlFor="postal_code">
-            Postal code{value.buyer_type === "private" ? " (optional)" : ""}
-          </Label>
-          <Input
-            id="postal_code"
-            value={value.postal_code}
-            onChange={(e) => onChange({ postal_code: e.target.value })}
-            maxLength={20}
-          />
-          {err("postal_code")}
-        </div>
-        <div>
-          <Label htmlFor="city">
-            City{value.buyer_type === "private" ? " (optional)" : ""}
-          </Label>
-          <Input
-            id="city"
-            value={value.city}
-            onChange={(e) => onChange({ city: e.target.value })}
-            maxLength={80}
-          />
-          {err("city")}
-        </div>
-      </div>
+    <div>
+      <Label htmlFor="full_name">Full name</Label>
+      <Input
+        id="full_name"
+        value={value.full_name}
+        onChange={(e) => onChange({ full_name: e.target.value })}
+        maxLength={120}
+      />
+      {errors.full_name ? (
+        <p className="text-xs text-destructive mt-1">{errors.full_name}</p>
+      ) : null}
     </div>
   );
 }
