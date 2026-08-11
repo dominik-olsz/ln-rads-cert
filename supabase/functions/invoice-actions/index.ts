@@ -47,13 +47,60 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const invoiceId = typeof body?.invoiceId === "string" ? body.invoiceId : null;
+    const rawAction = String(body?.action ?? "");
+
+    // Admin-only FakturaXL maintenance actions (no invoiceId).
+    if (["fxl_read", "fxl_delete", "fxl_orphans"].includes(rawAction)) {
+      if (!isAdmin) return json({ error: "Forbidden" }, 403);
+
+      if (rawAction === "fxl_read" || rawAction === "fxl_delete") {
+        const documentId = String(body?.documentId ?? "").trim();
+        if (!/^\d+$/.test(documentId)) return json({ error: "documentId is required" }, 400);
+        const endpoint =
+          rawAction === "fxl_read" ? FXL_ENDPOINTS.readDocument : FXL_ENDPOINTS.deleteDocument;
+        const raw = await fxlRaw(endpoint, `  <dokument_id>${documentId}</dokument_id>`);
+        return json({ ok: true, endpoint, raw });
+      }
+
+      // Orphan check: FakturaXL documents with no matching invoices row.
+      const now = new Date();
+      const from = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+      const to = now.toISOString().slice(0, 10);
+      const listed = await fxl(
+        FXL_ENDPOINTS.listDocuments,
+        `  <data_dodania_od>${cdata(from)}</data_dodania_od>
+  <data_dodania_do>${cdata(to)}</data_dodania_do>`,
+        "dokumenty",
+      );
+      const raw = listed?.dokument ?? listed?.dokumenty?.dokument ?? [];
+      const docs = (Array.isArray(raw) ? raw : [raw]).filter(Boolean);
+      const numbers = docs
+        .map((d: any) => (d?.numer_faktury != null ? String(d.numer_faktury) : ""))
+        .filter(Boolean);
+
+      const { data: known } = await admin
+        .from("invoices")
+        .select("invoice_number")
+        .in("invoice_number", numbers.length ? numbers : ["__none__"]);
+      const knownSet = new Set((known ?? []).map((r: any) => r.invoice_number));
+
+      const orphans = docs
+        .filter((d: any) => d?.numer_faktury && !knownSet.has(String(d.numer_faktury)))
+        .map((d: any) => ({
+          document_id: d?.dokument_id != null ? String(d.dokument_id) : null,
+          invoice_number: String(d.numer_faktury),
+          issued_at: d?.data_wystawienia != null ? String(d.data_wystawienia) : null,
+          buyer: d?.nabywca?.nazwa != null ? String(d.nabywca.nazwa) : null,
+          gross: d?.wartosc_brutto != null ? String(d.wartosc_brutto) : null,
+        }));
+
+      return json({ ok: true, from, to, checked: docs.length, orphans, code: listed?.kod ?? null });
+    }
+
     const action =
-      body?.action === "resend"
-        ? "resend"
-        : body?.action === "retry_ksef"
-          ? "retry_ksef"
-          : "regenerate";
+      rawAction === "resend" ? "resend" : rawAction === "retry_ksef" ? "retry_ksef" : "regenerate";
     if (!invoiceId) return json({ error: "invoiceId is required" }, 400);
+
 
     const { data: invoice } = await admin
       .from("invoices")
