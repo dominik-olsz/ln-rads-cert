@@ -550,7 +550,7 @@ const APP_URL = "https://cert.lnrads.com";
  * sending domain (queued + retried by the email infrastructure). The PDF itself
  * stays in the private bucket and is fetched with a signed URL from /payments.
  */
-export async function sendInvoiceEmail(admin: any, invoice: any) {
+export async function sendInvoiceEmail(admin: any, invoice: any, opts: { resend?: boolean } = {}) {
   const to = invoice?.buyer_email;
   if (!to) return;
 
@@ -559,12 +559,14 @@ export async function sendInvoiceEmail(admin: any, invoice: any) {
   const description = Array.isArray(invoice.line_items) && invoice.line_items[0]?.description
     ? String(invoice.line_items[0].description)
     : "";
+  const key = `invoice-issued-${invoice.id ?? invoice.invoice_number}` +
+    (opts.resend ? `-resend-${Date.now()}` : "");
 
   const { error } = await admin.functions.invoke("send-transactional-email", {
     body: {
       templateName: "invoice-issued",
       recipientEmail: to,
-      idempotencyKey: `invoice-issued-${invoice.id ?? invoice.invoice_number}`,
+      idempotencyKey: key,
       templateData: {
         invoiceNumber: invoice.invoice_number,
         docType: invoice.doc_type ?? "FV",
