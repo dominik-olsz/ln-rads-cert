@@ -102,3 +102,175 @@ export function fxlErrorMessage(code: string | number | null | undefined, fallba
   const key = String(code ?? "");
   return FXL_ERRORS[key] ?? fallback ?? `FakturaXL error ${key || "unknown"}`;
 }
+
+const decimal = (cents: number) => (Number(cents ?? 0) / 100).toFixed(2);
+const day = (iso: string | null | undefined) =>
+  new Date(iso ?? Date.now()).toISOString().slice(0, 10);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Stripe returns EU VAT ids as "PL1234567890"; FakturaXL expects the bare number. */
+export function stripVatCountryPrefix(vatId: string | null | undefined): string {
+  const raw = (vatId ?? "").replace(/[\s-]/g, "");
+  return raw.replace(/^[A-Za-z]{2}(?=[0-9A-Za-z])/, "");
+}
+
+/**
+ * Issues an already-persisted invoice row in FakturaXL and pushes it to KSeF.
+ * Never throws: every failure is recorded on the invoice row.
+ */
+export async function pushInvoiceToKsef(admin: any, invoiceRow: any): Promise<void> {
+  const invoiceId = invoiceRow.id;
+  let attempts = Number(invoiceRow.ksef_attempts ?? 0);
+
+  const update = async (patch: Record<string, unknown>) => {
+    await admin.from("invoices").update(patch).eq("id", invoiceId);
+  };
+  const call = async (endpoint: string, body: string) => {
+    attempts += 1;
+    try {
+      return await fxl(endpoint, body);
+    } finally {
+      await update({ ksef_attempts: attempts }).catch(() => {});
+    }
+  };
+
+  try {
+    const currency = String(invoiceRow.currency ?? "eur").toUpperCase();
+    const isCompany = Boolean((invoiceRow.buyer_vat_id ?? "").trim());
+    const issued = day(invoiceRow.issued_at);
+    const gross = decimal(invoiceRow.gross_amount);
+    const vatRate = String(invoiceRow.vat_rate ?? 0);
+    const items: any[] = Array.isArray(invoiceRow.line_items) ? invoiceRow.line_items : [];
+
+    const positions = items
+      .map(
+        (item) => `    <pozycja>
+      <nazwa>${cdata(item.description ?? "")}</nazwa>
+      <ilosc>${cdata(item.quantity ?? 1)}</ilosc>
+      <vat>${cdata(vatRate)}</vat>
+      <wartosc_brutto>${cdata(decimal(item.gross ?? 0))}</wartosc_brutto>
+    </pozycja>`,
+      )
+      .join("\n");
+
+    const addBody = `  <typ_faktury>0</typ_faktury>
+  <id_dzialy_firmy>${cdata(FXL_DIVISION_ID)}</id_dzialy_firmy>
+  <obliczaj_wartosc_faktury_od>1</obliczaj_wartosc_faktury_od>
+  <numer_faktury>${cdata(invoiceRow.invoice_number)}</numer_faktury>
+  <waluta>${cdata(currency)}</waluta>${
+      currency !== "PLN" ? "\n  <rodzaj_przeliczania_waluty>1</rodzaj_przeliczania_waluty>" : ""
+    }
+  <data_wystawienia>${cdata(issued)}</data_wystawienia>
+  <data_sprzedazy>${cdata(issued)}</data_sprzedazy>
+  <termin_platnosci>${cdata(issued)}</termin_platnosci>
+  <rodzaj_platnosci>${cdata("Karta płatnicza")}</rodzaj_platnosci>
+  <kwota_oplacona>${cdata(gross)}</kwota_oplacona>
+  <status>2</status>
+  <wyslij_dokument_do_klienta_emailem>0</wyslij_dokument_do_klienta_emailem>
+  <nabywca>
+    <firma_lub_osoba_prywatna>${isCompany ? 0 : 1}</firma_lub_osoba_prywatna>
+    <nazwa>${cdata(invoiceRow.buyer_company || invoiceRow.buyer_name || "")}</nazwa>
+    <nip>${cdata(stripVatCountryPrefix(invoiceRow.buyer_vat_id))}</nip>
+    <ulica_i_numer>${cdata(invoiceRow.buyer_address_line1 ?? "")}</ulica_i_numer>
+    <kod_pocztowy>${cdata(invoiceRow.buyer_postal_code ?? "")}</kod_pocztowy>
+    <miasto>${cdata(invoiceRow.buyer_city ?? "")}</miasto>
+    <kraj>${cdata(invoiceRow.buyer_country ?? "")}</kraj>
+    <email>${cdata(invoiceRow.buyer_email ?? "")}</email>
+  </nabywca>
+  <pozycje>
+${positions}
+  </pozycje>`;
+
+    const added = await call(FXL_ENDPOINTS.addDocument, addBody);
+    const addCode = String(added?.kod ?? "");
+    if (addCode !== "1") {
+      await update({
+        ksef_error_code: addCode || "unknown",
+        ksef_error_desc: fxlErrorMessage(addCode, added?.opis ?? added?.komunikat),
+      });
+      return;
+    }
+
+    const documentId = added?.dokument_id != null ? String(added.dokument_id) : null;
+    const uniqueCode = added?.unikatowy_kod != null ? String(added.unikatowy_kod) : null;
+    await update({
+      fxl_document_id: documentId,
+      fxl_unique_code: uniqueCode,
+      ksef_error_code: null,
+      ksef_error_desc: null,
+    });
+
+    if (!documentId) {
+      await update({
+        ksef_error_code: "no_document_id",
+        ksef_error_desc: "FakturaXL accepted the document but returned no dokument_id",
+      });
+      return;
+    }
+
+    // 2. Send to KSeF. 49 / 51 / 72 all mean KSeF has the document.
+    const sent = await call(
+      FXL_ENDPOINTS.sendToKsef,
+      `  <dokument_id>${cdata(documentId)}</dokument_id>`,
+    );
+    const sendCode = String(sent?.kod ?? "");
+    if (!["49", "51", "72"].includes(sendCode)) {
+      await update({
+        ksef_status: 2,
+        ksef_error_code: sendCode || "unknown",
+        ksef_error_desc: fxlErrorMessage(sendCode, sent?.opis ?? sent?.komunikat),
+      });
+      return;
+    }
+    await update({ ksef_status: 0, ksef_error_code: null, ksef_error_desc: null });
+
+    // 3. Poll briefly for the assigned KSeF number.
+    for (let i = 0; i < 3; i++) {
+      await sleep(1500);
+      const read = await call(
+        FXL_ENDPOINTS.readDocument,
+        `  <dokument_id>${cdata(documentId)}</dokument_id>`,
+      );
+      const ksef = read?.ksef ?? read?.dokument?.ksef;
+      const status = String(ksef?.status ?? "");
+      const error = ksef?.blad;
+
+      if (status === "1") {
+        await update({
+          ksef_status: 1,
+          ksef_number: ksef?.numer_ksef != null ? String(ksef.numer_ksef) : null,
+          ksef_assigned_at: ksef?.data_nadania_numeru
+            ? new Date(String(ksef.data_nadania_numeru).replace(" ", "T")).toISOString()
+            : new Date().toISOString(),
+          ksef_error_code: null,
+          ksef_error_desc: null,
+        });
+        return;
+      }
+
+      if (status === "2") {
+        const code = error?.kod != null ? String(error.kod) : null;
+        await update({
+          ksef_status: 2,
+          ksef_error_code: code,
+          ksef_error_desc: error?.opis
+            ? String(error.opis)
+            : fxlErrorMessage(code, "KSeF rejected the document"),
+        });
+        return;
+      }
+    }
+    // Still pending — the reconciler picks it up (ksef_status stays 0).
+  } catch (error) {
+    await admin
+      .from("invoices")
+      .update({
+        ksef_attempts: attempts,
+        ksef_error_code: "exception",
+        ksef_error_desc: (error as Error).message?.slice(0, 500) ?? "Unknown error",
+      })
+      .eq("id", invoiceId)
+      .then(() => {}, () => {});
+  }
+}
+
