@@ -283,9 +283,14 @@ export default function Dashboard() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <h1 className="text-4xl font-bold">My Dashboard</h1>
-          <Button variant="outline" className="rounded-xl border-2" onClick={() => navigate("/account")}>
-            <Settings className="h-4 w-4 mr-2" /> Account settings
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="rounded-xl border-2" onClick={() => navigate("/payments")}>
+              <FileText className="h-4 w-4 mr-2" /> My payments
+            </Button>
+            <Button variant="outline" className="rounded-xl border-2" onClick={() => navigate("/account")}>
+              <Settings className="h-4 w-4 mr-2" /> Account settings
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="courses" className="w-full">
