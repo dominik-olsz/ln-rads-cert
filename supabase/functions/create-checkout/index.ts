@@ -199,7 +199,7 @@ serve(async (req) => {
         // tax against the seller account. Account-level Managed Payments would
         // make Stripe the liable merchant and can incorrectly reverse-charge a
         // Polish buyer with a Polish VAT ID.
-        managed_payments: { enabled: false },
+        ...({ managed_payments: { enabled: false } } as any),
         automatic_tax: { enabled: true },
         line_items: [
           {
@@ -305,7 +305,7 @@ serve(async (req) => {
       // Keep tax liability with this Polish seller. If Managed Payments is left
       // to the account default, Stripe can classify domestic PL B2B sales as
       // cross-border and return reverse-charge 0% VAT.
-      managed_payments: { enabled: false },
+      ...({ managed_payments: { enabled: false } } as any),
       automatic_tax: { enabled: true },
       line_items: [
 
