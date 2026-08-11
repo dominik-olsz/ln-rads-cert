@@ -236,32 +236,28 @@ serve(async (req) => {
       return json({ ok: true, ...(refreshed ?? {}) });
     }
 
-    const { data: originalRef } = invoice.original_invoice_id
-      ? await admin
-          .from("invoices")
-          .select("invoice_number")
-          .eq("id", invoice.original_invoice_id)
-          .maybeSingle()
-      : { data: null };
-
+    // "regenerate" re-fetches FakturaXL's own PDF for an existing document —
+    // it never creates a new document, so the number can't be duplicated.
     const path = invoice.pdf_path ?? `${invoiceFileSlug(invoice.invoice_number)}.pdf`;
-    let pdf: Uint8Array | null = null;
 
-    if (invoice.pdf_path && action === "resend") {
-      const { data: file } = await admin.storage.from("invoices").download(invoice.pdf_path);
-      if (file) pdf = new Uint8Array(await file.arrayBuffer());
-    }
-
-    if (!pdf) {
-      pdf = await renderInvoicePdf({
-        ...(invoice as any),
-        original_invoice_number: originalRef?.invoice_number ?? null,
-      });
-      await admin.storage
+    if (!invoice.pdf_path || action === "regenerate") {
+      if (!invoice.fxl_document_id) {
+        return json(
+          { error: "This invoice has no FakturaXL document yet — retry the sync first" },
+          409,
+        );
+      }
+      const pdf = await fetchFakturaXLPdf(String(invoice.fxl_document_id));
+      const { error: uploadError } = await admin.storage
         .from("invoices")
         .upload(path, pdf, { contentType: "application/pdf", upsert: true });
-      await admin.from("invoices").update({ pdf_path: path }).eq("id", invoice.id);
+      if (uploadError) return json({ error: uploadError.message }, 500);
+      await admin
+        .from("invoices")
+        .update({ pdf_path: path, fxl_status: "synced" })
+        .eq("id", invoice.id);
     }
+
 
     if (action === "resend") {
       if (!invoice.buyer_email) return json({ error: "No buyer email on this invoice" }, 400);
