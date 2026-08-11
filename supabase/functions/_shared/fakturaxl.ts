@@ -438,3 +438,54 @@ ${buyerIdentity}${optional("ulica_i_numer", invoiceRow.buyer_address_line1)}${
   }
 }
 
+
+export type FxlDocumentDetails = {
+  invoice_number: string | null;
+  gross: number | null;
+  exchange_rate: number | null;
+  nbp_table: string | null;
+  rate_date: string | null;
+  due_date: string | null;
+  currency: string | null;
+};
+
+const firstValue = (obj: any, keys: string[]): string | null => {
+  for (const key of keys) {
+    const value = obj?.[key];
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return String(value).trim();
+    }
+  }
+  return null;
+};
+
+/**
+ * Reads a created FakturaXL document back so our PDF can copy the values the
+ * provider resolved — most importantly the NBP exchange rate used for VAT in PLN.
+ */
+export async function readFakturaXLDocument(
+  documentId: string,
+): Promise<FxlDocumentDetails | null> {
+  const read = await fxl(FXL_ENDPOINTS.readDocument, `  <dokument_id>${documentId}</dokument_id>`);
+  const doc = (read?.dokument ?? read) as any;
+  if (!doc || typeof doc !== "object") return null;
+  const number = firstValue(doc, ["numer_faktury", "numer"]);
+  if (!number) return null;
+
+  const num = (raw: string | null) => {
+    if (!raw) return null;
+    const parsed = Number(raw.replace(/\s/g, "").replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const date = (raw: string | null) => (raw ? raw.slice(0, 10) : null);
+
+  return {
+    invoice_number: number,
+    gross: num(firstValue(doc, ["wartosc_brutto", "brutto", "kwota_brutto"])),
+    exchange_rate: num(firstValue(doc, ["kurs", "kurs_waluty"])),
+    nbp_table: firstValue(doc, ["nr_tabeli_nbp", "numer_tabeli_nbp", "tabela_nbp"]),
+    rate_date: date(firstValue(doc, ["data_kursu", "kurs_data"])),
+    due_date: date(firstValue(doc, ["termin_platnosci_data", "termin_platnosci"])),
+    currency: firstValue(doc, ["waluta"]),
+  };
+}
