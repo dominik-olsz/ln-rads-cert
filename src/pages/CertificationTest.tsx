@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 import { optionLetter } from "@/lib/questionOptions";
+import ImageLightbox from "@/components/ImageLightbox";
 
 interface TestQuestion {
   id: string;
@@ -886,8 +887,10 @@ const CertificationTest = () => {
                     <img 
                       src={question.image_url} 
                       alt="Question" 
-                      className="max-w-full rounded-lg border"
+                      className="max-w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
+                      onClick={() => setFullSizeImage(question.image_url ?? null)}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">Click the image to zoom in</p>
                   </div>
                 )}
 
