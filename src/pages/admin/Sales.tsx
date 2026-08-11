@@ -717,7 +717,71 @@ const AdminSales = () => {
         </DialogContent>
 
       </Dialog>
+
+      <Dialog open={driftOpen} onOpenChange={setDriftOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>FakturaXL sync check</DialogTitle>
+            <DialogDescription>
+              Compares this month&apos;s FakturaXL documents with the invoices stored here.
+            </DialogDescription>
+          </DialogHeader>
+          {!drift ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Checking…
+            </div>
+          ) : (
+            <div className="space-y-4 text-sm">
+              <p className="text-muted-foreground">
+                {drift.from} – {drift.to} · {drift.verified} invoice(s) verified in FakturaXL
+              </p>
+
+              {drift.listing_available ? (
+                drift.orphans?.length ? (
+                  <div className="space-y-1">
+                    <p className="font-medium text-destructive">
+                      Documents in FakturaXL with no invoice here:
+                    </p>
+                    {drift.orphans.map((o: any) => (
+                      <div key={o.document_id ?? o.invoice_number}>
+                        {o.invoice_number} · doc {o.document_id} · {o.gross}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p>No unmatched FakturaXL documents.</p>
+                )
+              ) : (
+                <p className="text-muted-foreground">
+                  FakturaXL did not return a document list (code {drift.list_code ?? '—'}), so
+                  only invoices recorded here could be verified.
+                </p>
+              )}
+
+              {drift.mismatches?.length ? (
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">Mismatches:</p>
+                  {drift.mismatches.map((m: any) => (
+                    <div key={m.invoice_id}>
+                      {m.invoice_number} · doc {m.document_id} · {m.issue}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>No mismatches found.</p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDriftOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 
