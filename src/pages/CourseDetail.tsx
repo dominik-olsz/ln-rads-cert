@@ -56,6 +56,7 @@ const CourseDetail = () => {
   const [loading, setLoading] = useState(true);
   const [hasPurchased, setHasPurchased] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(false);
   const [courseQuestionsCount, setCourseQuestionsCount] = useState(0);
   const [quote, setQuote] = useState<PricingQuote | null>(null);
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
