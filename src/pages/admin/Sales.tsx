@@ -99,8 +99,33 @@ const ksefStateOf = (i: Invoice): KsefState => {
   return { kind: 'skipped' };
 };
 
+// Latest delivery state of the invoice email, keyed by invoice number.
+type Delivery = { status: string; error: string | null; at: string };
+
+const deliveryLabel = (d?: Delivery) => {
+  if (!d) return null;
+  switch (d.status) {
+    case 'sent':
+      return { label: 'Sent', className: 'text-muted-foreground' };
+    case 'pending':
+      return { label: 'Sending…', className: 'text-muted-foreground' };
+    case 'bounced':
+      return { label: 'Bounced', className: 'text-destructive' };
+    case 'complained':
+      return { label: 'Marked as spam', className: 'text-destructive' };
+    case 'suppressed':
+      return { label: 'Blocked (suppressed)', className: 'text-amber-600' };
+    case 'dlq':
+    case 'failed':
+      return { label: 'Failed', className: 'text-destructive' };
+    default:
+      return { label: d.status, className: 'text-muted-foreground' };
+  }
+};
+
 const AdminSales = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [deliveries, setDeliveries] = useState<Record<string, Delivery>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -124,9 +149,32 @@ const AdminSales = () => {
     setLoading(false);
   };
 
+  // Delivery state per invoice. Rows are append-only, so the newest row for an
+  // invoice number wins — that is what the buyer's mailbox actually saw.
+  const fetchDeliveries = async () => {
+    const { data } = await supabase
+      .from('email_send_log')
+      .select('template_name, status, error_message, metadata, created_at')
+      .order('created_at', { ascending: true })
+      .limit(2000);
+    const map: Record<string, Delivery> = {};
+    (data ?? []).forEach((row: any) => {
+      const ref = row?.metadata?.reference;
+      if (typeof ref !== 'string' || !ref) return;
+      map[ref] = {
+        status: row.status,
+        error: row.error_message ?? null,
+        at: row.created_at,
+      };
+    });
+    setDeliveries(map);
+  };
+
   useEffect(() => {
     fetchInvoices();
+    fetchDeliveries();
   }, []);
+
 
   const corrections = useMemo(() => {
     const map = new Map<string, number>();
