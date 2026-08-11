@@ -297,11 +297,24 @@ ${positions}
     }
 
     // 2. Send to KSeF. 49 / 51 / 72 all mean KSeF has the document.
+    const attemptsBeforeSend = attempts;
     const sent = await call(
       FXL_ENDPOINTS.sendToKsef,
       `  <dokument_id>${cdata(documentId)}</dokument_id>`,
     );
     const sendCode = String(sent?.kod ?? "");
+    if (sendCode === "52") {
+      // The KSeF connection isn't authenticated yet. Expected state, not a
+      // failure: keep ksef_status null and don't burn a retry attempt.
+      attempts = attemptsBeforeSend;
+      await update({
+        ksef_status: null,
+        ksef_attempts: attempts,
+        ksef_error_code: null,
+        ksef_error_desc: "KSeF connection not configured",
+      });
+      return;
+    }
     if (!["49", "51", "72"].includes(sendCode)) {
       await update({
         ksef_status: 2,
@@ -310,6 +323,7 @@ ${positions}
       });
       return;
     }
+
     await update({ ksef_status: 0, ksef_error_code: null, ksef_error_desc: null });
 
     // 3. Poll briefly for the assigned KSeF number.
