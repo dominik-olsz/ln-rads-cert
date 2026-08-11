@@ -35,11 +35,12 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
   reauthentication: ReauthenticationEmail,
 }
 
-// Configuration
-const SITE_NAME = "ln-rads-cert"
-const SENDER_DOMAIN = "notify.mail.lnrads.com"
-const ROOT_DOMAIN = "mail.lnrads.com"
-const FROM_DOMAIN = "mail.lnrads.com" // Domain shown in From address (may be root or sender subdomain)
+// Configuration — all mail is delivered through Resend from the verified
+// lnrads.com domain, so the From address matches the app's own domain.
+const SITE_NAME = "LN-RADS Certification"
+const FROM_ADDRESS = "cert@lnrads.com"
+const FROM = `${SITE_NAME} <${FROM_ADDRESS}>`
+
 
 // Canonical public app origin. All links in auth emails must live here so the
 // body domain matches the sending domain (avoids phishing classification).
