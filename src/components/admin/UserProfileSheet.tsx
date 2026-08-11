@@ -34,6 +34,10 @@ interface Profile {
 const money = (cents: number | null | undefined) =>
   `€${(((cents ?? 0) as number) / 100).toFixed(2)}`;
 
+// course_purchases.amount_paid is stored in whole euros; everything else in cents.
+const euros = (amount: number | null | undefined) =>
+  `€${Number(amount ?? 0).toFixed(2)}`;
+
 const dateStr = (v: string | null | undefined) =>
   v ? new Date(v).toLocaleDateString() : '—';
 
@@ -107,10 +111,19 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
     toast({ title: 'Saved', description: `Discount set to ${percent}%` });
   };
 
-  const setAccess = async (courseId: string, action: 'grant' | 'revoke') => {
+  const setAccess = async (courseId: string, action: 'grant' | 'revoke', wasPaid = false) => {
     if (!userId) return;
     if (action === 'grant' && !confirm('Grant access without payment? No charge is made and no invoice is issued.')) return;
-    if (action === 'revoke' && !confirm('Remove this manually granted access?')) return;
+    if (
+      action === 'revoke' &&
+      !confirm(
+        wasPaid
+          ? 'Remove access to this paid course? The purchase record is deleted (invoices are kept) and no refund is made automatically.'
+          : 'Remove this manually granted access?',
+      )
+    )
+      return;
+
     setBusy(true);
     const { error } = await supabase.functions.invoke('admin-course-access', {
       body: { userId, courseId, action },
@@ -249,23 +262,28 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
                       <div className="font-medium">{course.title}</div>
                       <div className="text-xs text-muted-foreground">
                         {purchase
-                          ? `${purchase.granted_by_admin ? 'Granted by admin' : `Purchased ${dateStr(purchase.purchased_at)}`} · ${money(purchase.amount_paid)}`
+                          ? `${purchase.granted_by_admin ? 'Granted by admin' : `Purchased ${dateStr(purchase.purchased_at)}`} · ${euros(purchase.amount_paid)}`
                           : 'No access'}
                       </div>
                     </div>
                     {purchase ? (
-                      purchase.granted_by_admin ? (
-                        <Button variant="outline" size="sm" disabled={busy} onClick={() => setAccess(course.id, 'revoke')}>
+                      <div className="flex items-center gap-2">
+                        {!purchase.granted_by_admin && <Badge variant="secondary">Paid</Badge>}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => setAccess(course.id, 'revoke', !purchase.granted_by_admin)}
+                        >
                           <X className="h-4 w-4 mr-1" /> Remove access
                         </Button>
-                      ) : (
-                        <Badge variant="secondary">Paid</Badge>
-                      )
+                      </div>
                     ) : (
                       <Button size="sm" disabled={busy} onClick={() => setAccess(course.id, 'grant')}>
                         <Plus className="h-4 w-4 mr-1" /> Grant access
                       </Button>
                     )}
+
                   </div>
                 );
               })}
@@ -318,7 +336,7 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
                     <div>
                       <div className="font-medium">{course?.title || 'Course'}</div>
                       <div className="text-xs text-muted-foreground">
-                        {dateStr(purchase.purchased_at)} · {money(purchase.amount_paid)}
+                        {dateStr(purchase.purchased_at)} · {euros(purchase.amount_paid)}
                         {purchase.refunded_amount > 0 ? ` · refunded ${money(purchase.refunded_amount)}` : ''}
                         {purchase.discount_summary ? ` · ${purchase.discount_summary}` : ''}
                       </div>
