@@ -151,11 +151,21 @@ export function requiresKsef(invoiceRow: {
   return country === "PL" && vatId.length > 0;
 }
 
+/** Splits a full name on the last space: "Anna Maria Kowalska" -> imie/nazwisko. */
+export function splitBuyerName(full: string | null | undefined): { imie: string; nazwisko: string } | null {
+  const name = String(full ?? "").trim().replace(/\s+/g, " ");
+  const idx = name.lastIndexOf(" ");
+  if (idx <= 0 || idx === name.length - 1) return null;
+  return { imie: name.slice(0, idx), nazwisko: name.slice(idx + 1) };
+}
+
 /**
- * Issues an already-persisted invoice row in FakturaXL and pushes it to KSeF.
+ * Creates an already-persisted invoice row as a document in FakturaXL, and — only
+ * for domestic Polish B2B invoices — submits it to KSeF and polls for its number.
  * Never throws: every failure is recorded on the invoice row.
  */
-export async function pushInvoiceToKsef(admin: any, invoiceRow: any): Promise<void> {
+export async function pushInvoiceToFakturaXL(admin: any, invoiceRow: any): Promise<void> {
+
   const invoiceId = invoiceRow.id;
   // One attempt per push, not per HTTP call: a single push makes up to five
   // API calls and the reconciler filters on ksef_attempts < 5.
