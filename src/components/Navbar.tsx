@@ -87,9 +87,12 @@ const Navbar = () => {
                   <DropdownMenuItem asChild>
                     <Link to="/account" className="cursor-pointer">Account settings</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/payments" className="cursor-pointer">My payments</Link>
-                  </DropdownMenuItem>
+                  {!isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/payments" className="cursor-pointer">My payments</Link>
+                    </DropdownMenuItem>
+                  )}
+
                   {isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link to="/admin/dashboard" className="cursor-pointer">Admin</Link>
