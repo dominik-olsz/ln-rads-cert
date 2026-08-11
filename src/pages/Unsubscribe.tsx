@@ -28,11 +28,11 @@ export default function Unsubscribe() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data?.valid === false) {
-          setState(data?.reason === "already_used" ? "already" : "invalid");
+          setState(data?.reason === "already_unsubscribed" ? "already" : "invalid");
           return;
         }
         setEmail(data?.email ?? null);
-        setState(data?.used_at ? "already" : "valid");
+        setState("valid");
       } catch {
         setState("invalid");
       }
