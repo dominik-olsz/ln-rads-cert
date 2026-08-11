@@ -187,8 +187,15 @@ serve(async (req) => {
     }
 
     const action =
-      rawAction === "resend" ? "resend" : rawAction === "retry_ksef" ? "retry_ksef" : "regenerate";
+      rawAction === "resend"
+        ? "resend"
+        : rawAction === "retry_ksef"
+        ? "retry_ksef"
+        : rawAction === "signed_url"
+        ? "signed_url"
+        : "regenerate";
     if (!invoiceId) return json({ error: "invoiceId is required" }, 400);
+
 
 
     const { data: invoice } = await admin
