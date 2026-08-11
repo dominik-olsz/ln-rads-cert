@@ -68,14 +68,18 @@ serve(async (req) => {
       const now = new Date();
       const from = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
       const to = now.toISOString().slice(0, 10);
-      const listed = await fxl(
+      const rawXml = await fxlRaw(
         FXL_ENDPOINTS.listDocuments,
         `  <data_dodania_od>${cdata(from)}</data_dodania_od>
   <data_dodania_do>${cdata(to)}</data_dodania_do>`,
-        "dokumenty",
+        String(body?.root ?? "dokumenty"),
       );
-      const raw = listed?.dokument ?? listed?.dokumenty?.dokument ?? [];
-      const docs = (Array.isArray(raw) ? raw : [raw]).filter(Boolean);
+      const parsed = xmlToObject(rawXml);
+      const container = parsed?.dokumenty ?? parsed?.dokument ?? parsed ?? {};
+      const listRaw = container?.dokument ?? container?.faktura ?? [];
+      const docs = (Array.isArray(listRaw) ? listRaw : [listRaw]).filter(
+        (d: any) => d && typeof d === "object",
+      );
       const numbers = docs
         .map((d: any) => (d?.numer_faktury != null ? String(d.numer_faktury) : ""))
         .filter(Boolean);
@@ -96,7 +100,16 @@ serve(async (req) => {
           gross: d?.wartosc_brutto != null ? String(d.wartosc_brutto) : null,
         }));
 
-      return json({ ok: true, from, to, checked: docs.length, orphans, code: listed?.kod ?? null });
+      return json({
+        ok: true,
+        from,
+        to,
+        checked: docs.length,
+        orphans,
+        code: container?.kod ?? null,
+        ...(body?.debug ? { raw: rawXml.slice(0, 4000) } : {}),
+      });
+
     }
 
     const action =
