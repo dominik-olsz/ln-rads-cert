@@ -254,7 +254,7 @@ export default function Account() {
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-12 space-y-8">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight">Account settings</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
           <p className="text-muted-foreground mt-1">
             {isAdmin
               ? "Manage your sign-in details. Invoices are always issued with the fixed seller data below."
