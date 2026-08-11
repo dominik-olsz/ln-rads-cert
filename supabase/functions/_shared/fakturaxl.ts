@@ -295,7 +295,6 @@ ${renderPositions(shouldBe, "faktura_pozycje_powinno_byc")}`;
     }
 
     // 2. Send to KSeF. 49 / 51 / 72 all mean KSeF has the document.
-    const attemptsBeforeSend = attempts;
     const sent = await call(
       FXL_ENDPOINTS.sendToKsef,
       `  <dokument_id>${cdata(documentId)}</dokument_id>`,
@@ -304,7 +303,7 @@ ${renderPositions(shouldBe, "faktura_pozycje_powinno_byc")}`;
     if (sendCode === "52") {
       // The KSeF connection isn't authenticated yet. Expected state, not a
       // failure: keep ksef_status null and don't burn a retry attempt.
-      attempts = attemptsBeforeSend;
+      attempts = attemptsBefore;
       await update({
         ksef_status: null,
         ksef_attempts: attempts,
