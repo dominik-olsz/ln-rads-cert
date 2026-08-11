@@ -20,6 +20,16 @@ serve(async (req) => {
   }
 
   try {
+    // Kill switch: purchases stay blocked unless STRIPE_SECRET_KEY and
+    // STRIPE_WEBHOOK_SECRET are a confirmed matched pair (same Stripe mode).
+    if (Deno.env.get("PAYMENTS_ENABLED") !== "true") {
+      return json({
+        error:
+          "Purchases are temporarily unavailable while payments are being reconfigured. Please try again later.",
+        disabled: true,
+      });
+    }
+
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) return json({ error: "Stripe is not configured" }, 500);
 
