@@ -85,7 +85,7 @@ const Navbar = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52 rounded-xl">
                   <DropdownMenuItem asChild>
-                    <Link to="/account" className="cursor-pointer">Account settings</Link>
+                    <Link to="/account" className="cursor-pointer">Account Settings</Link>
                   </DropdownMenuItem>
                   {!isAdmin && (
                     <DropdownMenuItem asChild>
@@ -153,7 +153,7 @@ const Navbar = () => {
                       </Link>
                     )}
                     <Link to="/account" className="text-sm font-medium hover:text-primary transition-colors">
-                      Account settings
+                      Account Settings
                     </Link>
                     {!isAdmin && (
                       <Link to="/payments" className="text-sm font-medium hover:text-primary transition-colors">

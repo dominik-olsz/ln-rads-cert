@@ -288,7 +288,7 @@ export default function Dashboard() {
               <FileText className="h-4 w-4 mr-2" /> My Payments
             </Button>
             <Button variant="outline" className="rounded-xl border-2" onClick={() => navigate("/account")}>
-              <Settings className="h-4 w-4 mr-2" /> Account settings
+              <Settings className="h-4 w-4 mr-2" /> Account Settings
             </Button>
           </div>
         </div>
