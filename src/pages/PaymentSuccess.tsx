@@ -162,7 +162,25 @@ const PaymentSuccess = () => {
                   <Button variant="outline" asChild>
                     <Link to="/dashboard">Go to dashboard</Link>
                   </Button>
+                  {invoice && (
+                    <Button variant="ghost" onClick={downloadInvoice} disabled={downloading}>
+                      {downloading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
+                      Download invoice {invoice.invoice_number}
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Your VAT invoice is always available on the{" "}
+                    <Link to="/payments" className="underline">
+                      My payments
+                    </Link>{" "}
+                    page.
+                  </p>
                 </div>
+
               </>
             )}
 
