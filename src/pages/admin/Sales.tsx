@@ -68,6 +68,7 @@ type Invoice = {
   pdf_path: string | null;
   refund_reason: string | null;
   fxl_document_id: string | null;
+  fxl_status: string | null;
   ksef_status: number | null;
   ksef_number: string | null;
   ksef_error_desc: string | null;
