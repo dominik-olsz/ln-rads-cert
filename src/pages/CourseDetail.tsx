@@ -181,13 +181,18 @@ const CourseDetail = () => {
     }
   }, [id, user]);
 
-  const handleBuyCourse = async () => {
+  // Buying starts with the invoice-details step so the buyer can choose
+  // private person vs company before Stripe calculates VAT.
+  const handleBuyCourse = () => {
     if (!user) {
       toast.error('Please sign in to purchase this course');
       navigate('/auth');
       return;
     }
+    setBillingOpen(true);
+  };
 
+  const startCheckout = async () => {
     setPurchasing(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
