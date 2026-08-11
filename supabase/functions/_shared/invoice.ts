@@ -423,7 +423,13 @@ export async function sendInvoiceEmail(
     console.warn("RESEND_API_KEY missing, skipping invoice email");
     return;
   }
-  const base64 = btoa(String.fromCharCode(...pdf));
+  // Chunked: spreading a whole PDF into String.fromCharCode blows the call stack.
+  let binary = "";
+  const CHUNK = 8192;
+  for (let i = 0; i < pdf.length; i += CHUNK) {
+    binary += String.fromCharCode(...pdf.subarray(i, i + CHUNK));
+  }
+  const base64 = btoa(binary);
   const isCorrection = docType === "FK";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -454,6 +460,6 @@ export function buyerFromSession(session: any): Buyer {
     postal_code: address.postal_code ?? null,
     city: address.city ?? null,
     country: address.country ?? null,
-    vat_id: taxIds.length ? (taxIds[0].value ?? null) : null,
+    vat_id: taxIds.length ? (taxIds[0].value ?? null) : (session.metadata?.buyer_vat_id || null),
   };
 }
