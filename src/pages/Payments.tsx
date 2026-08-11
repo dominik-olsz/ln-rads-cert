@@ -112,6 +112,13 @@ export default function Payments() {
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
       setRows(all);
+
+      // Deep link from the invoice email: open that invoice straight away.
+      const wanted = searchParams.get("invoice");
+      if (wanted) {
+        const match = invoices.find((i) => i.id === wanted);
+        if (match?.pdf_path) download(match);
+      }
     } catch (e) {
       console.error(e);
       toast({
