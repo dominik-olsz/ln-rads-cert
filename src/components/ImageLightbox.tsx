@@ -17,6 +17,7 @@ interface ImageLightboxProps {
 /** Full-screen image viewer with cursor-anchored wheel zoom, pinch and drag-to-pan. */
 const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const stateRef = useRef({ zoom: 1, offset: { x: 0, y: 0 } });
@@ -35,6 +36,16 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
     if (src) reset();
   }, [src, reset]);
 
+  /** Cursor position relative to the image's untransformed layout origin. */
+  const localPoint = useCallback((clientX: number, clientY: number) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    const img = imgRef.current;
+    return {
+      x: clientX - (rect?.left ?? 0) - (img?.offsetLeft ?? 0),
+      y: clientY - (rect?.top ?? 0) - (img?.offsetTop ?? 0),
+    };
+  }, []);
+
   const zoomAt = useCallback((nextZoom: number, px: number, py: number) => {
     const { zoom: z, offset: o } = stateRef.current;
     const next = clamp(nextZoom, MIN_ZOOM, MAX_ZOOM);
@@ -49,9 +60,9 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
 
   const zoomAtCenter = useCallback(
     (factor: number) => {
-      const rect = containerRef.current?.getBoundingClientRect();
-      const cx = rect ? rect.width / 2 : 0;
-      const cy = rect ? rect.height / 2 : 0;
+      const img = imgRef.current;
+      const cx = (img?.clientWidth ?? 0) / 2;
+      const cy = (img?.clientHeight ?? 0) / 2;
       zoomAt(stateRef.current.zoom * factor, cx, cy);
     },
     [zoomAt]
@@ -63,17 +74,13 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
     if (!el || !src) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const rect = el.getBoundingClientRect();
       const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
-      zoomAt(
-        stateRef.current.zoom * Math.exp(-dy * 0.0022),
-        e.clientX - rect.left,
-        e.clientY - rect.top
-      );
+      const p = localPoint(e.clientX, e.clientY);
+      zoomAt(stateRef.current.zoom * Math.exp(-dy * 0.0022), p.x, p.y);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [src, zoomAt]);
+  }, [src, zoomAt, localPoint]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -99,10 +106,8 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
     if (pinchRef.current && pointersRef.current.size === 2) {
       const [a, b] = Array.from(pointersRef.current.values());
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
-      const rect = containerRef.current?.getBoundingClientRect();
-      const cx = (a.x + b.x) / 2 - (rect?.left ?? 0);
-      const cy = (a.y + b.y) / 2 - (rect?.top ?? 0);
-      zoomAt((pinchRef.current.zoom * dist) / pinchRef.current.dist, cx, cy);
+      const p = localPoint((a.x + b.x) / 2, (a.y + b.y) / 2);
+      zoomAt((pinchRef.current.zoom * dist) / pinchRef.current.dist, p.x, p.y);
       return;
     }
     const drag = dragRef.current;
@@ -120,10 +125,8 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    const px = e.clientX - (rect?.left ?? 0);
-    const py = e.clientY - (rect?.top ?? 0);
-    zoomAt(stateRef.current.zoom > MIN_ZOOM ? MIN_ZOOM : 2.5, px, py);
+    const p = localPoint(e.clientX, e.clientY);
+    zoomAt(stateRef.current.zoom > MIN_ZOOM ? MIN_ZOOM : 2.5, p.x, p.y);
   };
 
   return (
@@ -157,6 +160,7 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
         >
           {src && (
             <img
+              ref={imgRef}
               src={src}
               alt={alt}
               draggable={false}
