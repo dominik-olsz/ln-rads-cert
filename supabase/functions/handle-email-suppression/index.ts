@@ -177,32 +177,72 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
   const normalizedEmail = String(recipient).toLowerCase()
   const redacted = normalizedEmail[0] + '***@' + normalizedEmail.split('@')[1]
+
+  // A "Transient" bounce (e.g. wp.pl/o2.pl rejecting a message as spam, or a
+  // full mailbox) says nothing about the address being invalid. Suppressing on
+  // it would permanently block a paying customer from ever getting an invoice,
+  // so we log and alert but keep the address sendable.
+  const bounce = (payload.data?.bounce ?? null) as Record<string, any> | null
+  const bounceType = String(bounce?.type ?? '')
+  const isTransientBounce = reason === 'bounce' && bounceType.toLowerCase() === 'transient'
+  const diagnostic = Array.isArray(bounce?.diagnosticCode)
+    ? String(bounce?.diagnosticCode[0] ?? '')
+    : String(bounce?.diagnosticCode ?? '')
+
+  const providerId = payload.data?.email_id ?? null
+
+  // Correlate back to the original send so admin views can show which document
+  // failed to arrive.
+  let reference: string | null = null
+  let originalTemplate: string | null = null
+  if (providerId) {
+    const { data: original } = await supabase
+      .from('email_send_log')
+      .select('template_name, metadata')
+      .eq('status', 'sent')
+      .contains('metadata', { provider_id: providerId })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (original) {
+      originalTemplate = original.template_name ?? null
+      const meta = (original.metadata ?? {}) as Record<string, unknown>
+      reference = typeof meta.reference === 'string' ? meta.reference : null
+    }
+  }
+
   const metadata = {
     provider: 'resend',
     event: payload.type,
-    email_id: payload.data?.email_id ?? null,
+    email_id: providerId,
     subject: payload.data?.subject ?? null,
     bounce: payload.data?.bounce ?? null,
+    transient: isTransientBounce,
+    ...(reference ? { reference } : {}),
   }
 
-  // 1. Upsert to suppressed_emails (idempotent — safe for webhook retries)
-  const { error: suppressError } = await supabase
-    .from('suppressed_emails')
-    .upsert({ email: normalizedEmail, reason, metadata }, { onConflict: 'email' })
+  // 1. Suppress the address — but only for permanent failures and complaints.
+  if (!isTransientBounce) {
+    const { error: suppressError } = await supabase
+      .from('suppressed_emails')
+      .upsert({ email: normalizedEmail, reason, metadata }, { onConflict: 'email' })
 
-  if (suppressError) {
-    console.error('Failed to upsert suppressed email', {
-      error: suppressError,
-      email_redacted: redacted,
-    })
-    return jsonResponse({ error: 'Failed to write suppression' }, 500)
+    if (suppressError) {
+      console.error('Failed to upsert suppressed email', {
+        error: suppressError,
+        email_redacted: redacted,
+      })
+      return jsonResponse({ error: 'Failed to write suppression' }, 500)
+    }
   }
 
   // 2. Append a log entry for the event (never update existing rows)
-  const sendLogMessage = mapReasonToMessage(reason)
+  const sendLogMessage = isTransientBounce
+    ? `Temporary rejection by recipient's provider — not suppressed. ${diagnostic}`.trim().slice(0, 1000)
+    : mapReasonToMessage(reason)
   const { error: insertError } = await supabase.from('email_send_log').insert({
     message_id: null,
-    template_name: 'system',
+    template_name: originalTemplate ?? 'system',
     recipient_email: normalizedEmail,
     status: mapReasonToStatus(reason),
     error_message: sendLogMessage,
@@ -213,6 +253,7 @@ Deno.serve(async (req) => {
     // Non-fatal — the suppression itself was already recorded.
     console.warn('Failed to insert email_send_log', { error: insertError })
   }
+
 
   // 3. Alert the admin so a failed customer email never goes unnoticed.
   try {
