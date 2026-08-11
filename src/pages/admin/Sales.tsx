@@ -402,12 +402,14 @@ const AdminSales = () => {
                       <TableHead className="text-right">VAT</TableHead>
                       <TableHead className="text-right">Gross</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>KSeF</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sales.map((i) => {
                       const status = statusOf(i);
+                      const ksef = ksefStateOf(i);
                       return (
                         <TableRow
                           key={i.id}
@@ -441,16 +443,43 @@ const AdminSales = () => {
                           <TableCell>
                             <Badge variant={status.variant}>{status.label}</Badge>
                           </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={busy}
-                              onClick={() => openPdf(i)}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
+                          <TableCell className="max-w-[200px]">
+                            {ksef.kind === 'skipped' && (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                            {ksef.kind === 'pending' && (
+                              <span className="text-muted-foreground">pending</span>
+                            )}
+                            {ksef.kind === 'assigned' && (
+                              <span className="text-xs font-mono break-all">{ksef.number}</span>
+                            )}
+                            {ksef.kind === 'failed' && (
+                              <span className="text-xs text-destructive">{ksef.message}</span>
+                            )}
                           </TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={busy}
+                                onClick={() => openPdf(i)}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                              {ksef.kind === 'failed' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={busy}
+                                  onClick={() => retryKsef(i)}
+                                >
+                                  Retry KSeF
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+
                         </TableRow>
                       );
                     })}
