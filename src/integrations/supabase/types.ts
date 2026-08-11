@@ -636,10 +636,18 @@ export type Database = {
           discount_code_id: string | null
           discount_summary: string | null
           doc_type: string
+          fxl_document_id: string | null
+          fxl_unique_code: string | null
           gross_amount: number
           id: string
           invoice_number: string
           issued_at: string
+          ksef_assigned_at: string | null
+          ksef_attempts: number
+          ksef_error_code: string | null
+          ksef_error_desc: string | null
+          ksef_number: string | null
+          ksef_status: number | null
           line_items: Json
           net_amount: number
           notes: string | null
@@ -674,10 +682,18 @@ export type Database = {
           discount_code_id?: string | null
           discount_summary?: string | null
           doc_type?: string
+          fxl_document_id?: string | null
+          fxl_unique_code?: string | null
           gross_amount?: number
           id?: string
           invoice_number: string
           issued_at?: string
+          ksef_assigned_at?: string | null
+          ksef_attempts?: number
+          ksef_error_code?: string | null
+          ksef_error_desc?: string | null
+          ksef_number?: string | null
+          ksef_status?: number | null
           line_items?: Json
           net_amount?: number
           notes?: string | null
@@ -712,10 +728,18 @@ export type Database = {
           discount_code_id?: string | null
           discount_summary?: string | null
           doc_type?: string
+          fxl_document_id?: string | null
+          fxl_unique_code?: string | null
           gross_amount?: number
           id?: string
           invoice_number?: string
           issued_at?: string
+          ksef_assigned_at?: string | null
+          ksef_attempts?: number
+          ksef_error_code?: string | null
+          ksef_error_desc?: string | null
+          ksef_number?: string | null
+          ksef_status?: number | null
           line_items?: Json
           net_amount?: number
           notes?: string | null
