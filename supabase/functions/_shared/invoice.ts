@@ -573,10 +573,13 @@ export async function sendInvoiceEmail(admin: any, invoice: any, opts: { resend?
         amount: `${(gross / 100).toFixed(2)} ${currency}`,
         description,
         buyerName: invoice.buyer_name ?? "",
-        downloadUrl: `${APP_URL}/payments?invoice=${invoice.id ?? ""}`,
+        // Plain canonical link — no query string. Filters at o2.pl/wp.pl score
+        // tracking-style URLs harshly, and /payments lists every invoice anyway.
+        downloadUrl: `${APP_URL}/payments`,
       },
     },
   });
+
   if (error) console.error("Invoice email failed:", error);
 }
 
