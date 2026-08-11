@@ -133,7 +133,7 @@ const AdminSales = () => {
   const [to, setTo] = useState('');
   const [selected, setSelected] = useState<Invoice | null>(null);
   const [refundOpen, setRefundOpen] = useState(false);
-  const [refundAmount, setRefundAmount] = useState('');
+  const [refundAmount, setRefundAmount] = useState('0.00');
   const [busy, setBusy] = useState(false);
 
   const fetchInvoices = async () => {
