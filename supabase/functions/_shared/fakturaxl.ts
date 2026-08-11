@@ -17,26 +17,28 @@ export const FXL_ENDPOINTS = {
 
 /** Documented FakturaXL response codes mapped to readable messages. */
 export const FXL_ERRORS: Record<string, string> = {
-  "2": "Temporary FakturaXL problem — request could not be processed, retry later",
-  "3": "Invalid or inactive API token",
-  "7": "No permission for this operation or document",
-  "10": "Missing required field in the request",
-  "15": "Invalid NIP / VAT identification number",
-  "16": "Invalid date format",
-  "19": "Invalid document identifier",
-  "21": "Document not found",
-  "41": "Invalid or unsupported currency",
-  "45": "Invalid VAT rate",
-  "49": "Invalid country code",
-  "50": "Invalid payment method",
-  "51": "Invalid division (oddział) identifier",
-  "52": "Account limit exceeded (plan or document limit reached)",
-  "63": "KSeF is not configured or not enabled for this account",
-  "70": "Document rejected by KSeF (validation error)",
-  "72": "KSeF authorisation failed (token or certificate problem)",
-  "73": "KSeF is temporarily unavailable — retry later",
-  "76": "Document has already been sent to KSeF",
-  "900": "FakturaXL internal server error",
+  "2": "Rate limit exceeded — retry later",
+  "3": "api_token does not exist",
+  "7": "A document with this number already exists",
+  "10": "Invalid NIP",
+  "15": "Invalid currency",
+  "16": "No NBP exchange rate for this date",
+  "19": "Free-plan invoice limit reached",
+  "21": "Accounting month is closed",
+  "41": "Correction currency must match the original",
+  "45": "Cannot delete — already sent to KSeF",
+  "49": "Correctly sent to KSeF",
+  "50": "Error while sending to KSeF",
+  "51": "Already sent to KSeF",
+  "52": "No KSeF connection configured in FakturaXL settings",
+  "63": "API email requires the paid plan",
+  "70": "API key blocked",
+  "71": "Document must contain at least one product",
+  "72": "Already sent, awaiting KSeF number",
+  "73": "Service temporarily unavailable",
+  "76": "Not sent to KSeF because the buyer NIP is missing",
+  "77": "Invalid KSeF number",
+  "900": "Maintenance in progress",
 };
 
 /** Only transient conditions are worth retrying. */
@@ -134,19 +136,19 @@ export function requiresKsef(invoiceRow: {
  */
 export async function pushInvoiceToKsef(admin: any, invoiceRow: any): Promise<void> {
   const invoiceId = invoiceRow.id;
-  let attempts = Number(invoiceRow.ksef_attempts ?? 0);
+  // One attempt per push, not per HTTP call: a single push makes up to five
+  // API calls and the reconciler filters on ksef_attempts < 5.
+  const attemptsBefore = Number(invoiceRow.ksef_attempts ?? 0);
+  let attempts = attemptsBefore + 1;
 
   const update = async (patch: Record<string, unknown>) => {
     await admin.from("invoices").update(patch).eq("id", invoiceId);
   };
-  const call = async (endpoint: string, body: string) => {
-    attempts += 1;
-    try {
-      return await fxl(endpoint, body);
-    } finally {
-      await update({ ksef_attempts: attempts }).catch(() => {});
-    }
-  };
+  const call = async (endpoint: string, body: string) => await fxl(endpoint, body);
+
+  await update({ ksef_attempts: attempts }).catch(() => {});
+
+
 
   try {
     const isCorrection = String(invoiceRow.doc_type ?? "").toUpperCase() === "FK";
@@ -187,15 +189,17 @@ export async function pushInvoiceToKsef(admin: any, invoiceRow: any): Promise<vo
     const vatRate = String(invoiceRow.vat_rate ?? 0);
     const items: any[] = Array.isArray(invoiceRow.line_items) ? invoiceRow.line_items : [];
 
-    const renderPositions = (list: any[], indent = "    ") =>
+    // Line items are repeated document-level <faktura_pozycje> elements —
+    // there is no <pozycje> wrapper and no <pozycja> element.
+    const renderPositions = (list: any[], tag = "faktura_pozycje", indent = "  ") =>
       list
         .map(
-          (item) => `${indent}<pozycja>
+          (item) => `${indent}<${tag}>
 ${indent}  <nazwa>${cdata(item.description ?? "")}</nazwa>
 ${indent}  <ilosc>${cdata(item.quantity ?? 1)}</ilosc>
 ${indent}  <vat>${cdata(vatRate)}</vat>
 ${indent}  <wartosc_brutto>${cdata(decimal(item.gross ?? 0))}</wartosc_brutto>
-${indent}</pozycja>`,
+${indent}</${tag}>`,
         )
         .join("\n");
 
@@ -216,21 +220,18 @@ ${indent}</pozycja>`,
         const shouldBe = originalItems.length
           ? [{ ...originalItems[0], gross: remaining }]
           : [{ description: items[0]?.description ?? "Correction", quantity: 1, gross: remaining }];
+        // Document-level elements, not children of <korekta>.
         amountsBlock = `
-    <faktura_pozycje_bylo>
-${renderPositions(originalItems.length ? originalItems : shouldBe, "      ")}
-    </faktura_pozycje_bylo>
-    <faktura_pozycje_powinno_byc>
-${renderPositions(shouldBe, "      ")}
-    </faktura_pozycje_powinno_byc>`;
+${renderPositions(originalItems.length ? originalItems : shouldBe, "faktura_pozycje_bylo")}
+${renderPositions(shouldBe, "faktura_pozycje_powinno_byc")}`;
       }
       // Full credit: positions are pulled from the corrected document by FakturaXL.
 
       correctionSection = `
   <korekta>
     <id_faktury_korygowanej>${cdata(original.fxl_document_id)}</id_faktury_korygowanej>
-    <przyczyna_korekty>${cdata(invoiceRow.refund_reason ?? "Zwrot płatności")}</przyczyna_korekty>${amountsBlock}
-  </korekta>`;
+    <przyczyna_korekty>${cdata(invoiceRow.refund_reason ?? "Zwrot płatności")}</przyczyna_korekty>
+  </korekta>${amountsBlock}`;
     }
 
     const addBody = `  <typ_faktury>${isCorrection ? 4 : 0}</typ_faktury>
@@ -242,10 +243,11 @@ ${renderPositions(shouldBe, "      ")}
     }
   <data_wystawienia>${cdata(issued)}</data_wystawienia>
   <data_sprzedazy>${cdata(issued)}</data_sprzedazy>
-  <termin_platnosci>${cdata(issued)}</termin_platnosci>
+  <termin_platnosci_data>${cdata(issued)}</termin_platnosci_data>
   <rodzaj_platnosci>${cdata("Karta płatnicza")}</rodzaj_platnosci>
   <kwota_oplacona>${cdata(gross)}</kwota_oplacona>
   <status>2</status>
+  <data_oplacenia>${cdata(issued)}</data_oplacenia>
   <wyslij_dokument_do_klienta_emailem>0</wyslij_dokument_do_klienta_emailem>${correctionSection}
   <nabywca>
     <firma_lub_osoba_prywatna>${isCompany ? 0 : 1}</firma_lub_osoba_prywatna>
@@ -253,19 +255,15 @@ ${renderPositions(shouldBe, "      ")}
     <nip>${cdata(stripVatCountryPrefix(invoiceRow.buyer_vat_id))}</nip>
     <ulica_i_numer>${cdata(invoiceRow.buyer_address_line1 ?? "")}</ulica_i_numer>
     <kod_pocztowy>${cdata(invoiceRow.buyer_postal_code ?? "")}</kod_pocztowy>
-    <miasto>${cdata(invoiceRow.buyer_city ?? "")}</miasto>
+    <miejscowosc>${cdata(invoiceRow.buyer_city ?? "")}</miejscowosc>
     <kraj>${cdata(invoiceRow.buyer_country ?? "")}</kraj>
     <email>${cdata(invoiceRow.buyer_email ?? "")}</email>
   </nabywca>${
-      // Corrections carry their positions in <korekta>; FakturaXL pulls the rest
-      // from the corrected document.
-      isCorrection
-        ? ""
-        : `
-  <pozycje>
-${positions}
-  </pozycje>`
+      // Corrections: FakturaXL pulls positions from the corrected document
+      // (or from the before/after blocks above for partial credits).
+      isCorrection ? "" : `\n${positions}`
     }`;
+
 
 
     const added = await call(FXL_ENDPOINTS.addDocument, addBody);
@@ -297,7 +295,6 @@ ${positions}
     }
 
     // 2. Send to KSeF. 49 / 51 / 72 all mean KSeF has the document.
-    const attemptsBeforeSend = attempts;
     const sent = await call(
       FXL_ENDPOINTS.sendToKsef,
       `  <dokument_id>${cdata(documentId)}</dokument_id>`,
@@ -306,7 +303,7 @@ ${positions}
     if (sendCode === "52") {
       // The KSeF connection isn't authenticated yet. Expected state, not a
       // failure: keep ksef_status null and don't burn a retry attempt.
-      attempts = attemptsBeforeSend;
+      attempts = attemptsBefore;
       await update({
         ksef_status: null,
         ksef_attempts: attempts,
