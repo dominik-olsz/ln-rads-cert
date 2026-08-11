@@ -136,19 +136,19 @@ export function requiresKsef(invoiceRow: {
  */
 export async function pushInvoiceToKsef(admin: any, invoiceRow: any): Promise<void> {
   const invoiceId = invoiceRow.id;
-  let attempts = Number(invoiceRow.ksef_attempts ?? 0);
+  // One attempt per push, not per HTTP call: a single push makes up to five
+  // API calls and the reconciler filters on ksef_attempts < 5.
+  const attemptsBefore = Number(invoiceRow.ksef_attempts ?? 0);
+  let attempts = attemptsBefore + 1;
 
   const update = async (patch: Record<string, unknown>) => {
     await admin.from("invoices").update(patch).eq("id", invoiceId);
   };
-  const call = async (endpoint: string, body: string) => {
-    attempts += 1;
-    try {
-      return await fxl(endpoint, body);
-    } finally {
-      await update({ ksef_attempts: attempts }).catch(() => {});
-    }
-  };
+  const call = async (endpoint: string, body: string) => await fxl(endpoint, body);
+
+  await update({ ksef_attempts: attempts }).catch(() => {});
+
+
 
   try {
     const isCorrection = String(invoiceRow.doc_type ?? "").toUpperCase() === "FK";
