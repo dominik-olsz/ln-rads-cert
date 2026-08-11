@@ -366,7 +366,10 @@ export function buyerFromSession(session: any): Buyer {
   return {
     name: details.name ?? null,
     email: details.email ?? session.customer_email ?? null,
-    company: session.metadata?.buyer_company ?? null,
+    // Business purchases: Checkout's name field holds the company name, and the
+    // presence of a tax ID is what marks the sale as B2B. Older sessions may
+    // still carry the company in metadata.
+    company: session.metadata?.buyer_company || (taxIds.length ? (details.name ?? null) : null),
     address_line1: address.line1 ?? null,
     address_line2: address.line2 ?? null,
     postal_code: address.postal_code ?? null,

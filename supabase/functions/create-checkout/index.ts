@@ -83,15 +83,9 @@ serve(async (req) => {
       });
 
     const customerUpdate = { address: "auto", name: "auto" } as const;
-    const buyerCompany = (profile?.company_name as string) ?? "";
-    // Stripe only reports a tax ID when the buyer types one at checkout; the stored
-    // billing profile is the fallback so domestic B2B invoices keep their NIP.
-    // Only a company purchase carries a VAT ID; private buyers stay
-    // standard-rated in their own country.
-    const isCompanyBuyer = profile?.buyer_type === "company";
-    const buyerVatId = isCompanyBuyer ? ((profile?.vat_id as string) ?? "") : "";
-
-
+    // Nothing about the buyer type is carried over from the profile: the
+    // company name and VAT ID always come from what the buyer enters at
+    // Checkout, so both a private and a business purchase stay possible.
 
     const redeemCode = async (extra: Record<string, unknown> = {}) => {
       if (!codeRow) return;
@@ -223,8 +217,6 @@ serve(async (req) => {
           user_id: user.id,
           course_id: retakeCourse.id,
           purchase_type: "certification_retake",
-          buyer_company: buyerCompany,
-          buyer_vat_id: buyerVatId,
           discount_code_id: pricing.codeId ?? "",
           discount_summary: pricing.discountSummary ?? "",
         },
@@ -332,8 +324,6 @@ serve(async (req) => {
         user_id: user.id,
         course_id: course.id,
         purchase_type: "course",
-        buyer_company: buyerCompany,
-        buyer_vat_id: buyerVatId,
         discount_code_id: pricing.codeId ?? "",
         discount_summary: pricing.discountSummary ?? "",
       },

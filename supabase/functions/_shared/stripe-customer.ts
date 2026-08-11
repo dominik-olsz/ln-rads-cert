@@ -38,11 +38,12 @@ export async function syncStripeCustomer(
   if (!email) return undefined;
 
   try {
-    // The buyer type chosen on the website decides whether a VAT number is
-    // attached at all — a private buyer must never carry one, otherwise Stripe
-    // hides the tax-ID field and can treat the sale as reverse charge.
-    const isCompany = profile?.buyer_type === "company";
-    const savedVatId = isCompany ? (profile?.vat_id ?? "").trim() : "";
+    // The buyer type is chosen at Stripe Checkout on every purchase, so the
+    // Customer is only pre-filled with the neutral details (name + address).
+    // A VAT ID is deliberately never pushed here: a Customer that already
+    // carries a tax ID makes Checkout open in "business" mode with a mandatory
+    // VAT number, and one without it opens in "private" mode — either way the
+    // buyer loses the choice.
     const hasAddress = Boolean(
       profile?.address_line1 && profile?.postal_code && profile?.city && profile?.country,
     );
@@ -55,9 +56,7 @@ export async function syncStripeCustomer(
           country: (profile!.country as string).toUpperCase(),
         }
       : undefined;
-    const name = isCompany
-      ? profile?.company_name || profile?.full_name || email
-      : profile?.full_name || email;
+    const name = profile?.full_name || email;
 
     let customerId = profile?.stripe_customer_id ?? undefined;
     if (customerId) {
@@ -82,25 +81,16 @@ export async function syncStripeCustomer(
       await admin.from("profiles").update({ stripe_customer_id: customerId }).eq("id", userId);
     }
 
-    // Keep the Customer's tax IDs in step with the profile: add the saved one,
-    // remove anything that no longer matches (Stripe tax IDs are immutable).
-    const norm = (v?: string | null) => (v ?? "").replace(/[\s-]/g, "").toUpperCase();
-    const taxType = isCompany && savedVatId ? vatTaxType(profile?.country) : null;
+    // Clear any tax ID left on the Customer (from an earlier purchase or the
+    // old billing form) so Checkout always asks the buyer to pick private or
+    // business again instead of silently locking one of the two.
     try {
       const taxIds = await stripe.customers.listTaxIds(customerId!, { limit: 20 });
       for (const t of taxIds.data) {
-        if (!taxType || norm(t.value) !== norm(savedVatId)) {
-          await stripe.customers.deleteTaxId(customerId!, t.id).catch(() => {});
-        }
-      }
-      if (taxType && !taxIds.data.some((t) => norm(t.value) === norm(savedVatId))) {
-        await stripe.customers.createTaxId(customerId!, {
-          type: taxType as any,
-          value: savedVatId,
-        });
+        await stripe.customers.deleteTaxId(customerId!, t.id).catch(() => {});
       }
     } catch (e) {
-      console.error("Tax ID sync failed:", e);
+      console.error("Tax ID reset failed:", e);
     }
 
     return customerId;

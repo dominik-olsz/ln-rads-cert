@@ -1,0 +1,1 @@
+UPDATE public.profiles SET buyer_type = 'private', company_name = NULL, vat_id = NULL WHERE vat_id IS NOT NULL OR buyer_type = 'company';
