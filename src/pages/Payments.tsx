@@ -19,6 +19,10 @@ interface InvoiceRef {
   original_invoice_id: string | null;
   course_purchase_id: string | null;
   retake_purchase_id: string | null;
+  purchase_type: string | null;
+  issued_at: string;
+  course_id: string | null;
+  courses?: { title: string | null } | null;
 }
 
 interface PaymentRow {
