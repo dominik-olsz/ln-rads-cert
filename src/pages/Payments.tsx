@@ -73,7 +73,7 @@ export default function Payments() {
         supabase
           .from("invoices")
           .select(
-            "id, invoice_number, doc_type, gross_amount, currency, pdf_path, original_invoice_id, course_purchase_id, retake_purchase_id",
+            "id, invoice_number, doc_type, gross_amount, currency, pdf_path, original_invoice_id, course_purchase_id, retake_purchase_id, purchase_type, issued_at, course_id, courses ( title )",
           )
           .eq("user_id", user!.id),
       ]);
@@ -81,11 +81,13 @@ export default function Payments() {
       const invoices = (invoicesRes.data ?? []) as InvoiceRef[];
       const originals = invoices.filter((i) => i.doc_type !== "FK");
       const corrections = invoices.filter((i) => i.doc_type === "FK");
+      const usedInvoiceIds = new Set<string>();
 
       const attach = (
         match: (inv: InvoiceRef) => boolean,
       ): { invoice: InvoiceRef | null; corrections: InvoiceRef[] } => {
         const invoice = originals.find(match) ?? null;
+        if (invoice) usedInvoiceIds.add(invoice.id);
         return {
           invoice,
           corrections: invoice
@@ -124,10 +126,44 @@ export default function Payments() {
         };
       });
 
-      const all = [...courseRows, ...retakeRows].sort(
+      // Invoices whose purchase record no longer exists (e.g. an admin removed
+      // course access) must still be listed — the document is a legal record.
+      const orphanRows: PaymentRow[] = originals
+        .filter((inv) => !usedInvoiceIds.has(inv.id))
+        .map((inv) => ({
+          id: `invoice-${inv.id}`,
+          date: inv.issued_at,
+          description:
+            inv.purchase_type === "retake"
+              ? `Certification exam retake — ${inv.courses?.title ?? "Certification"}`
+              : inv.courses?.title ?? "Online course",
+          amountCents: Number(inv.gross_amount ?? 0),
+          currency: inv.currency ?? "eur",
+          invoice: inv,
+          corrections: corrections.filter((c) => c.original_invoice_id === inv.id),
+        }));
+
+      // Refund documents that reference an invoice we cannot show get their own row.
+      const shownIds = new Set([
+        ...originals.map((i) => i.id),
+      ]);
+      const standaloneCorrections: PaymentRow[] = corrections
+        .filter((c) => !c.original_invoice_id || !shownIds.has(c.original_invoice_id))
+        .map((c) => ({
+          id: `correction-${c.id}`,
+          date: c.issued_at,
+          description: `Refund — ${c.courses?.title ?? "Purchase"}`,
+          amountCents: Number(c.gross_amount ?? 0),
+          currency: c.currency ?? "eur",
+          invoice: null,
+          corrections: [c],
+        }));
+
+      const all = [...courseRows, ...retakeRows, ...orphanRows, ...standaloneCorrections].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
       setRows(all);
+
 
       // Deep link from the invoice email: open that invoice straight away.
       const wanted = searchParams.get("invoice");
