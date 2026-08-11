@@ -968,6 +968,8 @@ const CertificationTest = () => {
           </Card>
         </div>
       </div>
+
+      <ImageLightbox src={fullSizeImage} onClose={() => setFullSizeImage(null)} />
     </div>
   );
 };
