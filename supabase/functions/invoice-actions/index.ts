@@ -335,6 +335,12 @@ async function importCorrection(
       .upload(path, pdf, { contentType: "application/pdf", upsert: true });
     if (uploadError) throw new Error(uploadError.message);
     await admin.from("invoices").update({ pdf_path: path }).eq("id", inserted!.id);
+    // Corrections are created in the FakturaXL panel, so the
+    // wyslij_dokument_do_klienta_emailem flag on dokument_dodaj never applied
+    // to them: both channels must be triggered explicitly after discovery.
+    await deliverInvoiceDocument(admin, { ...row, id: inserted!.id, pdf_path: path }).catch(
+      (e: unknown) => console.error("Correction delivery failed:", e),
+    );
   } catch (e) {
     await admin
       .from("invoices")
