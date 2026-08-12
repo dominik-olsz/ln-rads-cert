@@ -308,9 +308,9 @@ export async function finalizeInvoice(
     .update({ pdf_path: path, fxl_status: "synced" })
     .eq("id", invoiceId);
 
-  if (opts.email !== false && invoiceRow.buyer_email) {
-    await sendInvoiceEmail(admin, { ...invoiceRow, ...patch }).catch((e) =>
-      console.error("Invoice email failed:", e),
+  if (opts.email !== false) {
+    await deliverInvoiceDocument(admin, { ...invoiceRow, ...patch, pdf_path: path }).catch((e) =>
+      console.error("Invoice delivery failed:", e),
     );
   }
 
@@ -322,13 +322,118 @@ export async function finalizeInvoice(
 const APP_URL = "https://cert.lnrads.com";
 
 /**
- * Emails the buyer a link to their invoice through the project's own verified
- * sending domain (queued + retried by the email infrastructure). The PDF itself
- * stays in the private bucket and is fetched with a signed URL from /payments.
+ * Development gate. Until we go live, neither the buyer notification nor the
+ * FakturaXL email may reach a real inbox: both channels log what they would
+ * have sent instead, and the row is marked as skipped-by-gate so the first real
+ * send still happens once the flag is on.
  */
-export async function sendInvoiceEmail(admin: any, invoice: any, opts: { resend?: boolean } = {}) {
+export function buyerEmailsEnabled(): boolean {
+  return String(Deno.env.get("BUYER_EMAILS_ENABLED") ?? "").toLowerCase() === "true";
+}
+
+/**
+ * Runs both buyer-facing delivery channels for one document, at most once each.
+ * State is keyed on the invoice row, so repeated Sync passes, PDF retries and
+ * row-level syncs never resend. Admin "Resend" stays an explicit override.
+ */
+export async function deliverInvoiceDocument(admin: any, invoice: any): Promise<void> {
+  const invoiceId = invoice?.id;
+  if (!invoiceId) return;
+
+  // Read the current delivery state from the row itself — the caller may be
+  // working from a stale in-memory copy.
+  const { data: fresh } = await admin
+    .from("invoices")
+    .select(
+      "id, invoice_number, doc_type, original_invoice_id, buyer_email, buyer_name, currency, " +
+        "gross_amount, corrected_total_amount, line_items, fxl_document_id, " +
+        "notify_status, fxl_email_status",
+    )
+    .eq("id", invoiceId)
+    .maybeSingle();
+  const row = { ...invoice, ...(fresh ?? {}) };
+
+  const update = async (patch: Record<string, unknown>) => {
+    await admin.from("invoices").update(patch).eq("id", invoiceId).catch?.(() => {});
+  };
+
+  // ---- Channel 1: our own notification (Resend, via the email queue) ----
+  if (!row.notify_status) {
+    if (!row.buyer_email) {
+      await update({ notify_status: "no_email" });
+    } else if (!buyerEmailsEnabled()) {
+      console.log("[buyer-email gate off] notification NOT sent", {
+        channel: "resend-notification",
+        document: row.invoice_number,
+        wouldSendTo: row.buyer_email,
+      });
+      await update({ notify_status: "skipped_gate" });
+    } else {
+      const ok = await sendInvoiceEmail(admin, row);
+      await update(
+        ok
+          ? { notify_status: "queued", notify_sent_at: new Date().toISOString() }
+          : { notify_status: "failed" },
+      );
+    }
+  }
+
+  // ---- Channel 2: FakturaXL's own email, with the PDF attached ----
+  if (!row.fxl_email_status && row.fxl_document_id) {
+    if (!buyerEmailsEnabled()) {
+      console.log("[buyer-email gate off] FakturaXL email NOT sent", {
+        channel: "fakturaxl-email",
+        document: row.invoice_number,
+        documentId: row.fxl_document_id,
+        wouldSendTo: row.buyer_email ?? "(address held by FakturaXL)",
+      });
+      await update({ fxl_email_status: "skipped_gate" });
+    } else {
+      const outcome = await sendFakturaXLDocumentByEmail(String(row.fxl_document_id));
+      await update({
+        fxl_email_status: outcome.status,
+        fxl_email_code: outcome.code,
+        fxl_email_error: outcome.status === "sent" ? null : outcome.message,
+        fxl_email_sent_at: outcome.status === "sent" ? new Date().toISOString() : null,
+      });
+
+      // A plan/configuration problem stops every buyer from getting a PDF —
+      // worth an alert rather than a silent row status.
+      if (outcome.status === "plan_required") {
+        await admin.functions
+          .invoke("send-transactional-email", {
+            body: {
+              templateName: "admin-delivery-alert",
+              templateData: {
+                affectedEmail: row.buyer_email ?? "",
+                eventType: "FakturaXL email rejected (configuration)",
+                reason: outcome.message,
+                templateName: "fakturaxl-document-email",
+                invoiceNumber: row.invoice_number ?? "",
+                occurredAt: new Date().toISOString(),
+              },
+            },
+          })
+          .catch((e: unknown) => console.warn("Admin alert failed", e));
+      }
+    }
+  }
+}
+
+/**
+ * Emails the buyer a link to their invoice or correction through the project's
+ * own verified sending domain (queued + retried by the email infrastructure).
+ * The PDF itself stays in the private bucket and is fetched with a signed URL
+ * from /payments — FakturaXL delivers the attachment separately.
+ * Returns true when the send was accepted by the email pipeline.
+ */
+export async function sendInvoiceEmail(
+  admin: any,
+  invoice: any,
+  opts: { resend?: boolean } = {},
+): Promise<boolean> {
   const to = invoice?.buyer_email;
-  if (!to) return;
+  if (!to) return false;
 
   const currency = String(invoice.currency ?? "eur").toUpperCase();
   const gross = Math.abs(Number(invoice.gross_amount ?? 0));
@@ -338,6 +443,23 @@ export async function sendInvoiceEmail(admin: any, invoice: any, opts: { resend?
   const key = `invoice-issued-${invoice.id ?? invoice.invoice_number}` +
     (opts.resend ? `-resend-${Date.now()}` : "");
 
+  const isCorrection = String(invoice.doc_type ?? "FV").toUpperCase() === "FK";
+  const money = (cents: number) => `${(Math.abs(cents) / 100).toFixed(2)} ${currency}`;
+
+  // A correction names both documents and the total after correction, so the
+  // buyer can match it against the sale it belongs to.
+  let originalNumber = "";
+  if (isCorrection && invoice.original_invoice_id) {
+    const { data: original } = await admin
+      .from("invoices")
+      .select("invoice_number")
+      .eq("id", invoice.original_invoice_id)
+      .maybeSingle();
+    originalNumber = original?.invoice_number ?? "";
+  }
+  const correctedTotal =
+    invoice.corrected_total_amount != null ? money(Number(invoice.corrected_total_amount)) : "";
+
   const { error } = await admin.functions.invoke("send-transactional-email", {
     body: {
       templateName: "invoice-issued",
@@ -345,10 +467,12 @@ export async function sendInvoiceEmail(admin: any, invoice: any, opts: { resend?
       idempotencyKey: key,
       templateData: {
         invoiceNumber: invoice.invoice_number,
-        docType: invoice.doc_type ?? "FV",
-        amount: `${(gross / 100).toFixed(2)} ${currency}`,
+        docType: isCorrection ? "FK" : "FV",
+        amount: money(gross),
         description,
         buyerName: invoice.buyer_name ?? "",
+        originalInvoiceNumber: originalNumber,
+        correctedTotal,
         // Plain canonical link — no query string. Filters at o2.pl/wp.pl score
         // tracking-style URLs harshly, and /payments lists every invoice anyway.
         downloadUrl: `${APP_URL}/payments`,
@@ -356,8 +480,13 @@ export async function sendInvoiceEmail(admin: any, invoice: any, opts: { resend?
     },
   });
 
-  if (error) console.error("Invoice email failed:", error);
+  if (error) {
+    console.error("Invoice email failed:", error);
+    return false;
+  }
+  return true;
 }
+
 
 export function buyerFromSession(session: any): Buyer {
   const details = session.customer_details ?? {};
