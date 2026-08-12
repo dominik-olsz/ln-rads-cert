@@ -332,23 +332,7 @@ export function buyerEmailsEnabled(): boolean {
   return String(Deno.env.get("BUYER_EMAILS_ENABLED") ?? "").toLowerCase() === "true";
 }
 
-/**
- * States that mean "this channel is finished with this document".
- * Everything else — including `skipped_gate` (never left the building) and a
- * transient `failed` — is still owed a send. `skipped_gate` deliberately does
- * NOT block: otherwise every document created while gated would be silently
- * skipped forever the moment BUYER_EMAILS_ENABLED is turned on.
- */
-const NOTIFY_DONE = new Set(["queued", "sent", "bounced", "complained", "no_email"]);
-const FXL_EMAIL_DONE = new Set(["sent", "no_buyer_email", "cap_reached"]);
-
-export function notifyAlreadySettled(status: unknown): boolean {
-  return NOTIFY_DONE.has(String(status ?? ""));
-}
-
-export function fxlEmailAlreadySettled(status: unknown): boolean {
-  return FXL_EMAIL_DONE.has(String(status ?? ""));
-}
+export { fxlEmailAlreadySettled, notifyAlreadySettled } from "./invoice-delivery.ts";
 
 
 /**
