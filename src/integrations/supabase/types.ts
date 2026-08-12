@@ -629,12 +629,14 @@ export type Database = {
           buyer_name: string | null
           buyer_postal_code: string | null
           buyer_vat_id: string | null
+          corrected_total_amount: number | null
           course_id: string | null
           course_purchase_id: string | null
           created_at: string
           currency: string
           discount_code_id: string | null
           discount_summary: string | null
+          discovered_from_fxl: boolean
           doc_type: string
           fxl_document_id: string | null
           fxl_exchange_rate: number | null
@@ -660,10 +662,16 @@ export type Database = {
           pdf_path: string | null
           purchase_type: string
           refund_reason: string | null
+          refundable_amount: number | null
           retake_purchase_id: string | null
           reverse_charge: boolean
           seller: Json
+          settled_at: string | null
+          settled_by: string | null
+          settlement_status: string | null
           stripe_payment_intent_id: string | null
+          stripe_refund_id: string | null
+          stripe_refunded_amount: number
           stripe_session_id: string | null
           updated_at: string
           user_id: string | null
@@ -681,12 +689,14 @@ export type Database = {
           buyer_name?: string | null
           buyer_postal_code?: string | null
           buyer_vat_id?: string | null
+          corrected_total_amount?: number | null
           course_id?: string | null
           course_purchase_id?: string | null
           created_at?: string
           currency?: string
           discount_code_id?: string | null
           discount_summary?: string | null
+          discovered_from_fxl?: boolean
           doc_type?: string
           fxl_document_id?: string | null
           fxl_exchange_rate?: number | null
@@ -712,10 +722,16 @@ export type Database = {
           pdf_path?: string | null
           purchase_type?: string
           refund_reason?: string | null
+          refundable_amount?: number | null
           retake_purchase_id?: string | null
           reverse_charge?: boolean
           seller?: Json
+          settled_at?: string | null
+          settled_by?: string | null
+          settlement_status?: string | null
           stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
+          stripe_refunded_amount?: number
           stripe_session_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -733,12 +749,14 @@ export type Database = {
           buyer_name?: string | null
           buyer_postal_code?: string | null
           buyer_vat_id?: string | null
+          corrected_total_amount?: number | null
           course_id?: string | null
           course_purchase_id?: string | null
           created_at?: string
           currency?: string
           discount_code_id?: string | null
           discount_summary?: string | null
+          discovered_from_fxl?: boolean
           doc_type?: string
           fxl_document_id?: string | null
           fxl_exchange_rate?: number | null
@@ -764,10 +782,16 @@ export type Database = {
           pdf_path?: string | null
           purchase_type?: string
           refund_reason?: string | null
+          refundable_amount?: number | null
           retake_purchase_id?: string | null
           reverse_charge?: boolean
           seller?: Json
+          settled_at?: string | null
+          settled_by?: string | null
+          settlement_status?: string | null
           stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
+          stripe_refunded_amount?: number
           stripe_session_id?: string | null
           updated_at?: string
           user_id?: string | null

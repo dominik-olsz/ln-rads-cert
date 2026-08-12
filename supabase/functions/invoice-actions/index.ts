@@ -5,10 +5,14 @@ import {
   FXL_ENDPOINTS,
   fetchFakturaXLPdf,
   fxlRaw,
-  xmlToObject,
+  listFakturaXLDocuments,
   pushInvoiceToFakturaXL,
   readFakturaXLDocument,
 } from "../_shared/fakturaxl.ts";
+
+/** FakturaXL `typ_faktury` value for a correction document. */
+const FXL_CORRECTION_TYPE = 4;
+
 
 
 
@@ -78,7 +82,7 @@ async function syncInvoiceRow(
       changes.push(`number ${row.invoice_number} → ${details.invoice_number}`);
     }
 
-    const sign = Number(row.gross_amount ?? 0) < 0 ? -1 : 1;
+    const sign = row.doc_type === "FK" || Number(row.gross_amount ?? 0) < 0 ? -1 : 1;
     if (details.gross != null) {
       const remoteGross = Math.round(Math.abs(details.gross) * 100) * sign;
       if (remoteGross !== Number(row.gross_amount ?? 0)) {
@@ -87,6 +91,32 @@ async function syncInvoiceRow(
           `gross ${(Number(row.gross_amount ?? 0) / 100).toFixed(2)} → ${(remoteGross / 100).toFixed(2)}`,
         );
       }
+    }
+    if (details.net != null) patch.net_amount = Math.round(Math.abs(details.net) * 100) * sign;
+    if (details.vat != null) patch.vat_amount = Math.round(Math.abs(details.vat) * 100) * sign;
+
+    // Corrections carry their refund semantics from FakturaXL: the document total
+    // is the difference, `powinno_byc` is the amount that should remain.
+    if (row.doc_type === "FK") {
+      const corr = correctionAmounts(details);
+      if (corr.refundable != null && corr.refundable !== Number(row.refundable_amount ?? -1)) {
+        patch.refundable_amount = corr.refundable;
+        changes.push(
+          `refundable ${(Number(row.refundable_amount ?? 0) / 100).toFixed(2)} → ${(corr.refundable / 100).toFixed(2)}`,
+        );
+      }
+      if (
+        corr.correctedTotal != null &&
+        corr.correctedTotal !== Number(row.corrected_total_amount ?? -1)
+      ) {
+        patch.corrected_total_amount = corr.correctedTotal;
+        changes.push(`corrected total → ${(corr.correctedTotal / 100).toFixed(2)}`);
+      }
+      if (details.correction_reason && details.correction_reason !== row.refund_reason) {
+        patch.refund_reason = details.correction_reason;
+      }
+      if (details.line_items.length) patch.line_items = details.line_items;
+      if (!row.settlement_status) patch.settlement_status = "awaiting";
     }
 
     const currency = (details.currency ?? row.currency ?? "EUR").toUpperCase();
@@ -99,10 +129,11 @@ async function syncInvoiceRow(
     patch.fxl_exchange_rate = needsRate ? details.exchange_rate : null;
     patch.fxl_nbp_table = needsRate ? details.nbp_table : null;
     patch.fxl_rate_date = needsRate ? details.rate_date : null;
+    const vatCents = Number(patch.vat_amount ?? row.vat_amount ?? 0);
     patch.vat_amount_pln =
       needsRate && details.exchange_rate
-        ? Math.round(Number(row.vat_amount ?? 0) * Number(details.exchange_rate))
-        : Number(row.vat_amount ?? 0);
+        ? Math.round(vatCents * Number(details.exchange_rate))
+        : vatCents;
     if (details.due_date && details.due_date !== row.payment_due_date) {
       patch.payment_due_date = details.due_date;
       changes.push(`due date ${row.payment_due_date ?? "—"} → ${details.due_date}`);
@@ -141,6 +172,179 @@ async function syncInvoiceRow(
     return { ...base, status: "failed", issue: (e as Error).message };
   }
 }
+
+/**
+ * Refund semantics of a FakturaXL correction, in cents.
+ *
+ * `faktura_pozycje_bylo` is the state before, `faktura_pozycje_powinno_byc` the
+ * state that should remain, and the document total is the difference between
+ * them (negative). A correction chain works naturally: the second correction's
+ * "was" is the first one's "should be".
+ */
+function correctionAmounts(details: any): {
+  refundable: number | null;
+  correctedTotal: number | null;
+} {
+  const cents = (v: number | null | undefined) =>
+    v == null ? null : Math.round(Math.abs(Number(v)) * 100);
+  const was = cents(details.was_gross);
+  const should = cents(details.should_be_gross);
+  if (was != null && should != null) {
+    return { refundable: Math.max(0, was - should), correctedTotal: should };
+  }
+  // Full correction: FakturaXL infers the blocks, so only the total is present.
+  const total = cents(details.gross);
+  return { refundable: total, correctedTotal: total != null ? 0 : null };
+}
+
+/**
+ * Imports corrections that were issued by hand in the FakturaXL panel.
+ *
+ * Linking is by `id_faktury_korygowanej` → our `invoices.fxl_document_id`, which
+ * is the authoritative pointer FakturaXL stores on every correction. Nothing is
+ * written back to FakturaXL, and the FK number always comes from there.
+ */
+async function importCorrection(
+  admin: any,
+  entry: { document_id: string | null; invoice_number: string | null },
+): Promise<{ invoice_number: string | null; status: string; issue?: string }> {
+  const documentId = entry.document_id;
+  if (!documentId) {
+    return { invoice_number: entry.invoice_number, status: "skipped", issue: "no document id" };
+  }
+
+  const details = await readFakturaXLDocument(documentId);
+  if (!details) {
+    return { invoice_number: entry.invoice_number, status: "skipped", issue: "could not be read" };
+  }
+
+  const parentId = details.corrects_document_id ?? details.related_document_ids[0] ?? null;
+  if (!parentId) {
+    return {
+      invoice_number: details.invoice_number,
+      status: "skipped",
+      issue: "correction has no corrected document",
+    };
+  }
+
+  // A chain corrects the previous correction; the sale is always the FV at the root.
+  let cursor: any = null;
+  let lookupId: string | null = parentId;
+  for (let hop = 0; hop < 5 && lookupId; hop++) {
+    const { data } = await admin
+      .from("invoices")
+      .select("*")
+      .eq("fxl_document_id", lookupId)
+      .maybeSingle();
+    if (!data) break;
+    cursor = data;
+    if (data.doc_type === "FV") break;
+    lookupId = data.original_invoice_id
+      ? (
+          await admin
+            .from("invoices")
+            .select("fxl_document_id")
+            .eq("id", data.original_invoice_id)
+            .maybeSingle()
+        ).data?.fxl_document_id ?? null
+      : null;
+  }
+
+  if (!cursor || cursor.doc_type !== "FV") {
+    return {
+      invoice_number: details.invoice_number,
+      status: "skipped",
+      issue: "corrected sale is not in this system",
+    };
+  }
+
+  const original = cursor;
+  const { refundable, correctedTotal } = correctionAmounts(details);
+  const currency = (details.currency ?? original.currency ?? "EUR").toUpperCase();
+  const needsRate = currency !== "PLN";
+  const grossCents = -(Math.round(Math.abs(Number(details.gross ?? 0)) * 100) || (refundable ?? 0));
+  const netCents =
+    details.net != null ? -Math.round(Math.abs(details.net) * 100) : null;
+  const vatCents = details.vat != null ? -Math.round(Math.abs(details.vat) * 100) : null;
+
+  const row = {
+    invoice_number: details.invoice_number,
+    doc_type: "FK",
+    original_invoice_id: original.id,
+    user_id: original.user_id,
+    course_id: original.course_id,
+    purchase_type: original.purchase_type,
+    course_purchase_id: original.course_purchase_id,
+    retake_purchase_id: original.retake_purchase_id,
+    stripe_session_id: original.stripe_session_id,
+    stripe_payment_intent_id: original.stripe_payment_intent_id,
+    buyer_name: original.buyer_name,
+    buyer_company: original.buyer_company,
+    buyer_email: original.buyer_email,
+    buyer_address_line1: original.buyer_address_line1,
+    buyer_address_line2: original.buyer_address_line2,
+    buyer_postal_code: original.buyer_postal_code,
+    buyer_city: original.buyer_city,
+    buyer_country: original.buyer_country,
+    buyer_vat_id: original.buyer_vat_id,
+    seller: original.seller,
+    line_items: details.line_items.length ? details.line_items : original.line_items,
+    currency,
+    vat_rate: details.vat_rate ?? original.vat_rate,
+    reverse_charge: original.reverse_charge,
+    net_amount: netCents ?? grossCents,
+    vat_amount: vatCents ?? 0,
+    gross_amount: grossCents,
+    refund_reason: details.correction_reason,
+    issued_at: `${details.issued_date ?? new Date().toISOString().slice(0, 10)}T12:00:00Z`,
+    fxl_document_id: documentId,
+    fxl_status: "synced",
+    fxl_exchange_rate: needsRate ? details.exchange_rate : null,
+    fxl_nbp_table: needsRate ? details.nbp_table : null,
+    fxl_rate_date: needsRate ? details.rate_date : null,
+    vat_amount_pln:
+      needsRate && details.exchange_rate
+        ? Math.round((vatCents ?? 0) * Number(details.exchange_rate))
+        : vatCents ?? 0,
+    payment_due_date: details.due_date,
+    discovered_from_fxl: true,
+    settlement_status: "awaiting",
+    refundable_amount: refundable,
+    corrected_total_amount: correctedTotal,
+  };
+
+  const { data: inserted, error: insertError } = await admin
+    .from("invoices")
+    .insert(row)
+    .select("id, invoice_number")
+    .maybeSingle();
+  if (insertError) {
+    return {
+      invoice_number: details.invoice_number,
+      status: "failed",
+      issue: insertError.message,
+    };
+  }
+
+  // FakturaXL's own PDF, same as for invoices — one document per number.
+  try {
+    const path = `${invoiceFileSlug(String(details.invoice_number))}.pdf`;
+    const pdf = await fetchFakturaXLPdf(documentId);
+    const { error: uploadError } = await admin.storage
+      .from("invoices")
+      .upload(path, pdf, { contentType: "application/pdf", upsert: true });
+    if (uploadError) throw new Error(uploadError.message);
+    await admin.from("invoices").update({ pdf_path: path }).eq("id", inserted!.id);
+  } catch (e) {
+    await admin
+      .from("invoices")
+      .update({ fxl_status: "pdf_pending", ksef_error_desc: (e as Error).message })
+      .eq("id", inserted!.id);
+  }
+
+  return { invoice_number: details.invoice_number, status: "imported" };
+}
+
 
 
 serve(async (req) => {
@@ -213,37 +417,62 @@ serve(async (req) => {
         results.push(await syncInvoiceRow(admin, row));
       }
 
-      // Documents that exist only in FakturaXL are reported, never imported —
-      // there is no purchase here to attach them to.
-      const listXml = await fxlRaw(
-        FXL_ENDPOINTS.listDocuments,
-        `  <data_od>${from}</data_od>
-  <data_do>${to}</data_do>`,
-        "dokumenty",
-      ).catch(() => "");
-      const parsed = listXml ? xmlToObject(listXml) : {};
-      const container = parsed?.dokumenty ?? parsed?.dokument ?? {};
-      const listRaw = container?.dokument ?? container?.faktura ?? [];
-      const docs = (Array.isArray(listRaw) ? listRaw : [listRaw]).filter(
-        (d: any) => d && typeof d === "object" && d?.numer_faktury != null,
-      );
-      const listCode = container?.kod != null ? String(container.kod) : null;
+      // Corrections issued by hand in the FakturaXL panel are imported here; any
+      // other document that exists only there is reported, never imported —
+      // there is no purchase in this system to attach it to.
+      const docs = await listFakturaXLDocuments(from, to).catch(() => []);
 
       const orphans: any[] = [];
+      const imported: any[] = [];
       if (docs.length) {
-        const numbers = docs.map((d: any) => String(d.numer_faktury));
+        const numbers = docs.map((d) => String(d.invoice_number));
         const { data: known } = await admin
           .from("invoices")
           .select("invoice_number")
           .in("invoice_number", numbers);
         const knownSet = new Set((known ?? []).map((r: any) => r.invoice_number));
         for (const d of docs) {
-          if (knownSet.has(String(d.numer_faktury))) continue;
+          if (knownSet.has(String(d.invoice_number))) continue;
+          if (d.doc_kind === FXL_CORRECTION_TYPE) {
+            imported.push(await importCorrection(admin, d));
+            continue;
+          }
           orphans.push({
-            document_id: d?.dokument_id != null ? String(d.dokument_id) : null,
-            invoice_number: String(d.numer_faktury),
-            issued_at: d?.data_wystawienia != null ? String(d.data_wystawienia) : null,
-            gross: d?.wartosc_brutto != null ? String(d.wartosc_brutto) : null,
+            document_id: d.document_id,
+            invoice_number: d.invoice_number,
+            issued_at: d.issued_date,
+            gross: d.gross != null ? d.gross.toFixed(2) : null,
+          });
+        }
+      }
+
+      // Refunds made straight in Stripe without a matching correction in
+      // FakturaXL are surfaced so the books can be put right.
+      const { data: unmatchedRows } = await admin
+        .from("invoices")
+        .select("id, invoice_number, gross_amount, stripe_refunded_amount, currency")
+        .eq("doc_type", "FV")
+        .gt("stripe_refunded_amount", 0);
+      const unmatchedRefunds: any[] = [];
+      for (const fv of unmatchedRows ?? []) {
+        const { data: fks } = await admin
+          .from("invoices")
+          .select("refundable_amount, gross_amount")
+          .eq("original_invoice_id", fv.id)
+          .eq("doc_type", "FK");
+        const credited = (fks ?? []).reduce(
+          (sum: number, c: any) =>
+            sum + Math.abs(Number(c.refundable_amount ?? c.gross_amount ?? 0)),
+          0,
+        );
+        const gap = Number(fv.stripe_refunded_amount ?? 0) - credited;
+        if (gap > 0) {
+          unmatchedRefunds.push({
+            invoice_number: fv.invoice_number,
+            currency: fv.currency,
+            refunded_in_stripe: Number(fv.stripe_refunded_amount ?? 0),
+            credited_by_corrections: credited,
+            missing_correction_for: gap,
           });
         }
       }
@@ -254,14 +483,16 @@ serve(async (req) => {
         to,
         checked: results.length,
         listing_available: docs.length > 0,
-        list_code: listCode,
         updated: results.filter((r) => r.status === "updated"),
         unchanged: results.filter((r) => r.status === "unchanged").length,
         deleted: results.filter((r) => r.status === "deleted"),
         failed: results.filter((r) => r.status === "failed"),
+        imported,
         orphans,
+        unmatched_refunds: unmatchedRefunds,
       });
     }
+
 
 
     const action = ["resend", "retry_ksef", "signed_url", "sync_fxl"].includes(rawAction)
@@ -330,8 +561,27 @@ serve(async (req) => {
         });
       }
 
-      return json({ ok: results.every((r) => r.status !== "failed"), results });
+      // A correction issued by hand in FakturaXL shows up on the invoice's
+      // relations, so syncing a single sale picks it up without a full pass.
+      const imported: any[] = [];
+      if (invoice.doc_type === "FV" && invoice.fxl_document_id) {
+        const parentDetails = await readFakturaXLDocument(String(invoice.fxl_document_id)).catch(
+          () => null,
+        );
+        for (const relatedId of parentDetails?.related_document_ids ?? []) {
+          const { data: existing } = await admin
+            .from("invoices")
+            .select("id")
+            .eq("fxl_document_id", relatedId)
+            .maybeSingle();
+          if (existing) continue;
+          imported.push(await importCorrection(admin, { document_id: relatedId, invoice_number: null }));
+        }
+      }
+
+      return json({ ok: results.every((r) => r.status !== "failed"), results, imported });
     }
+
 
 
     if (action === "retry_ksef") {

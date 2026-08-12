@@ -73,7 +73,16 @@ type Invoice = {
   ksef_status: number | null;
   ksef_number: string | null;
   ksef_error_desc: string | null;
+  // Refund bookkeeping: corrections come from FakturaXL, money moves here.
+  settlement_status: string | null;
+  stripe_refund_id: string | null;
+  refundable_amount: number | null;
+  corrected_total_amount: number | null;
+  settled_at: string | null;
+  stripe_refunded_amount: number | null;
+  discovered_from_fxl: boolean | null;
 };
+
 
 const fmt = (cents: number, currency = 'eur') =>
   `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
@@ -134,7 +143,7 @@ const AdminSales = () => {
   const [to, setTo] = useState('');
   const [selected, setSelected] = useState<Invoice | null>(null);
   const [refundOpen, setRefundOpen] = useState(false);
-  const [refundAmount, setRefundAmount] = useState('0.00');
+  
   const [busy, setBusy] = useState(false);
 
   const fetchInvoices = async () => {
@@ -189,6 +198,23 @@ const AdminSales = () => {
       });
     return map;
   }, [invoices]);
+
+  // Corrections imported from FakturaXL whose money has not moved yet.
+  const awaitingBySale = useMemo(() => {
+    const map = new Map<string, Invoice>();
+    invoices
+      .filter(
+        (i) =>
+          i.doc_type === 'FK' &&
+          i.original_invoice_id &&
+          (i.settlement_status ?? 'awaiting') === 'awaiting',
+      )
+      .forEach((i) => map.set(i.original_invoice_id as string, i));
+    return map;
+  }, [invoices]);
+
+  const pendingCorrection = selected ? awaitingBySale.get(selected.id) ?? null : null;
+
 
   const sales = useMemo(() => {
     return invoices
@@ -349,26 +375,31 @@ const AdminSales = () => {
     fetchInvoices();
   };
 
-  const doRefund = async () => {
-    if (!selected) return;
+  // Corrections are issued by hand in FakturaXL and imported by the sync; here we
+  // only move the money for one that is still awaiting settlement.
+  const settleCorrection = async (method: 'stripe' | 'manual') => {
+    if (!pendingCorrection) return;
     setBusy(true);
-    const amountCents = refundAmount ? Math.round(parseFloat(refundAmount) * 100) : undefined;
-    const { error } = await supabase.functions.invoke('refund-payment', {
-      body: { invoiceId: selected.id, amountCents },
+    const { data, error } = await supabase.functions.invoke('refund-payment', {
+      body: { invoiceId: pendingCorrection.id, method },
     });
     setBusy(false);
-    if (error) {
-      toast({ title: 'Refund failed', description: error.message, variant: 'destructive' });
+    const failure = error?.message ?? (data as any)?.error;
+    if (failure) {
+      toast({ title: 'Refund failed', description: failure, variant: 'destructive' });
       return;
     }
     setRefundOpen(false);
-    setRefundAmount('0.00');
     toast({
-      title: 'Refund issued',
-      description: 'A correction invoice is being generated.',
+      title: method === 'stripe' ? 'Refund sent to Stripe' : 'Correction marked as settled',
+      description: `${pendingCorrection.invoice_number} · ${fmt(
+        Math.abs(pendingCorrection.refundable_amount ?? pendingCorrection.gross_amount),
+        pendingCorrection.currency,
+      )}`,
     });
-    setTimeout(fetchInvoices, 3000);
+    fetchInvoices();
   };
+
 
   const exportCsv = () => {
     const rows = [
@@ -577,7 +608,13 @@ const AdminSales = () => {
                           </TableCell>
                           <TableCell>
                             <Badge variant={status.variant}>{status.label}</Badge>
+                            {awaitingBySale.has(i.id) && (
+                              <div className="mt-1 text-xs text-amber-600">
+                                Correction awaiting refund
+                              </div>
+                            )}
                           </TableCell>
+
                           <TableCell className="max-w-[180px]">
                             {delivery ? (
                               <>
@@ -768,9 +805,22 @@ const AdminSales = () => {
                     <h3 className="font-semibold mb-2">Correction invoices</h3>
                     <div className="space-y-2">
                       {relatedCorrections(selected).map((c) => (
-                        <div key={c.id} className="flex items-center justify-between">
+                        <div key={c.id} className="flex items-center justify-between gap-2">
                           <span className="text-muted-foreground">
                             {c.invoice_number} · {fmt(c.gross_amount, c.currency)}
+                            {(c.settlement_status ?? 'awaiting') === 'awaiting' ? (
+                              <Badge variant="secondary" className="ml-2">
+                                Awaiting refund
+                              </Badge>
+                            ) : c.settlement_status === 'manual' ? (
+                              <Badge variant="outline" className="ml-2">
+                                Settled manually
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="ml-2">
+                                Refunded via Stripe
+                              </Badge>
+                            )}
                           </span>
                           <Button variant="ghost" size="sm" onClick={() => openPdf(c)}>
                             <Download className="h-4 w-4" />
@@ -800,18 +850,25 @@ const AdminSales = () => {
                   </Button>
                   <Button
                     variant="destructive"
-                    disabled={
-                      busy || (corrections.get(selected.id) ?? 0) >= selected.gross_amount
+                    disabled={busy || !pendingCorrection}
+                    title={
+                      pendingCorrection
+                        ? undefined
+                        : 'Issue the correction in FakturaXL first, then sync'
                     }
-                    onClick={() => {
-                      setRefundAmount('0.00');
-                      setRefundOpen(true);
-                    }}
+                    onClick={() => setRefundOpen(true)}
                   >
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Refund
                   </Button>
                 </div>
+
+                {!pendingCorrection && (
+                  <p className="text-xs text-muted-foreground">
+                    Refunds follow FakturaXL: issue the correction there, then sync this sale —
+                    the imported correction decides how much is refunded.
+                  </p>
+                )}
               </div>
             </>
           )}
@@ -821,41 +878,74 @@ const AdminSales = () => {
       <Dialog open={refundOpen} onOpenChange={setRefundOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Refund payment</DialogTitle>
+            <DialogTitle>Settle correction</DialogTitle>
             <DialogDescription>
-              Leave the amount at 0 for a full refund. A correction invoice is generated
-              automatically and a full refund removes the buyer&apos;s access.
+              FakturaXL is the source of truth — the amount comes from the correction issued
+              there and cannot be changed here.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="refund-amount">Amount ({selected?.currency.toUpperCase()})</Label>
-            <Input
-              id="refund-amount"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder={
-                selected
-                  ? (
-                      (selected.gross_amount - (corrections.get(selected.id) ?? 0)) /
-                      100
-                    ).toFixed(2)
-                  : ''
-              }
-              value={refundAmount}
-              onChange={(e) => setRefundAmount(e.target.value)}
-            />
-          </div>
-          <DialogFooter>
+          {pendingCorrection && selected && (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Correction</span>
+                <span>{pendingCorrection.invoice_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Original invoice</span>
+                <span>
+                  {selected.invoice_number} · {fmt(selected.gross_amount, selected.currency)}
+                </span>
+              </div>
+              <div className="flex justify-between font-semibold">
+                <span>To refund</span>
+                <span>
+                  {fmt(
+                    Math.abs(
+                      pendingCorrection.refundable_amount ?? pendingCorrection.gross_amount,
+                    ),
+                    pendingCorrection.currency,
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Invoice total after correction</span>
+                <span>
+                  {fmt(
+                    pendingCorrection.corrected_total_amount ?? 0,
+                    pendingCorrection.currency,
+                  )}
+                </span>
+              </div>
+              {pendingCorrection.refund_reason && (
+                <div className="text-muted-foreground">
+                  Reason: {pendingCorrection.refund_reason}
+                </div>
+              )}
+              {(pendingCorrection.corrected_total_amount ?? 0) <= 0 && (
+                <p className="text-destructive text-xs">
+                  This corrects the sale to zero, so the buyer loses access.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setRefundOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" disabled={busy} onClick={doRefund}>
+            <Button variant="outline" disabled={busy} onClick={() => settleCorrection('manual')}>
+              Mark as settled
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={busy || !selected?.stripe_payment_intent_id}
+              onClick={() => settleCorrection('stripe')}
+            >
               {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Issue refund
+              Refund via Stripe
             </Button>
           </DialogFooter>
         </DialogContent>
+
 
       </Dialog>
 
@@ -913,6 +1003,34 @@ const AdminSales = () => {
                 </div>
               ) : null}
 
+              {drift.imported?.length ? (
+                <div className="space-y-1">
+                  <p className="font-medium">Corrections found in FakturaXL:</p>
+                  {drift.imported.map((c: any, idx: number) => (
+                    <div key={c.invoice_number ?? idx}>
+                      {c.invoice_number ?? 'correction'} ·{' '}
+                      {c.status === 'imported'
+                        ? 'imported — awaiting refund'
+                        : `${c.status}: ${c.issue ?? ''}`}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {drift.unmatched_refunds?.length ? (
+                <div className="space-y-1">
+                  <p className="font-medium text-amber-600">
+                    Refunded in Stripe without a correction in FakturaXL:
+                  </p>
+                  {drift.unmatched_refunds.map((u: any) => (
+                    <div key={u.invoice_number}>
+                      {u.invoice_number} · missing correction for{' '}
+                      {fmt(u.missing_correction_for, u.currency)}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
               {drift.listing_available ? (
                 drift.orphans?.length ? (
                   <div className="space-y-1">
@@ -928,14 +1046,18 @@ const AdminSales = () => {
                 )
               ) : (
                 <p className="text-muted-foreground">
-                  FakturaXL did not return a document list (code {drift.list_code ?? '—'}), so
-                  only invoices recorded here could be compared.
+                  FakturaXL did not return a document list, so only invoices recorded here could
+                  be compared.
                 </p>
               )}
 
-              {!drift.updated?.length && !drift.deleted?.length && !drift.failed?.length ? (
+              {!drift.updated?.length &&
+              !drift.deleted?.length &&
+              !drift.failed?.length &&
+              !drift.imported?.length ? (
                 <p>Everything here already matches FakturaXL.</p>
               ) : null}
+
             </div>
           )}
           <DialogFooter>
