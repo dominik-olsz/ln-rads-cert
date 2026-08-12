@@ -57,6 +57,8 @@ export const FXL_ERRORS: Record<string, string> = {
   "73": "Service temporarily unavailable",
   "76": "Not sent to KSeF because the buyer NIP is missing",
   "77": "Invalid KSeF number",
+  "78": "Email limit for this document reached (50 sends)",
+
   "900": "Maintenance in progress",
 };
 
