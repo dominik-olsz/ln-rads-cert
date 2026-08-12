@@ -676,9 +676,7 @@ const CourseBuilder = () => {
             content_text: lesson.content_text,
             duration: lesson.duration,
             is_free: lesson.is_free || false
-          })
-          .select()
-          .single();
+          });
 
         if (lessonError) throw lessonError;
       }
