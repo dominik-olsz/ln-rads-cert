@@ -23,7 +23,10 @@ export const FXL_ENDPOINTS = {
   listDocuments: "lista_dokumentow",
   /** Authenticated PDF download — returns base64 in <pdf>, 1 request / s. */
   documentPdf: "pdf_p",
+  /** Email an existing document to its buyer, 1 request / s. */
+  sendByEmail: "wyslanie_faktury_do_klienta_emailem",
 } as const;
+
 
 
 
