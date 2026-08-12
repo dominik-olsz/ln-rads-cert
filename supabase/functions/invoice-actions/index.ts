@@ -38,7 +38,12 @@ type SyncOutcome = {
  * on our side: field values, the stored PDF, or deleting the row entirely when
  * the document does not exist there (or was never created).
  */
-async function syncInvoiceRow(admin: any, row: any): Promise<SyncOutcome> {
+async function syncInvoiceRow(
+  admin: any,
+  row: any,
+  opts: { allowDelete?: boolean } = {},
+): Promise<SyncOutcome> {
+  const allowDelete = opts.allowDelete !== false;
   const base = {
     invoice_id: row.id,
     invoice_number: row.invoice_number,
@@ -46,6 +51,7 @@ async function syncInvoiceRow(admin: any, row: any): Promise<SyncOutcome> {
   };
 
   const removeLocally = async (reason: string): Promise<SyncOutcome> => {
+    if (!allowDelete) return { ...base, status: "failed", issue: reason };
     if (row.pdf_path) {
       await admin.storage.from("invoices").remove([row.pdf_path]).catch(() => {});
     }
