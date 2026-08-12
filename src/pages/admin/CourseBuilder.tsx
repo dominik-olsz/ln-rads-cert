@@ -39,6 +39,7 @@ import RichTextEditor from "@/components/admin/RichTextEditor";
 import QuestionOptionsEditor from "@/components/admin/QuestionOptionsEditor";
 import {
   QuestionOption,
+  compactOptions,
   emptyOptions,
   isValidQuestionOptions,
   normalizeOptions,
