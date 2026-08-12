@@ -7,6 +7,8 @@ import {
   sendFakturaXLDocumentByEmail,
   readFakturaXLDocument,
 } from "./fakturaxl.ts";
+import { fxlEmailAlreadySettled, notifyAlreadySettled } from "./invoice-delivery.ts";
+
 
 
 export const EU_COUNTRIES = [
