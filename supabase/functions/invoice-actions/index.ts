@@ -592,6 +592,12 @@ serve(async (req) => {
           changes: outcome.changes,
           issue: outcome.issue,
         });
+        if (outcome.status !== "failed") {
+          await deliverInvoiceDocument(admin, row).catch((e: unknown) =>
+            console.error("Delivery during sync failed:", e),
+          );
+        }
+
       }
 
       // Corrections issued by hand in FakturaXL are found by walking relations
