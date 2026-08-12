@@ -5,7 +5,7 @@ const Terms = () => {
     <LegalPage
       title="Terms and Conditions"
       subtitle="Rules for using the LN-RADS Certification platform and for purchasing courses and certification attempts (Regulamin)."
-      lastUpdated="5 August 2026"
+      lastUpdated="12 August 2026"
     >
       <LegalSection id="provider" title="1. Service provider">
         <p>

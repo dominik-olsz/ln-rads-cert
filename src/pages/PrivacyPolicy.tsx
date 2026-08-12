@@ -5,7 +5,7 @@ const PrivacyPolicy = () => {
     <LegalPage
       title="Privacy Policy"
       subtitle="How we collect, use and protect your personal data in the LN-RADS Certification platform."
-      lastUpdated="5 August 2026"
+      lastUpdated="12 August 2026"
     >
       <LegalSection id="controller" title="1. Data Controller">
         <p>
