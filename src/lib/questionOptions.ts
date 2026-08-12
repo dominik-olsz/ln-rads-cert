@@ -56,3 +56,9 @@ export const isValidQuestionOptions = (options: QuestionOption[]): boolean =>
   options.length <= MAX_OPTIONS &&
   options.every((o) => o.text.trim() !== "") &&
   options.some((o) => o.points === 2);
+
+/** Drops blank option rows so partially filled option grids stay valid. */
+export const compactOptions = (options: QuestionOption[]): QuestionOption[] =>
+  (options ?? [])
+    .filter((o) => (o?.text ?? "").trim() !== "")
+    .map((o) => ({ text: o.text.trim(), points: o.points }));
