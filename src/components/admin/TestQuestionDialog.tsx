@@ -12,6 +12,7 @@ import { IMAGE_UPLOAD_ACCEPT, prepareImageForUpload } from '@/lib/imageUpload';
 import {
   QuestionOption,
   emptyOptions,
+  compactOptions,
   isValidQuestionOptions,
   normalizeOptions,
 } from '@/lib/questionOptions';
@@ -119,10 +120,12 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isValidQuestionOptions(options)) {
+    const cleanedOptions = compactOptions(options);
+
+    if (!isValidQuestionOptions(cleanedOptions)) {
       toast({
         title: 'Check the answer options',
-        description: 'Fill in every option and mark at least one as Correct.',
+        description: 'Fill in at least two options and mark one as Correct (2 points).',
         variant: 'destructive',
       });
       return;
@@ -134,7 +137,7 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
       const questionData = {
         course_id: courseId || null,
         question_text: questionText,
-        options: options as unknown as any,
+        options: cleanedOptions as unknown as any,
         option_a: null,
         option_b: null,
         option_c: null,
