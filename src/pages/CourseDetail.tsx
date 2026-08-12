@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
+import Seo from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -315,6 +316,23 @@ const CourseDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title={`${course.title} — LN-RADS Certification`}
+        description={course.description?.slice(0, 155) || `Enrol in ${course.title}, part of the official LN-RADS certification programme for lymph node imaging.`}
+        path={`/course/${course.id}`}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Course",
+          name: course.title,
+          description: course.description,
+          url: `https://cert.lnrads.com/course/${course.id}`,
+          provider: {
+            "@type": "Organization",
+            name: "LN-RADS Certification",
+            url: "https://cert.lnrads.com/",
+          },
+        }}
+      />
       <Navbar />
       
       <section className="py-12">

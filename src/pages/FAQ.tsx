@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import Seo from "@/components/Seo";
 import {
   Accordion,
   AccordionContent,
@@ -60,8 +61,24 @@ const FAQ = () => {
     }
   ];
 
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.question,
+      acceptedAnswer: { "@type": "Answer", text: f.answer },
+    })),
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
+      <Seo
+        title="LN-RADS Certification FAQ — Exam, Access and Certificates"
+        description="Answers about the LN-RADS certification: who it is for, exam length, passing score, retake policy, modalities covered and how certificates are issued."
+        path="/faq"
+        jsonLd={faqJsonLd}
+      />
       <Navbar />
       
       <main className="flex-1">
@@ -74,7 +91,7 @@ const FAQ = () => {
                 Frequently Asked Questions
               </div>
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-                How can we help you?
+                LN-RADS Certification FAQ
               </h1>
               <p className="text-xl text-muted-foreground">
                 Find answers to common questions about the LN-RADS certification program

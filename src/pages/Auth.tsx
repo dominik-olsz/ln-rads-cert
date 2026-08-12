@@ -13,6 +13,7 @@ import lnradsLogo from "@/assets/lnrads-logo.jpg";
 import { supabase } from "@/integrations/supabase/client";
 import { appUrl } from "@/lib/appUrl";
 import { lovable } from "@/integrations/lovable/index";
+import Seo from "@/components/Seo";
 
 const GoogleIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -148,6 +149,11 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Seo
+        title="Sign In or Create Account — LN-RADS Certification"
+        description="Sign in to your LN-RADS Certification account or create one to access course lessons, radiology use cases and your certification exam."
+        path="/auth"
+      />
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link to="/" className="inline-flex flex-col items-center gap-3 mb-2">

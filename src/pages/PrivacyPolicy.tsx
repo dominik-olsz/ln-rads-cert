@@ -1,11 +1,14 @@
 import LegalPage, { LegalSection } from "@/components/LegalPage";
+import Seo from "@/components/Seo";
 
 const PrivacyPolicy = () => {
   return (
+    <>
+    <Seo title="Privacy Policy — LN-RADS Certification" description="How LN-RADS Certification collects, uses, stores and protects your personal data under the GDPR, including your rights and contact details." path="/privacy-policy" />
     <LegalPage
       title="Privacy Policy"
       subtitle="How we collect, use and protect your personal data in the LN-RADS Certification platform."
-      lastUpdated="5 August 2026"
+      lastUpdated="12 August 2026"
     >
       <LegalSection id="controller" title="1. Data Controller">
         <p>
@@ -189,6 +192,7 @@ const PrivacyPolicy = () => {
         </p>
       </LegalSection>
     </LegalPage>
+    </>
   );
 };
 

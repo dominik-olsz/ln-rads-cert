@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import Seo from "@/components/Seo";
 import Hero from "@/components/Hero";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,11 @@ import { CheckCircle, Clock, Users, BookOpen, Award, Video, Image as ImageIcon, 
 import lnRadsFlowchart from "@/assets/ln-rads-flowchart.png";
 const Index = () => {
   return <div className="min-h-screen bg-background">
+      <Seo
+        title="LN-RADS Certification — Lymph Node Imaging Course"
+        description="Learn the LN-RADS system with expert video lessons, annotated US, CT, MR and PET cases, and earn an official certification in lymph node assessment."
+        path="/"
+      />
       <Navbar />
       <Hero />
       
