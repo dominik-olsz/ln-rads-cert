@@ -856,6 +856,7 @@ const Training = () => {
                       onClick={async () => {
                         setCurrentItem(index);
                         await updateCourseProgress(index);
+                        contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }}
                       className={`w-full text-left p-3 rounded-lg border transition-colors ${
                         index === currentItem
