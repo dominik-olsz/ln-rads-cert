@@ -7,6 +7,7 @@ import {
   fxlRaw,
   xmlToObject,
   pushInvoiceToFakturaXL,
+  readFakturaXLDocument,
 } from "../_shared/fakturaxl.ts";
 
 
