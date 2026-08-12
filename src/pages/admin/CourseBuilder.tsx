@@ -123,6 +123,9 @@ const CourseBuilder = () => {
   const [baselineArmed, setBaselineArmed] = useState(false);
   // Guards a destructive save: existing course content must have loaded first
   const [contentLoaded, setContentLoaded] = useState(!courseId || courseId === "new");
+  // Baseline of the content actually retrieved per existing lesson id, used to
+  // refuse a save that would blank content the admin never cleared.
+  const [loadedContent, setLoadedContent] = useState<Record<string, { content_text: string; content_url: string }>>({});
 
 
   const currentSnapshot = useMemo(() => JSON.stringify({
