@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { deliverInvoiceDocument, invoiceFileSlug, sendInvoiceEmail } from "../_shared/invoice.ts";
+import {
+  buyerEmailsEnabled,
+  deliverInvoiceDocument,
+  invoiceFileSlug,
+  sendInvoiceEmail,
+} from "../_shared/invoice.ts";
 import {
   FXL_ENDPOINTS,
   fetchFakturaXLPdf,
@@ -654,6 +659,14 @@ serve(async (req) => {
 
     if (action === "resend") {
       if (!invoice.buyer_email) return json({ error: "No buyer email on this invoice" }, 400);
+      // Deliberate admin override, but still behind the development gate.
+      if (!buyerEmailsEnabled()) {
+        console.log("[buyer-email gate off] admin resend NOT sent", {
+          document: invoice.invoice_number,
+          wouldSendTo: invoice.buyer_email,
+        });
+        return json({ ok: true, pdf_path: path, gated: true });
+      }
       await sendInvoiceEmail(admin, invoice, { resend: true });
     }
 
