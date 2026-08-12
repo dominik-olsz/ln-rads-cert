@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2, MailX } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import Seo from "@/components/Seo";
 
 type State = "loading" | "valid" | "invalid" | "already" | "done";
 
@@ -57,8 +58,15 @@ export default function Unsubscribe() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Unsubscribe from Emails — LN-RADS Certification"
+        description="Confirm that your email address should no longer receive notification emails from the LN-RADS Certification platform."
+        path="/unsubscribe"
+        noindex
+      />
       <Navbar />
       <main className="container mx-auto px-4 py-16 max-w-lg">
+        <h1 className="mb-6 text-3xl font-bold tracking-tight">Unsubscribe from Emails</h1>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
