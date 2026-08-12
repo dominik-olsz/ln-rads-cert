@@ -333,6 +333,25 @@ export function buyerEmailsEnabled(): boolean {
 }
 
 /**
+ * States that mean "this channel is finished with this document".
+ * Everything else — including `skipped_gate` (never left the building) and a
+ * transient `failed` — is still owed a send. `skipped_gate` deliberately does
+ * NOT block: otherwise every document created while gated would be silently
+ * skipped forever the moment BUYER_EMAILS_ENABLED is turned on.
+ */
+const NOTIFY_DONE = new Set(["queued", "sent", "bounced", "complained", "no_email"]);
+const FXL_EMAIL_DONE = new Set(["sent", "no_buyer_email", "capped"]);
+
+export function notifyAlreadySettled(status: unknown): boolean {
+  return NOTIFY_DONE.has(String(status ?? ""));
+}
+
+export function fxlEmailAlreadySettled(status: unknown): boolean {
+  return FXL_EMAIL_DONE.has(String(status ?? ""));
+}
+
+
+/**
  * Runs both buyer-facing delivery channels for one document, at most once each.
  * State is keyed on the invoice row, so repeated Sync passes, PDF retries and
  * row-level syncs never resend. Admin "Resend" stays an explicit override.
