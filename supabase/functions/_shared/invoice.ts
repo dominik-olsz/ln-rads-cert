@@ -382,7 +382,7 @@ export async function deliverInvoiceDocument(admin: any, invoice: any): Promise<
   };
 
   // ---- Channel 1: our own notification (Resend, via the email queue) ----
-  if (!row.notify_status) {
+  if (!notifyAlreadySettled(row.notify_status)) {
     if (!row.buyer_email) {
       await update({ notify_status: "no_email" });
     } else if (!buyerEmailsEnabled()) {
