@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 
 interface LegalPageProps {
   title: string;
@@ -40,7 +39,6 @@ const LegalPage = ({ title, subtitle, lastUpdated, children }: LegalPageProps) =
         </header>
         <div className="space-y-10">{children}</div>
       </main>
-      <Footer />
     </div>
   );
 };
