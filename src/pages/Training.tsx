@@ -153,6 +153,29 @@ const Training = () => {
         }
         setHasPurchased(purchased);
 
+        // Certification status for buyers
+        if (purchased && user) {
+          const { data: courseRow } = await supabase
+            .from('courses')
+            .select('certification_enabled')
+            .eq('id', courseId)
+            .maybeSingle();
+          setCertificationEnabled(!!courseRow?.certification_enabled);
+
+          const { data: attempts } = await supabase
+            .from('test_attempts')
+            .select('id, passed, completed_at')
+            .eq('user_id', user.id)
+            .eq('course_id', courseId)
+            .eq('is_certification_test', true)
+            .order('completed_at', { ascending: false });
+
+          const passed = (attempts || []).find((a: any) => a.passed);
+          setPassedAttemptId(passed?.id ?? null);
+          setHasFailedAttempt(!passed && (attempts || []).length > 0);
+        }
+
+
         // Fetch lesson outline (content itself is served by the backend)
         const { data: lessonsData, error: lessonsError } = await supabase
           .from('lessons')
