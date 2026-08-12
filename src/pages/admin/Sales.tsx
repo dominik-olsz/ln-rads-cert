@@ -81,6 +81,13 @@ type Invoice = {
   settled_at: string | null;
   stripe_refunded_amount: number | null;
   discovered_from_fxl: boolean | null;
+  // Two independent buyer-facing channels, tracked per document.
+  notify_status: string | null;
+  notify_sent_at: string | null;
+  fxl_email_status: string | null;
+  fxl_email_code: string | null;
+  fxl_email_error: string | null;
+  fxl_email_sent_at: string | null;
 };
 
 
@@ -111,6 +118,46 @@ const ksefStateOf = (i: Invoice): KsefState => {
 
 // Latest delivery state of the invoice email, keyed by invoice number.
 type Delivery = { status: string; error: string | null; at: string };
+
+// Our own notification: the send log carries the live delivery feedback, and the
+// invoice row carries why nothing was queued in the first place.
+const notifyLabel = (i: Invoice, d?: Delivery) => {
+  if (!d) {
+    switch (i.notify_status) {
+      case 'queued':
+        return { label: 'Sending…', className: 'text-muted-foreground' };
+      case 'skipped_gate':
+        return { label: 'Not sent (dev)', className: 'text-muted-foreground' };
+      case 'no_email':
+        return { label: 'No buyer email', className: 'text-destructive' };
+      case 'failed':
+        return { label: 'Failed', className: 'text-destructive' };
+      default:
+        return null;
+    }
+  }
+  return deliveryLabel(d);
+};
+
+// FakturaXL's own email, with the PDF attached.
+const fxlEmailLabel = (i: Invoice) => {
+  switch (i.fxl_email_status) {
+    case 'sent':
+      return { label: 'Sent', className: 'text-muted-foreground' };
+    case 'skipped_gate':
+      return { label: 'Not sent (dev)', className: 'text-muted-foreground' };
+    case 'no_buyer_email':
+      return { label: 'No buyer email', className: 'text-destructive' };
+    case 'cap_reached':
+      return { label: 'Cap reached', className: 'text-amber-600' };
+    case 'plan_required':
+      return { label: 'Plan error', className: 'text-destructive' };
+    case 'failed':
+      return { label: 'Failed', className: 'text-destructive' };
+    default:
+      return null;
+  }
+};
 
 const deliveryLabel = (d?: Delivery) => {
   if (!d) return null;
@@ -553,7 +600,7 @@ const AdminSales = () => {
                       <TableHead className="text-right">VAT</TableHead>
                       <TableHead className="text-right">Gross</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Email</TableHead>
+                      <TableHead>Delivery</TableHead>
                       <TableHead>KSeF</TableHead>
 
                       <TableHead />
@@ -563,7 +610,8 @@ const AdminSales = () => {
                     {sales.map((i) => {
                       const status = statusOf(i);
                       const ksef = ksefStateOf(i);
-                      const delivery = deliveryLabel(deliveries[i.invoice_number]);
+                      const delivery = notifyLabel(i, deliveries[i.invoice_number]);
+                      const fxlEmail = fxlEmailLabel(i);
 
                       return (
                         <TableRow
@@ -615,21 +663,24 @@ const AdminSales = () => {
                             )}
                           </TableCell>
 
-                          <TableCell className="max-w-[180px]">
-                            {delivery ? (
-                              <>
-                                <div className={`text-xs ${delivery.className}`}>
-                                  {delivery.label}
-                                </div>
-                                {deliveries[i.invoice_number]?.error && (
-                                  <div className="text-[11px] text-muted-foreground line-clamp-2">
-                                    {deliveries[i.invoice_number].error}
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
+                          <TableCell className="max-w-[200px]">
+                            <div className="text-[11px] text-muted-foreground">
+                              Notification:{' '}
+                              <span className={delivery?.className ?? ''}>
+                                {delivery?.label ?? '—'}
+                              </span>
+                            </div>
+                            {deliveries[i.invoice_number]?.error && (
+                              <div className="text-[11px] text-muted-foreground line-clamp-2">
+                                {deliveries[i.invoice_number].error}
+                              </div>
                             )}
+                            <div className="text-[11px] text-muted-foreground">
+                              FakturaXL:{' '}
+                              <span className={fxlEmail?.className ?? ''}>
+                                {fxlEmail?.label ?? '—'}
+                              </span>
+                            </div>
                           </TableCell>
 
                           <TableCell className="max-w-[200px]">
@@ -720,6 +771,41 @@ const AdminSales = () => {
                     {selected.buyer_vat_id && <div>VAT ID: {selected.buyer_vat_id}</div>}
                   </div>
                 </div>
+
+                {(() => {
+                  const notify = notifyLabel(selected, deliveries[selected.invoice_number]);
+                  const fxlEmail = fxlEmailLabel(selected);
+                  return (
+                    <div>
+                      <h3 className="font-semibold mb-2">Delivery</h3>
+                      <div className="text-muted-foreground space-y-1">
+                        <div>
+                          Notification:{' '}
+                          <span className={notify?.className ?? ''}>
+                            {notify?.label ?? 'not sent'}
+                          </span>
+                        </div>
+                        {deliveries[selected.invoice_number]?.error && (
+                          <div className="text-xs">
+                            {deliveries[selected.invoice_number].error}
+                          </div>
+                        )}
+                        <div>
+                          FakturaXL email:{' '}
+                          <span className={fxlEmail?.className ?? ''}>
+                            {fxlEmail?.label ?? 'not sent'}
+                          </span>
+                        </div>
+                        {selected.fxl_email_error && (
+                          <div className="text-xs">
+                            {selected.fxl_email_error}
+                            {selected.fxl_email_code ? ` (code ${selected.fxl_email_code})` : ''}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {(() => {
                   const ksef = ksefStateOf(selected);
