@@ -226,11 +226,21 @@ const LessonDialog = ({ open, onOpenChange, lesson, courseId, onSuccess }: Lesso
             </div>
           )}
 
+          {contentError && (
+            <p className="text-sm text-destructive">
+              Existing lesson content could not be loaded, so saving is disabled — it would erase
+              the current content. Close this dialog and try again.
+            </p>
+          )}
+          {contentLoading && (
+            <p className="text-sm text-muted-foreground">Loading lesson content…</p>
+          )}
+
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || contentLoading || contentError}>
               {loading ? 'Saving...' : lesson ? 'Update' : 'Create'}
             </Button>
           </div>
