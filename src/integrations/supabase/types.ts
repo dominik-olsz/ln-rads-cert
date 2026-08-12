@@ -639,6 +639,10 @@ export type Database = {
           discovered_from_fxl: boolean
           doc_type: string
           fxl_document_id: string | null
+          fxl_email_code: string | null
+          fxl_email_error: string | null
+          fxl_email_sent_at: string | null
+          fxl_email_status: string | null
           fxl_exchange_rate: number | null
           fxl_nbp_table: string | null
           fxl_rate_date: string | null
@@ -657,6 +661,8 @@ export type Database = {
           line_items: Json
           net_amount: number
           notes: string | null
+          notify_sent_at: string | null
+          notify_status: string | null
           original_invoice_id: string | null
           payment_due_date: string | null
           pdf_path: string | null
@@ -699,6 +705,10 @@ export type Database = {
           discovered_from_fxl?: boolean
           doc_type?: string
           fxl_document_id?: string | null
+          fxl_email_code?: string | null
+          fxl_email_error?: string | null
+          fxl_email_sent_at?: string | null
+          fxl_email_status?: string | null
           fxl_exchange_rate?: number | null
           fxl_nbp_table?: string | null
           fxl_rate_date?: string | null
@@ -717,6 +727,8 @@ export type Database = {
           line_items?: Json
           net_amount?: number
           notes?: string | null
+          notify_sent_at?: string | null
+          notify_status?: string | null
           original_invoice_id?: string | null
           payment_due_date?: string | null
           pdf_path?: string | null
@@ -759,6 +771,10 @@ export type Database = {
           discovered_from_fxl?: boolean
           doc_type?: string
           fxl_document_id?: string | null
+          fxl_email_code?: string | null
+          fxl_email_error?: string | null
+          fxl_email_sent_at?: string | null
+          fxl_email_status?: string | null
           fxl_exchange_rate?: number | null
           fxl_nbp_table?: string | null
           fxl_rate_date?: string | null
@@ -777,6 +793,8 @@ export type Database = {
           line_items?: Json
           net_amount?: number
           notes?: string | null
+          notify_sent_at?: string | null
+          notify_status?: string | null
           original_invoice_id?: string | null
           payment_due_date?: string | null
           pdf_path?: string | null

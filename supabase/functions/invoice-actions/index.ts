@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { invoiceFileSlug, sendInvoiceEmail } from "../_shared/invoice.ts";
+import {
+  buyerEmailsEnabled,
+  deliverInvoiceDocument,
+  invoiceFileSlug,
+  sendInvoiceEmail,
+} from "../_shared/invoice.ts";
 import {
   FXL_ENDPOINTS,
   fetchFakturaXLPdf,
@@ -335,6 +340,12 @@ async function importCorrection(
       .upload(path, pdf, { contentType: "application/pdf", upsert: true });
     if (uploadError) throw new Error(uploadError.message);
     await admin.from("invoices").update({ pdf_path: path }).eq("id", inserted!.id);
+    // Corrections are created in the FakturaXL panel, so the
+    // wyslij_dokument_do_klienta_emailem flag on dokument_dodaj never applied
+    // to them: both channels must be triggered explicitly after discovery.
+    await deliverInvoiceDocument(admin, { ...row, id: inserted!.id, pdf_path: path }).catch(
+      (e: unknown) => console.error("Correction delivery failed:", e),
+    );
   } catch (e) {
     await admin
       .from("invoices")
@@ -648,6 +659,14 @@ serve(async (req) => {
 
     if (action === "resend") {
       if (!invoice.buyer_email) return json({ error: "No buyer email on this invoice" }, 400);
+      // Deliberate admin override, but still behind the development gate.
+      if (!buyerEmailsEnabled()) {
+        console.log("[buyer-email gate off] admin resend NOT sent", {
+          document: invoice.invoice_number,
+          wouldSendTo: invoice.buyer_email,
+        });
+        return json({ ok: true, pdf_path: path, gated: true });
+      }
       await sendInvoiceEmail(admin, invoice, { resend: true });
     }
 
