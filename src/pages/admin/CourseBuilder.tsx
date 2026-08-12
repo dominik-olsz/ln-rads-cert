@@ -120,6 +120,9 @@ const CourseBuilder = () => {
   // Unsaved changes tracking
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [baselineArmed, setBaselineArmed] = useState(false);
+  // Guards a destructive save: existing course content must have loaded first
+  const [contentLoaded, setContentLoaded] = useState(!courseId || courseId === "new");
+
 
   const currentSnapshot = useMemo(() => JSON.stringify({
     title, description, price, discountPrice, discountValidUntil, heroImage, courseIncludes, whatYouLearn,
@@ -304,6 +307,8 @@ const CourseBuilder = () => {
       );
 
       setBaselineArmed(true);
+      setContentLoaded(true);
+
 
     } catch (error: any) {
       toast({
@@ -579,6 +584,17 @@ const CourseBuilder = () => {
       return false;
     }
 
+    if (!contentLoaded) {
+      toast({
+        title: "Course content not loaded",
+        description: "Saving now would overwrite existing lessons and questions. Reload the page and try again.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+
+
     if (randomCountInvalid) {
       toast({
         title: "Not enough questions",
@@ -637,9 +653,15 @@ const CourseBuilder = () => {
 
       // Delete existing lessons and questions for clean update
       if (finalCourseId && finalCourseId !== "new") {
-        await supabase.from('lessons').delete().eq('course_id', finalCourseId);
-        await supabase.from('test_questions').delete().eq('course_id', finalCourseId);
+        const { error: delLessonsError } = await supabase
+          .from('lessons').delete().eq('course_id', finalCourseId);
+        if (delLessonsError) throw delLessonsError;
+
+        const { error: delQuestionsError } = await supabase
+          .from('test_questions').delete().eq('course_id', finalCourseId);
+        if (delQuestionsError) throw delQuestionsError;
       }
+
 
       // Save lessons
       for (const lesson of lessons) {
