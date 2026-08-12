@@ -425,8 +425,17 @@ serve(async (req) => {
 
       const results: SyncOutcome[] = [];
       for (const row of rows) {
-        results.push(await syncInvoiceRow(admin, row));
+        const outcome = await syncInvoiceRow(admin, row);
+        results.push(outcome);
+        // Documents skipped while the buyer-email gate was closed are still
+        // owed a send; the per-channel guards keep settled rows untouched.
+        if (outcome.status !== "deleted" && outcome.status !== "failed") {
+          await deliverInvoiceDocument(admin, row).catch((e: unknown) =>
+            console.error("Delivery during sync failed:", e),
+          );
+        }
       }
+
 
       // Corrections issued by hand in the FakturaXL panel are imported here; any
       // other document that exists only there is reported, never imported —
