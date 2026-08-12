@@ -307,6 +307,8 @@ const CourseBuilder = () => {
       );
 
       setBaselineArmed(true);
+      setContentLoaded(true);
+
 
     } catch (error: any) {
       toast({
