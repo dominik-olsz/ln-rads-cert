@@ -12,6 +12,7 @@ import { IMAGE_UPLOAD_ACCEPT, prepareImageForUpload } from '@/lib/imageUpload';
 import {
   QuestionOption,
   emptyOptions,
+  compactOptions,
   isValidQuestionOptions,
   normalizeOptions,
 } from '@/lib/questionOptions';
