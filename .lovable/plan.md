@@ -79,7 +79,18 @@ Notes on this XML:
 - `faktura_pozycje_bylo` / `faktura_pozycje_powinno_byc` are document-level siblings of `<korekta>`, matched pair-by-pair in document order.
 - `powinno_byc` carries what should remain (40.00), not the credited 20.00.
 - Currency, `vat`, `obliczaj_wartosc_faktury_od` and `jezyk` are copied from the original — a differing currency returns `kod=41`.
+- `<kurs>` carries the **original invoice's** NBP rate (stored as `fxl_exchange_rate` on the FV row) instead of letting FakturaXL resolve the rate for the day before the correction date.
 - A second €10 refund on the same invoice would send `bylo 40.00` / `powinno_byc 30.00`, with `id_faktury_korygowanej` still pointing at the original FV document.
+- `kwota_oplacona` is shown negative here — this is one of the things verified before the code is written (see below).
+
+## Verify against the live API before writing code
+
+Three open questions get answered with real test documents in FakturaXL (no KSeF submission), and the raw XML responses are shown before implementation continues. If any is rejected, the plan is adjusted to whatever FakturaXL actually accepts.
+
+1. **Negative `kwota_oplacona`** — the docs show no negative amount for `dokument_dodaj.php` and `kod=35` hints that some paths demand positive values. One test correction is created with `-20.00`; if rejected, the alternatives tried are the positive remaining amount (`40.00`), `0.00`, and omitting the element entirely, and the accepted form is reported.
+2. **Explicit `<kurs>`** — confirm FakturaXL honours the passed rate rather than overriding it with the rate for the day before the correction, and that the resulting PLN VAT on the correction shares the original's basis. Accountant confirmation is still advisable; the code carries a comment saying so.
+3. **`bylo` that differs from the referenced document** — the second correction sends `bylo 40.00` while the corrected FV in FakturaXL still shows `60.00`. The full €60 → €40 → €30 sequence is issued end to end and both raw responses are shown, to confirm FakturaXL accepts the stated before-values instead of validating them against the referenced document. If it validates, the fallback is to point `id_faktury_korygowanej` at the previous correction (or send cumulative before/after values), and the finding is reported before code changes.
+
 
 ## Technical details
 
