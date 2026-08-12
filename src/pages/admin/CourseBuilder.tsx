@@ -682,13 +682,28 @@ const CourseBuilder = () => {
         if (lessonError) throw lessonError;
       }
 
-      const isValidQuestion = (q: TestQuestion) =>
-        Boolean(q.question_text?.trim()) && isValidQuestionOptions(q.options);
-
+      // Blank option rows are ignored, so a partially filled 6-slot grid is fine.
+      // Anything that still fails validation is reported instead of silently dropped.
+      const prepareQuestion = (q: TestQuestion, label: string) => {
+        const text = q.question_text?.trim();
+        const options = compactOptions(q.options);
+        const isEmpty = !text && options.length === 0;
+        if (isEmpty) return null;
+        if (!text) throw new Error(`${label}: question text is missing.`);
+        if (!isValidQuestionOptions(options)) {
+          throw new Error(
+            `${label}: needs at least 2 filled answers and one answer worth 2 points.`
+          );
+        }
+        return { ...q, question_text: text, options };
+      };
 
       // Save course-level test questions
       for (const group of questionGroups) {
-        const validQuestions = group.questions.filter(isValidQuestion);
+        const groupLabel = group.title?.trim() || `Use case group ${group.order_index + 1}`;
+        const validQuestions = group.questions
+          .map((q, idx) => prepareQuestion(q, `${groupLabel} – question ${idx + 1}`))
+          .filter((q): q is TestQuestion => q !== null);
 
         if (validQuestions.length > 0) {
           const questionsToInsert = validQuestions.map((q) => ({
@@ -720,7 +735,9 @@ const CourseBuilder = () => {
 
       // Save certification questions (custom mode only)
       if (certificationEnabled && certificationMode === 'custom') {
-        const validCert = certQuestions.filter(isValidQuestion);
+        const validCert = certQuestions
+          .map((q, idx) => prepareQuestion(q, `Certification question ${idx + 1}`))
+          .filter((q): q is TestQuestion => q !== null);
 
         if (validCert.length > 0) {
           const { error: certError } = await supabase
