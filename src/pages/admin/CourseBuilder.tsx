@@ -254,7 +254,28 @@ const CourseBuilder = () => {
         .eq('test_type', 'certification')
         .order('order_index');
 
-      const lessonContents = await attachLessonContent(lessonsData || []);
+      // Throws if any lesson's content could not be retrieved — never treat a
+      // failed load as "no content", the save path rewrites lessons from state.
+      let lessonContents;
+      try {
+        lessonContents = await attachLessonContent(lessonsData || []);
+      } catch (contentError: any) {
+        setContentLoaded(false);
+        throw new Error(
+          "Could not load existing lesson content. Saving is disabled until this succeeds — reload the page and try again."
+        );
+      }
+
+      const baseline: Record<string, { content_text: string; content_url: string }> = {};
+      for (const lesson of lessonContents) {
+        if (lesson.id) {
+          baseline[lesson.id] = {
+            content_text: lesson.content_text ?? "",
+            content_url: lesson.content_url ?? "",
+          };
+        }
+      }
+      setLoadedContent(baseline);
 
       const lessonsWithoutQuestions = lessonContents.map(lesson => ({
         id: lesson.id,
@@ -266,6 +287,7 @@ const CourseBuilder = () => {
         duration: lesson.duration,
         is_free: lesson.is_free || false
       }));
+
 
 
       // Group questions by order_index to recreate question groups
