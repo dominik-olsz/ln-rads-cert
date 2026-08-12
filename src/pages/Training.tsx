@@ -81,6 +81,35 @@ const Training = () => {
   const [lessonContents, setLessonContents] = useState<Record<string, { content_text: string | null; content_url: string | null }>>({});
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
+  const [certificationEnabled, setCertificationEnabled] = useState(false);
+  const [passedAttemptId, setPassedAttemptId] = useState<string | null>(null);
+  const [hasFailedAttempt, setHasFailedAttempt] = useState(false);
+  const [downloadingCertificate, setDownloadingCertificate] = useState(false);
+
+  const handleDownloadCertificate = async () => {
+    if (!passedAttemptId) return;
+    setDownloadingCertificate(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-certificate', {
+        body: { attemptId: passedAttemptId },
+      });
+      if (error) throw error;
+      const blob = new Blob([data.html], { type: 'text/html' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `certificate-${passedAttemptId}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (e: any) {
+      console.error('Failed to download certificate:', e);
+      toast.error(e.message || 'Could not download your certificate');
+    } finally {
+      setDownloadingCertificate(false);
+    }
+  };
 
   // Grade a practice answer server-side (the answer key is never sent to the browser)
   const handleSelectAnswer = async (questionId: string, optionIndex: number) => {
