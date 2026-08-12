@@ -85,6 +85,8 @@ const Training = () => {
   const [passedAttemptId, setPassedAttemptId] = useState<string | null>(null);
   const [hasFailedAttempt, setHasFailedAttempt] = useState(false);
   const [downloadingCertificate, setDownloadingCertificate] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
 
   const handleDownloadCertificate = async () => {
     if (!passedAttemptId) return;
