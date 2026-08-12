@@ -7,6 +7,8 @@ import {
   sendFakturaXLDocumentByEmail,
   readFakturaXLDocument,
 } from "./fakturaxl.ts";
+import { fxlEmailAlreadySettled, notifyAlreadySettled } from "./invoice-delivery.ts";
+
 
 
 export const EU_COUNTRIES = [
@@ -332,6 +334,9 @@ export function buyerEmailsEnabled(): boolean {
   return String(Deno.env.get("BUYER_EMAILS_ENABLED") ?? "").toLowerCase() === "true";
 }
 
+export { fxlEmailAlreadySettled, notifyAlreadySettled } from "./invoice-delivery.ts";
+
+
 /**
  * Runs both buyer-facing delivery channels for one document, at most once each.
  * State is keyed on the invoice row, so repeated Sync passes, PDF retries and
@@ -363,7 +368,7 @@ export async function deliverInvoiceDocument(admin: any, invoice: any): Promise<
   };
 
   // ---- Channel 1: our own notification (Resend, via the email queue) ----
-  if (!row.notify_status) {
+  if (!notifyAlreadySettled(row.notify_status)) {
     if (!row.buyer_email) {
       await update({ notify_status: "no_email" });
     } else if (!buyerEmailsEnabled()) {
@@ -384,7 +389,7 @@ export async function deliverInvoiceDocument(admin: any, invoice: any): Promise<
   }
 
   // ---- Channel 2: FakturaXL's own email, with the PDF attached ----
-  if (!row.fxl_email_status && row.fxl_document_id) {
+  if (!fxlEmailAlreadySettled(row.fxl_email_status) && row.fxl_document_id) {
     if (!buyerEmailsEnabled()) {
       console.log("[buyer-email gate off] FakturaXL email NOT sent", {
         channel: "fakturaxl-email",
