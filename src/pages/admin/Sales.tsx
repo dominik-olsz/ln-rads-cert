@@ -289,6 +289,39 @@ const AdminSales = () => {
     fetchInvoices();
   };
 
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+
+  const syncFromFakturaXL = async (invoice: Invoice) => {
+    setSyncingId(invoice.id);
+    const { data, error } = await supabase.functions.invoke('invoice-actions', {
+      body: { invoiceId: invoice.id, action: 'sync_fxl' },
+    });
+    setSyncingId(null);
+    if (error) {
+      toast({ title: 'Sync failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    const results = ((data as any)?.results ?? []) as Array<{
+      invoice_number: string;
+      status: string;
+      changes?: string[];
+      issue?: string;
+    }>;
+    const failed = results.filter((r) => r.status === 'failed');
+    const lines = results.map((r) =>
+      r.status === 'synced'
+        ? `${r.invoice_number}: updated${r.changes?.length ? ` (${r.changes.join(', ')})` : ''}`
+        : `${r.invoice_number}: ${r.issue ?? r.status}`,
+    );
+    toast({
+      title: failed.length ? 'Sync finished with problems' : 'Synced from FakturaXL',
+      description: lines.join(' · ') || 'Nothing to sync.',
+      variant: failed.length ? 'destructive' : undefined,
+    });
+    fetchInvoices();
+  };
+
+
 
 
   const [driftOpen, setDriftOpen] = useState(false);
