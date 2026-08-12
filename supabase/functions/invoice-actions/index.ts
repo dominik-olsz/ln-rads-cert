@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { invoiceFileSlug, sendInvoiceEmail } from "../_shared/invoice.ts";
+import { deliverInvoiceDocument, invoiceFileSlug, sendInvoiceEmail } from "../_shared/invoice.ts";
 import {
   FXL_ENDPOINTS,
   fetchFakturaXLPdf,
