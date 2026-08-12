@@ -111,15 +111,16 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
     toast({ title: 'Saved', description: `Discount set to ${percent}%` });
   };
 
-  const attemptCourses = Array.from(
-    attempts.reduce((map, a) => {
-      const key = a.course_id ?? 'none';
-      const existing = map.get(key);
-      if (existing) existing.count += 1;
-      else map.set(key, { courseId: a.course_id ?? null, title: a.courses?.title || 'Certification', count: 1 });
-      return map;
-    }, new Map<string, { courseId: string | null; title: string; count: number }>()).values()
-  );
+  type AttemptGroup = { courseId: string | null; title: string; count: number };
+  const attemptGroupMap = new Map<string, AttemptGroup>();
+  for (const a of attempts) {
+    const key = a.course_id ?? 'none';
+    const existing = attemptGroupMap.get(key);
+    if (existing) existing.count += 1;
+    else attemptGroupMap.set(key, { courseId: a.course_id ?? null, title: a.courses?.title || 'Certification', count: 1 });
+  }
+  const attemptCourses: AttemptGroup[] = Array.from(attemptGroupMap.values());
+
 
   const resetAttempts = async (courseId: string | null, title: string) => {
     if (!userId) return;
