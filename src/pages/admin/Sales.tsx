@@ -613,6 +613,19 @@ const AdminSales = () => {
                               >
                                 <Download className="h-4 w-4" />
                               </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Sync latest version from FakturaXL"
+                                disabled={busy || syncingId === i.id}
+                                onClick={() => syncFromFakturaXL(i)}
+                              >
+                                {syncingId === i.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4" />
+                                )}
+                              </Button>
                               {ksef.kind === 'failed' && (
                                 <Button
                                   variant="outline"
