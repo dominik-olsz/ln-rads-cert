@@ -846,7 +846,7 @@ const Training = () => {
               </Card>
             )}
 
-            <Card className="sticky top-20">
+            <Card className="sticky top-28 lg:top-32">
               <CardContent className="pt-6">
                 <h3 className="font-semibold mb-4">Course Content</h3>
                 <div className="space-y-2">
