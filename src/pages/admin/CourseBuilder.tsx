@@ -653,9 +653,15 @@ const CourseBuilder = () => {
 
       // Delete existing lessons and questions for clean update
       if (finalCourseId && finalCourseId !== "new") {
-        await supabase.from('lessons').delete().eq('course_id', finalCourseId);
-        await supabase.from('test_questions').delete().eq('course_id', finalCourseId);
+        const { error: delLessonsError } = await supabase
+          .from('lessons').delete().eq('course_id', finalCourseId);
+        if (delLessonsError) throw delLessonsError;
+
+        const { error: delQuestionsError } = await supabase
+          .from('test_questions').delete().eq('course_id', finalCourseId);
+        if (delQuestionsError) throw delQuestionsError;
       }
+
 
       // Save lessons
       for (const lesson of lessons) {
