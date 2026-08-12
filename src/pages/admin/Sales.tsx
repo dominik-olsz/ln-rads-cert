@@ -328,11 +328,16 @@ const AdminSales = () => {
   const [drift, setDrift] = useState<any | null>(null);
 
   const runDriftCheck = async () => {
+    const range = from || to ? ` between ${from || 'the beginning'} and ${to || 'today'}` : ' this month';
+    const confirmed = window.confirm(
+      `Sync every invoice${range} from FakturaXL?\n\nFakturaXL is the source of truth: amounts, exchange rates and PDFs stored here will be replaced with its current version, and any invoice that does not exist in FakturaXL will be deleted from this website (including the buyer's My Payments). Nothing in FakturaXL is changed.`,
+    );
+    if (!confirmed) return;
     setBusy(true);
     setDrift(null);
     setDriftOpen(true);
     const { data, error } = await supabase.functions.invoke('invoice-actions', {
-      body: { action: 'fxl_orphans' },
+      body: { action: 'fxl_sync_all', from: from || undefined, to: to || undefined },
     });
     setBusy(false);
     if (error) {
@@ -341,6 +346,7 @@ const AdminSales = () => {
       return;
     }
     setDrift(data);
+    fetchInvoices();
   };
 
   const doRefund = async () => {
@@ -426,7 +432,7 @@ const AdminSales = () => {
           <h1 className="text-4xl font-bold">Sales &amp; Invoices</h1>
           <div className="flex gap-2">
             <Button variant="outline" disabled={busy} onClick={runDriftCheck}>
-              Check FakturaXL sync
+              Sync all from FakturaXL
             </Button>
             <Button variant="outline" onClick={exportCsv}>
               <Download className="h-4 w-4 mr-2" />
@@ -854,30 +860,63 @@ const AdminSales = () => {
       </Dialog>
 
       <Dialog open={driftOpen} onOpenChange={setDriftOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>FakturaXL sync check</DialogTitle>
+            <DialogTitle>FakturaXL sync</DialogTitle>
             <DialogDescription>
-              Compares this month&apos;s FakturaXL documents with the invoices stored here.
+              Every invoice in the selected range is brought in line with FakturaXL. Nothing is
+              created or changed in FakturaXL.
             </DialogDescription>
           </DialogHeader>
           {!drift ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Checking…
+              Syncing… this takes about a second per document.
             </div>
           ) : (
             <div className="space-y-4 text-sm">
               <p className="text-muted-foreground">
-                {drift.from} – {drift.to} · {drift.verified} invoice(s) verified in FakturaXL
+                {drift.from} – {drift.to} · {drift.checked} document(s) checked ·{' '}
+                {drift.unchanged} already up to date
               </p>
+
+              {drift.updated?.length ? (
+                <div className="space-y-1">
+                  <p className="font-medium">Updated from FakturaXL:</p>
+                  {drift.updated.map((u: any) => (
+                    <div key={u.invoice_id}>
+                      {u.invoice_number} · {u.changes?.length ? u.changes.join(', ') : 'PDF refreshed'}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {drift.deleted?.length ? (
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">Deleted from this website:</p>
+                  {drift.deleted.map((d: any) => (
+                    <div key={d.invoice_id}>
+                      {d.invoice_number} · {d.doc_type} · {d.issue}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {drift.failed?.length ? (
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">Could not sync:</p>
+                  {drift.failed.map((f: any) => (
+                    <div key={f.invoice_id}>
+                      {f.invoice_number} · {f.issue}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
               {drift.listing_available ? (
                 drift.orphans?.length ? (
                   <div className="space-y-1">
-                    <p className="font-medium text-destructive">
-                      Documents in FakturaXL with no invoice here:
-                    </p>
+                    <p className="font-medium">In FakturaXL only (not imported):</p>
                     {drift.orphans.map((o: any) => (
                       <div key={o.document_id ?? o.invoice_number}>
                         {o.invoice_number} · doc {o.document_id} · {o.gross}
@@ -885,42 +924,18 @@ const AdminSales = () => {
                     ))}
                   </div>
                 ) : (
-                  <p>No unmatched FakturaXL documents.</p>
+                  <p>No FakturaXL-only documents.</p>
                 )
               ) : (
                 <p className="text-muted-foreground">
                   FakturaXL did not return a document list (code {drift.list_code ?? '—'}), so
-                  only invoices recorded here could be verified.
+                  only invoices recorded here could be compared.
                 </p>
               )}
 
-              {drift.mismatches?.length ? (
-                <div className="space-y-1">
-                  <p className="font-medium text-destructive">Mismatches:</p>
-                  {drift.mismatches.map((m: any) => (
-                    <div key={m.invoice_id}>
-                      {m.invoice_number} · doc {m.document_id} · {m.issue}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p>No mismatches found.</p>
-              )}
-
-              {drift.unsynced?.length ? (
-                <div className="space-y-1">
-                  <p className="font-medium text-destructive">
-                    Invoices here with no FakturaXL document:
-                  </p>
-                  {drift.unsynced.map((u: any) => (
-                    <div key={u.invoice_id}>
-                      {u.invoice_number} · {u.doc_type} · {u.issue}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p>Every invoice recorded here has a FakturaXL document.</p>
-              )}
+              {!drift.updated?.length && !drift.deleted?.length && !drift.failed?.length ? (
+                <p>Everything here already matches FakturaXL.</p>
+              ) : null}
             </div>
           )}
           <DialogFooter>

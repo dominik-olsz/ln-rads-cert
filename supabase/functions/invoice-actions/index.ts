@@ -23,6 +23,126 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+type SyncOutcome = {
+  invoice_id: string;
+  invoice_number: string;
+  doc_type: string;
+  status: "updated" | "unchanged" | "deleted" | "failed";
+  changes?: string[];
+  issue?: string;
+};
+
+/**
+ * Brings a single invoice row in line with FakturaXL, which is the single source
+ * of truth. Only read endpoints are used against FakturaXL — every write happens
+ * on our side: field values, the stored PDF, or deleting the row entirely when
+ * the document does not exist there (or was never created).
+ */
+async function syncInvoiceRow(
+  admin: any,
+  row: any,
+  opts: { allowDelete?: boolean } = {},
+): Promise<SyncOutcome> {
+  const allowDelete = opts.allowDelete !== false;
+  const base = {
+    invoice_id: row.id,
+    invoice_number: row.invoice_number,
+    doc_type: row.doc_type,
+  };
+
+  const removeLocally = async (reason: string): Promise<SyncOutcome> => {
+    if (!allowDelete) return { ...base, status: "failed", issue: reason };
+    if (row.pdf_path) {
+      await admin.storage.from("invoices").remove([row.pdf_path]).catch(() => {});
+    }
+    const { error: deleteError } = await admin.from("invoices").delete().eq("id", row.id);
+    if (deleteError) {
+      return { ...base, status: "failed", issue: `could not delete: ${deleteError.message}` };
+    }
+    return { ...base, status: "deleted", issue: reason };
+  };
+
+  if (!row.fxl_document_id) {
+    return await removeLocally("never created in FakturaXL");
+  }
+
+  try {
+    const details = await readFakturaXLDocument(String(row.fxl_document_id));
+    if (!details) return await removeLocally("no longer exists in FakturaXL");
+
+    const changes: string[] = [];
+    const patch: Record<string, unknown> = { fxl_status: "synced" };
+
+    if (details.invoice_number && details.invoice_number !== row.invoice_number) {
+      patch.invoice_number = details.invoice_number;
+      changes.push(`number ${row.invoice_number} → ${details.invoice_number}`);
+    }
+
+    const sign = Number(row.gross_amount ?? 0) < 0 ? -1 : 1;
+    if (details.gross != null) {
+      const remoteGross = Math.round(Math.abs(details.gross) * 100) * sign;
+      if (remoteGross !== Number(row.gross_amount ?? 0)) {
+        patch.gross_amount = remoteGross;
+        changes.push(
+          `gross ${(Number(row.gross_amount ?? 0) / 100).toFixed(2)} → ${(remoteGross / 100).toFixed(2)}`,
+        );
+      }
+    }
+
+    const currency = (details.currency ?? row.currency ?? "EUR").toUpperCase();
+    if (currency !== String(row.currency ?? "").toUpperCase()) {
+      patch.currency = currency;
+      changes.push(`currency ${row.currency} → ${currency}`);
+    }
+
+    const needsRate = currency !== "PLN";
+    patch.fxl_exchange_rate = needsRate ? details.exchange_rate : null;
+    patch.fxl_nbp_table = needsRate ? details.nbp_table : null;
+    patch.fxl_rate_date = needsRate ? details.rate_date : null;
+    patch.vat_amount_pln =
+      needsRate && details.exchange_rate
+        ? Math.round(Number(row.vat_amount ?? 0) * Number(details.exchange_rate))
+        : Number(row.vat_amount ?? 0);
+    if (details.due_date && details.due_date !== row.payment_due_date) {
+      patch.payment_due_date = details.due_date;
+      changes.push(`due date ${row.payment_due_date ?? "—"} → ${details.due_date}`);
+    }
+    if (
+      needsRate &&
+      details.exchange_rate != null &&
+      Number(details.exchange_rate) !== Number(row.fxl_exchange_rate ?? 0)
+    ) {
+      changes.push(`rate ${row.fxl_exchange_rate ?? "—"} → ${details.exchange_rate}`);
+    }
+
+    const targetPath =
+      row.pdf_path ?? `${invoiceFileSlug(String(patch.invoice_number ?? row.invoice_number))}.pdf`;
+
+    const pdf = await fetchFakturaXLPdf(String(row.fxl_document_id));
+    const { error: uploadError } = await admin.storage
+      .from("invoices")
+      .upload(targetPath, pdf, { contentType: "application/pdf", upsert: true });
+    if (uploadError) throw new Error(uploadError.message);
+    patch.pdf_path = targetPath;
+
+    await admin.from("invoices").update(patch).eq("id", row.id);
+
+    return {
+      ...base,
+      invoice_number: String(patch.invoice_number ?? row.invoice_number),
+      status: changes.length ? "updated" : "unchanged",
+      changes,
+    };
+  } catch (e) {
+    await admin
+      .from("invoices")
+      .update({ fxl_status: "pdf_pending", ksef_error_desc: (e as Error).message })
+      .eq("id", row.id);
+    return { ...base, status: "failed", issue: (e as Error).message };
+  }
+}
+
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -52,7 +172,7 @@ serve(async (req) => {
     const rawAction = String(body?.action ?? "");
 
     // Admin-only FakturaXL maintenance actions (no invoiceId).
-    if (["fxl_read", "fxl_orphans"].includes(rawAction)) {
+    if (["fxl_read", "fxl_orphans", "fxl_sync_all"].includes(rawAction)) {
       if (!isAdmin) return json({ error: "Forbidden" }, 403);
 
       if (rawAction === "fxl_read") {
@@ -65,12 +185,36 @@ serve(async (req) => {
         return json({ ok: true, endpoint: FXL_ENDPOINTS.readDocument, raw });
       }
 
-
-      // Drift check between FakturaXL and our invoices table for the current month.
+      // Full repair pass over a date range: FakturaXL is the single source of
+      // truth, so every difference is corrected here (values, PDF) or the row is
+      // removed. Nothing is created or changed in FakturaXL.
       const now = new Date();
-      const from = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
-      const to = now.toISOString().slice(0, 10);
+      const isDate = (v: unknown) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+      const from = isDate(body?.from)
+        ? String(body.from)
+        : `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+      const to = isDate(body?.to) ? String(body.to) : now.toISOString().slice(0, 10);
 
+      const { data: rangeRows } = await admin
+        .from("invoices")
+        .select("*")
+        .gte("issued_at", `${from}T00:00:00Z`)
+        .lte("issued_at", `${to}T23:59:59Z`)
+        .order("issued_at", { ascending: false });
+
+      // Corrections first so a parent row can be deleted without leaving a
+      // dangling original_invoice_id reference.
+      const rows = [...(rangeRows ?? [])].sort((a: any, b: any) =>
+        a.doc_type === b.doc_type ? 0 : a.doc_type === "FK" ? -1 : 1,
+      );
+
+      const results: SyncOutcome[] = [];
+      for (const row of rows) {
+        results.push(await syncInvoiceRow(admin, row));
+      }
+
+      // Documents that exist only in FakturaXL are reported, never imported —
+      // there is no purchase here to attach them to.
       const listXml = await fxlRaw(
         FXL_ENDPOINTS.listDocuments,
         `  <data_od>${from}</data_od>
@@ -85,8 +229,6 @@ serve(async (req) => {
       );
       const listCode = container?.kod != null ? String(container.kod) : null;
 
-      // Forward direction (only possible when listing is permitted by the plan):
-      // FakturaXL documents with no matching invoices row.
       const orphans: any[] = [];
       if (docs.length) {
         const numbers = docs.map((d: any) => String(d.numer_faktury));
@@ -106,88 +248,21 @@ serve(async (req) => {
         }
       }
 
-      // Reverse direction (always available): our rows that reference a FakturaXL
-      // document, verified one by one against dokument_odczytaj — number and gross.
-      const { data: ourRows } = await admin
-        .from("invoices")
-        .select("id, invoice_number, doc_type, gross_amount, fxl_document_id")
-        .not("fxl_document_id", "is", null)
-        .gte("issued_at", `${from}T00:00:00Z`)
-        .order("issued_at", { ascending: false })
-        .limit(20);
-
-      // Rows that never made it into FakturaXL at all.
-      const { data: unsyncedRows } = await admin
-        .from("invoices")
-        .select("id, invoice_number, doc_type, gross_amount, fxl_status, ksef_error_desc")
-        .is("fxl_document_id", null)
-        .gte("issued_at", `${from}T00:00:00Z`)
-        .order("issued_at", { ascending: false });
-
-      const unsynced = (unsyncedRows ?? []).map((r: any) => ({
-        invoice_id: r.id,
-        invoice_number: r.invoice_number,
-        doc_type: r.doc_type,
-        status: r.fxl_status,
-        issue: r.ksef_error_desc ?? "not created in FakturaXL",
-      }));
-
-      const mismatches: any[] = [];
-      let verified = 0;
-      for (const row of ourRows ?? []) {
-        const raw = await fxlRaw(
-          FXL_ENDPOINTS.readDocument,
-          `  <dokument_id>${row.fxl_document_id}</dokument_id>`,
-        ).catch(() => "");
-        const doc = raw ? (xmlToObject(raw)?.dokument ?? {}) : {};
-        const remoteNumber = doc?.numer_faktury != null ? String(doc.numer_faktury) : null;
-        const remoteGrossRaw =
-          doc?.wartosc_brutto ?? doc?.brutto ?? doc?.kwota_brutto ?? null;
-        const remoteGross =
-          remoteGrossRaw != null
-            ? Math.round(Number(String(remoteGrossRaw).replace(",", ".")) * 100)
-            : null;
-        const base = {
-          invoice_id: row.id,
-          invoice_number: row.invoice_number,
-          doc_type: row.doc_type,
-          document_id: String(row.fxl_document_id),
-        };
-
-        if (!remoteNumber) {
-          mismatches.push({ ...base, issue: "not found in FakturaXL" });
-        } else if (remoteNumber !== row.invoice_number) {
-          mismatches.push({ ...base, issue: `number differs in FakturaXL: ${remoteNumber}` });
-        } else if (
-          remoteGross != null &&
-          Math.abs(remoteGross) !== Math.abs(Number(row.gross_amount ?? 0))
-        ) {
-          mismatches.push({
-            ...base,
-            issue: `gross differs: ours ${(Number(row.gross_amount ?? 0) / 100).toFixed(2)}, FakturaXL ${(remoteGross / 100).toFixed(2)}`,
-          });
-        } else {
-          verified += 1;
-        }
-        await new Promise((r) => setTimeout(r, 1100));
-      }
-
       return json({
-        ok: true,
+        ok: results.every((r) => r.status !== "failed"),
         from,
         to,
+        checked: results.length,
         listing_available: docs.length > 0,
         list_code: listCode,
-        listed: docs.length,
+        updated: results.filter((r) => r.status === "updated"),
+        unchanged: results.filter((r) => r.status === "unchanged").length,
+        deleted: results.filter((r) => r.status === "deleted"),
+        failed: results.filter((r) => r.status === "failed"),
         orphans,
-        verified,
-        mismatches,
-        unsynced,
       });
-
-
-
     }
+
 
     const action = ["resend", "retry_ksef", "signed_url", "sync_fxl"].includes(rawAction)
       ? rawAction
@@ -222,7 +297,8 @@ serve(async (req) => {
     }
 
     // Pull the latest version of the document (and its corrections) back from
-    // FakturaXL and replace what we store. Never creates a new document.
+    // FakturaXL and replace what we store. Never creates a new document, and
+    // never deletes a row — that only happens in the full sync pass.
     if (action === "sync_fxl") {
       if (!isAdmin) return json({ error: "Forbidden" }, 403);
 
@@ -244,81 +320,19 @@ serve(async (req) => {
           });
           continue;
         }
-
-        try {
-          const details = await readFakturaXLDocument(String(row.fxl_document_id));
-          if (!details) throw new Error("document not found in FakturaXL");
-
-          const changes: string[] = [];
-          const patch: Record<string, unknown> = { fxl_status: "synced" };
-
-          if (details.invoice_number && details.invoice_number !== row.invoice_number) {
-            patch.invoice_number = details.invoice_number;
-            changes.push(`number ${row.invoice_number} → ${details.invoice_number}`);
-          }
-
-          const sign = Number(row.gross_amount ?? 0) < 0 ? -1 : 1;
-          if (details.gross != null) {
-            const remoteGross = Math.round(Math.abs(details.gross) * 100) * sign;
-            if (remoteGross !== Number(row.gross_amount ?? 0)) {
-              patch.gross_amount = remoteGross;
-              changes.push(
-                `gross ${(Number(row.gross_amount ?? 0) / 100).toFixed(2)} → ${(remoteGross / 100).toFixed(2)}`,
-              );
-            }
-          }
-
-          const currency = (details.currency ?? row.currency ?? "EUR").toUpperCase();
-          if (currency !== String(row.currency ?? "").toUpperCase()) {
-            patch.currency = currency;
-            changes.push(`currency ${row.currency} → ${currency}`);
-          }
-
-          const needsRate = currency !== "PLN";
-          patch.fxl_exchange_rate = needsRate ? details.exchange_rate : null;
-          patch.fxl_nbp_table = needsRate ? details.nbp_table : null;
-          patch.fxl_rate_date = needsRate ? details.rate_date : null;
-          patch.vat_amount_pln =
-            needsRate && details.exchange_rate
-              ? Math.round(Number(row.vat_amount ?? 0) * Number(details.exchange_rate))
-              : Number(row.vat_amount ?? 0);
-          if (details.due_date) patch.payment_due_date = details.due_date;
-
-          const targetPath =
-            row.pdf_path ??
-            `${invoiceFileSlug(String(patch.invoice_number ?? row.invoice_number))}.pdf`;
-
-          const pdf = await fetchFakturaXLPdf(String(row.fxl_document_id));
-          const { error: uploadError } = await admin.storage
-            .from("invoices")
-            .upload(targetPath, pdf, { contentType: "application/pdf", upsert: true });
-          if (uploadError) throw new Error(uploadError.message);
-          patch.pdf_path = targetPath;
-
-          await admin.from("invoices").update(patch).eq("id", row.id);
-
-          results.push({
-            invoice_number: patch.invoice_number ?? row.invoice_number,
-            doc_type: row.doc_type,
-            status: "synced",
-            changes,
-          });
-        } catch (e) {
-          await admin
-            .from("invoices")
-            .update({ fxl_status: "pdf_pending", ksef_error_desc: (e as Error).message })
-            .eq("id", row.id);
-          results.push({
-            invoice_number: row.invoice_number,
-            doc_type: row.doc_type,
-            status: "failed",
-            issue: (e as Error).message,
-          });
-        }
+        const outcome = await syncInvoiceRow(admin, row, { allowDelete: false });
+        results.push({
+          invoice_number: outcome.invoice_number,
+          doc_type: outcome.doc_type,
+          status: outcome.status === "failed" ? "failed" : "synced",
+          changes: outcome.changes,
+          issue: outcome.issue,
+        });
       }
 
       return json({ ok: results.every((r) => r.status !== "failed"), results });
     }
+
 
     if (action === "retry_ksef") {
       if (!isAdmin) return json({ error: "Forbidden" }, 403);
