@@ -2,12 +2,7 @@ import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import Seo from "@/components/Seo";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card } from "@/components/ui/card";
 import { HelpCircle } from "lucide-react";
 
@@ -49,7 +44,7 @@ const FAQ = () => {
         jsonLd={faqJsonLd}
       />
       <Navbar />
-      
+
       <main className="flex-1">
         {/* Hero Section */}
         <section className="bg-gradient-subtle py-16 md:py-24">
@@ -59,9 +54,7 @@ const FAQ = () => {
                 <HelpCircle className="h-4 w-4" />
                 Frequently Asked Questions
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-                LN-RADS Certification FAQ
-              </h1>
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">LN-RADS Certification FAQ</h1>
               <p className="text-xl text-muted-foreground">
                 Find answers to common questions about the LN-RADS certification program
               </p>
@@ -74,9 +67,7 @@ const FAQ = () => {
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
               <Card className="p-6 md:p-8">
-                {loading && (
-                  <p className="text-muted-foreground">Loading questions…</p>
-                )}
+                {loading && <p className="text-muted-foreground">Loading questions…</p>}
                 {!loading && faqs.length === 0 && (
                   <p className="text-muted-foreground">
                     No questions published yet. Please contact us with your question.
@@ -85,12 +76,8 @@ const FAQ = () => {
                 <Accordion type="single" collapsible className="w-full">
                   {faqs.map((faq, index) => (
                     <AccordionItem key={faq.id} value={`item-${index}`}>
-                      <AccordionTrigger className="text-left">
-                        {faq.question}
-                      </AccordionTrigger>
-                      <AccordionContent className="text-muted-foreground">
-                        {faq.answer}
-                      </AccordionContent>
+                      <AccordionTrigger className="text-left">{faq.question}</AccordionTrigger>
+                      <AccordionContent className="text-muted-foreground">{faq.answer}</AccordionContent>
                     </AccordionItem>
                   ))}
                 </Accordion>
@@ -102,8 +89,8 @@ const FAQ = () => {
                 <p className="text-muted-foreground mb-6">
                   Can't find the answer you're looking for? Please reach out to our support team.
                 </p>
-                <a 
-                  href="mailto:info@lnrads.com"
+                <a
+                  href="mailto:cert@lnrads.com"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
                   Contact Support
