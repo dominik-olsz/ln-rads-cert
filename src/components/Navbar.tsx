@@ -5,6 +5,7 @@ import lnradsLogo from "@/assets/lnrads-logo.jpg";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Menu, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetContent,
@@ -21,6 +22,9 @@ import {
 const Navbar = () => {
   const { user, signOut } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
   useEffect(() => {
     const checkAdminRole = async () => {
@@ -42,11 +46,36 @@ const Navbar = () => {
     checkAdminRole();
   }, [user]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      setIsScrolled(currentScrollY > 10);
+
+      if (currentScrollY > lastScrollY && currentScrollY > 80) {
+        setIsVisible(false);
+      } else {
+        setIsVisible(true);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
+
   const navLinkClass = "text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-2";
 
   return (
-    <header className="sticky top-4 z-50">
-      <nav className="container mx-auto px-4 h-20 bg-background/80 backdrop-blur-md border border-border/60 rounded-3xl shadow-nav flex items-center justify-between">
+    <header className={cn(
+      "sticky top-0 lg:top-4 z-50 transition-transform duration-300 ease-in-out",
+      !isVisible && "-translate-y-full lg:translate-y-0"
+    )}>
+      <nav className={cn(
+        "container mx-auto px-4 h-20 flex items-center justify-between transition-colors duration-300",
+        "lg:bg-background/80 lg:backdrop-blur-md lg:border lg:border-border/60 lg:rounded-3xl lg:shadow-nav",
+        isScrolled ? "bg-background/80 backdrop-blur-md border-b border-border/60" : "bg-transparent border-transparent"
+      )}>
         <Link to="/" className="flex items-center gap-3 group cursor-pointer">
           <img src={lnradsLogo} alt="LN-RADS logo" className="h-14 w-auto p-1.5 bg-white rounded-lg border border-border/60 shadow-sm object-contain" />
           <div className="flex flex-col -space-y-1">
