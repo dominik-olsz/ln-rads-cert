@@ -183,7 +183,8 @@ const Terms = () => {
         </p>
       </LegalSection>
     </LegalPage>
+    </>
   );
 };
 
-export default Terms
+export default Terms;

@@ -192,7 +192,8 @@ const PrivacyPolicy = () => {
         </p>
       </LegalSection>
     </LegalPage>
+    </>
   );
 };
 
-export default PrivacyPolicy
+export default PrivacyPolicy;
