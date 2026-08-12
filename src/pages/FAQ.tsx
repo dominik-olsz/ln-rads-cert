@@ -28,20 +28,12 @@ const FAQ = () => {
       answer: "You need to achieve a minimum score of 80% to pass the certification exam and receive your official LN-RADS certification."
     },
     {
-      question: "How long does it take to complete the course?",
-      answer: "The course is self-paced, allowing you to learn at your own speed. Most participants complete the training and certification within 4-8 weeks, but you have flexible access to take as much time as needed."
-    },
-    {
       question: "What imaging modalities are covered?",
       answer: "The LN-RADS certification covers all major imaging modalities including Ultrasound (US), Computed Tomography (CT), Magnetic Resonance (MR), and Positron Emission Tomography (PET)."
     },
     {
       question: "Is the certification recognized internationally?",
       answer: "Yes, the LN-RADS certification is an official certification program recognized globally by medical institutions and professional organizations."
-    },
-    {
-      question: "Can I retake the exam if I don't pass?",
-      answer: "No, you have only one attempt to pass the certification exam. Please ensure you're well-prepared before taking the test, as there are no retakes available."
     },
     {
       question: "Will I receive a certificate upon completion?",
