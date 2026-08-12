@@ -109,6 +109,25 @@ const Navbar = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              {isAdmin ? (
+                <Link to="/admin/dashboard" className="hidden md:inline-flex">
+                  <Button
+                    variant="outline"
+                    className="rounded-xl border-2 hover:bg-muted transition-colors"
+                  >
+                    Admin
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/dashboard" className="hidden md:inline-flex">
+                  <Button
+                    variant="outline"
+                    className="rounded-xl border-2 hover:bg-muted transition-colors"
+                  >
+                    My Dashboard
+                  </Button>
+                </Link>
+              )}
               <Button
                 variant="outline"
                 onClick={signOut}
