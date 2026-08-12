@@ -4,7 +4,7 @@ import {
   buyerEmailsEnabled,
   deliverInvoiceDocument,
   invoiceFileSlug,
-  sendInvoiceEmail,
+  
 } from "../_shared/invoice.ts";
 import {
   FXL_ENDPOINTS,
@@ -425,8 +425,17 @@ serve(async (req) => {
 
       const results: SyncOutcome[] = [];
       for (const row of rows) {
-        results.push(await syncInvoiceRow(admin, row));
+        const outcome = await syncInvoiceRow(admin, row);
+        results.push(outcome);
+        // Documents skipped while the buyer-email gate was closed are still
+        // owed a send; the per-channel guards keep settled rows untouched.
+        if (outcome.status !== "deleted" && outcome.status !== "failed") {
+          await deliverInvoiceDocument(admin, row).catch((e: unknown) =>
+            console.error("Delivery during sync failed:", e),
+          );
+        }
       }
+
 
       // Corrections issued by hand in the FakturaXL panel are imported here; any
       // other document that exists only there is reported, never imported —
@@ -583,6 +592,12 @@ serve(async (req) => {
           changes: outcome.changes,
           issue: outcome.issue,
         });
+        if (outcome.status !== "failed") {
+          await deliverInvoiceDocument(admin, row).catch((e: unknown) =>
+            console.error("Delivery during sync failed:", e),
+          );
+        }
+
       }
 
       // Corrections issued by hand in FakturaXL are found by walking relations
@@ -659,16 +674,12 @@ serve(async (req) => {
 
     if (action === "resend") {
       if (!invoice.buyer_email) return json({ error: "No buyer email on this invoice" }, 400);
-      // Deliberate admin override, but still behind the development gate.
-      if (!buyerEmailsEnabled()) {
-        console.log("[buyer-email gate off] admin resend NOT sent", {
-          document: invoice.invoice_number,
-          wouldSendTo: invoice.buyer_email,
-        });
-        return json({ ok: true, pdf_path: path, gated: true });
-      }
-      await sendInvoiceEmail(admin, invoice, { resend: true });
+      // Deliberate admin override: re-sends our own notification and, if the
+      // FakturaXL channel is not settled yet, asks FakturaXL to email the PDF.
+      await deliverInvoiceDocument(admin, { ...invoice, pdf_path: path }, { forceNotify: true });
+      if (!buyerEmailsEnabled()) return json({ ok: true, pdf_path: path, gated: true });
     }
+
 
     return json({ ok: true, pdf_path: path });
   } catch (error) {

@@ -340,9 +340,14 @@ export { fxlEmailAlreadySettled, notifyAlreadySettled } from "./invoice-delivery
 /**
  * Runs both buyer-facing delivery channels for one document, at most once each.
  * State is keyed on the invoice row, so repeated Sync passes, PDF retries and
- * row-level syncs never resend. Admin "Resend" stays an explicit override.
+ * row-level syncs never resend. `opts.forceNotify` is the deliberate admin
+ * "Resend" override: it re-sends our own notification even when already sent.
  */
-export async function deliverInvoiceDocument(admin: any, invoice: any): Promise<void> {
+export async function deliverInvoiceDocument(
+  admin: any,
+  invoice: any,
+  opts: { forceNotify?: boolean } = {},
+): Promise<void> {
   const invoiceId = invoice?.id;
   if (!invoiceId) return;
 
@@ -368,7 +373,7 @@ export async function deliverInvoiceDocument(admin: any, invoice: any): Promise<
   };
 
   // ---- Channel 1: our own notification (Resend, via the email queue) ----
-  if (!notifyAlreadySettled(row.notify_status)) {
+  if (opts.forceNotify || !notifyAlreadySettled(row.notify_status)) {
     if (!row.buyer_email) {
       await update({ notify_status: "no_email" });
     } else if (!buyerEmailsEnabled()) {
@@ -379,7 +384,7 @@ export async function deliverInvoiceDocument(admin: any, invoice: any): Promise<
       });
       await update({ notify_status: "skipped_gate" });
     } else {
-      const ok = await sendInvoiceEmail(admin, row);
+      const ok = await sendInvoiceEmail(admin, row, { resend: Boolean(opts.forceNotify) });
       await update(
         ok
           ? { notify_status: "queued", notify_sent_at: new Date().toISOString() }
@@ -387,6 +392,8 @@ export async function deliverInvoiceDocument(admin: any, invoice: any): Promise<
       );
     }
   }
+
+
 
   // ---- Channel 2: FakturaXL's own email, with the PDF attached ----
   if (!fxlEmailAlreadySettled(row.fxl_email_status) && row.fxl_document_id) {
