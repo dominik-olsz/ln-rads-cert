@@ -584,6 +584,17 @@ const CourseBuilder = () => {
       return false;
     }
 
+    if (!contentLoaded) {
+      toast({
+        title: "Course content not loaded",
+        description: "Saving now would overwrite existing lessons and questions. Reload the page and try again.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+
+
     if (randomCountInvalid) {
       toast({
         title: "Not enough questions",
