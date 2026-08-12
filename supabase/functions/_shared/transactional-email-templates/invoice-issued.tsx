@@ -73,16 +73,19 @@ const InvoiceIssuedEmail = ({
                 Corrected document: {originalInvoiceNumber}
               </>
             ) : null}
-            {description ? (
+            {!isCorrection && description ? (
               <>
                 <br />
                 Item: {description}
               </>
             ) : null}
-            {amount ? (
+            {/* A correction never states a refunded amount: at this point no
+                money has moved — the Stripe-or-manual decision comes later.
+                Only the total after correction is a fact we can stand behind. */}
+            {!isCorrection && amount ? (
               <>
                 <br />
-                {isCorrection ? 'Corrected amount' : 'Total'}: {amount}
+                Total: {amount}
               </>
             ) : null}
             {isCorrection && correctedTotal ? (
@@ -92,6 +95,7 @@ const InvoiceIssuedEmail = ({
               </>
             ) : null}
           </Text>
+
 
           <Text style={text}>
             {isCorrection
