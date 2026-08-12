@@ -39,6 +39,7 @@ import Unsubscribe from "./pages/Unsubscribe";
 
 const Layout = () => (
   <>
+    <ScrollToTop />
     <Outlet />
     <Footer />
   </>
