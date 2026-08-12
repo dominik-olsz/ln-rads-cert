@@ -574,7 +574,7 @@ const Training = () => {
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Card>
+            <Card ref={contentRef} className="scroll-mt-28 lg:scroll-mt-32">
               <CardContent className="pt-6">
                 {currentCourseItem?.locked ? (
                   <div className="text-center py-12 space-y-4">
