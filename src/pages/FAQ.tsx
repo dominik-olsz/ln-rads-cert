@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
+import { supabase } from "@/integrations/supabase/client";
 import Seo from "@/components/Seo";
 import {
   Accordion,
@@ -9,49 +11,24 @@ import {
 import { Card } from "@/components/ui/card";
 import { HelpCircle } from "lucide-react";
 
+type FaqItem = { id: string; question: string; answer: string };
+
 const FAQ = () => {
-  const faqs = [
-    {
-      question: "What is LN-RADS?",
-      answer: "LN-RADS (Lymph Nodes Reporting and Data System) is an innovative multiparametric approach for diagnosing lymph nodes. It enables detection of macrometastases as small as 2-3mm and improves diagnostic accuracy by over 20% compared to traditional methods."
-    },
-    {
-      question: "Who should take the LN-RADS certification course?",
-      answer: "This certification is designed for radiologists, oncologists, and medical professionals involved in lymph node imaging and diagnosis across all modalities including US, CT, MR, and PET."
-    },
-    {
-      question: "How many questions are in the certification exam?",
-      answer: "The certification exam consists of 100 questions covering all aspects of LN-RADS methodology and application across different imaging modalities."
-    },
-    {
-      question: "What is the passing score?",
-      answer: "You need to achieve a minimum score of 80% to pass the certification exam and receive your official LN-RADS certification."
-    },
-    {
-      question: "What imaging modalities are covered?",
-      answer: "The LN-RADS certification covers all major imaging modalities including Ultrasound (US), Computed Tomography (CT), Magnetic Resonance (MR), and Positron Emission Tomography (PET)."
-    },
-    {
-      question: "Is the certification recognized internationally?",
-      answer: "Yes, the LN-RADS certification is an official certification program recognized globally by medical institutions and professional organizations."
-    },
-    {
-      question: "Will I receive a certificate upon completion?",
-      answer: "Upon successfully passing the exam with 80% or higher, you will receive an official LN-RADS certification that validates your expertise in lymph node assessment."
-    },
-    {
-      question: "What happens after I complete the certification?",
-      answer: "After certification, you'll have access to your certificate in your dashboard, which you can download and share. You'll also be part of our certified professionals network."
-    },
-    {
-      question: "Do I need prior experience in radiology?",
-      answer: "While basic knowledge of medical imaging is helpful, the course is designed to be comprehensive and includes foundational concepts. However, it's primarily intended for healthcare professionals with some background in diagnostic imaging."
-    },
-    {
-      question: "Is there a time limit for completing the exam?",
-      answer: "The certification exam has a reasonable time limit to ensure focused completion. Specific time details will be provided when you begin the exam."
-    }
-  ];
+  const [faqs, setFaqs] = useState<FaqItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("faq_items")
+        .select("id, question, answer")
+        .eq("is_published", true)
+        .order("order_index", { ascending: true });
+      setFaqs(data ?? []);
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   const faqJsonLd = {
     "@context": "https://schema.org",
@@ -97,9 +74,17 @@ const FAQ = () => {
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
               <Card className="p-6 md:p-8">
+                {loading && (
+                  <p className="text-muted-foreground">Loading questions…</p>
+                )}
+                {!loading && faqs.length === 0 && (
+                  <p className="text-muted-foreground">
+                    No questions published yet. Please contact us with your question.
+                  </p>
+                )}
                 <Accordion type="single" collapsible className="w-full">
                   {faqs.map((faq, index) => (
-                    <AccordionItem key={index} value={`item-${index}`}>
+                    <AccordionItem key={faq.id} value={`item-${index}`}>
                       <AccordionTrigger className="text-left">
                         {faq.question}
                       </AccordionTrigger>
