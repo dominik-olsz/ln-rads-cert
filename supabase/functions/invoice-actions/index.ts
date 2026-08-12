@@ -189,14 +189,9 @@ serve(async (req) => {
 
     }
 
-    const action =
-      rawAction === "resend"
-        ? "resend"
-        : rawAction === "retry_ksef"
-        ? "retry_ksef"
-        : rawAction === "signed_url"
-        ? "signed_url"
-        : "regenerate";
+    const action = ["resend", "retry_ksef", "signed_url", "sync_fxl"].includes(rawAction)
+      ? rawAction
+      : "regenerate";
     if (!invoiceId) return json({ error: "invoiceId is required" }, 400);
 
 
