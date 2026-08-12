@@ -2,7 +2,7 @@
 // closed must still send once the gate opens. Everything genuinely finished
 // (sent, bounced, cap reached, permanent failures) must never send twice.
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { fxlEmailAlreadySettled, notifyAlreadySettled } from "./invoice.ts";
+import { fxlEmailAlreadySettled, notifyAlreadySettled } from "./invoice-delivery.ts";
 
 Deno.test("skipped_gate does not block a later send", () => {
   assertEquals(notifyAlreadySettled("skipped_gate"), false);
