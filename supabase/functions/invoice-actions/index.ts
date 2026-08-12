@@ -23,6 +23,120 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+type SyncOutcome = {
+  invoice_id: string;
+  invoice_number: string;
+  doc_type: string;
+  status: "updated" | "unchanged" | "deleted" | "failed";
+  changes?: string[];
+  issue?: string;
+};
+
+/**
+ * Brings a single invoice row in line with FakturaXL, which is the single source
+ * of truth. Only read endpoints are used against FakturaXL — every write happens
+ * on our side: field values, the stored PDF, or deleting the row entirely when
+ * the document does not exist there (or was never created).
+ */
+async function syncInvoiceRow(admin: any, row: any): Promise<SyncOutcome> {
+  const base = {
+    invoice_id: row.id,
+    invoice_number: row.invoice_number,
+    doc_type: row.doc_type,
+  };
+
+  const removeLocally = async (reason: string): Promise<SyncOutcome> => {
+    if (row.pdf_path) {
+      await admin.storage.from("invoices").remove([row.pdf_path]).catch(() => {});
+    }
+    const { error: deleteError } = await admin.from("invoices").delete().eq("id", row.id);
+    if (deleteError) {
+      return { ...base, status: "failed", issue: `could not delete: ${deleteError.message}` };
+    }
+    return { ...base, status: "deleted", issue: reason };
+  };
+
+  if (!row.fxl_document_id) {
+    return await removeLocally("never created in FakturaXL");
+  }
+
+  try {
+    const details = await readFakturaXLDocument(String(row.fxl_document_id));
+    if (!details) return await removeLocally("no longer exists in FakturaXL");
+
+    const changes: string[] = [];
+    const patch: Record<string, unknown> = { fxl_status: "synced" };
+
+    if (details.invoice_number && details.invoice_number !== row.invoice_number) {
+      patch.invoice_number = details.invoice_number;
+      changes.push(`number ${row.invoice_number} → ${details.invoice_number}`);
+    }
+
+    const sign = Number(row.gross_amount ?? 0) < 0 ? -1 : 1;
+    if (details.gross != null) {
+      const remoteGross = Math.round(Math.abs(details.gross) * 100) * sign;
+      if (remoteGross !== Number(row.gross_amount ?? 0)) {
+        patch.gross_amount = remoteGross;
+        changes.push(
+          `gross ${(Number(row.gross_amount ?? 0) / 100).toFixed(2)} → ${(remoteGross / 100).toFixed(2)}`,
+        );
+      }
+    }
+
+    const currency = (details.currency ?? row.currency ?? "EUR").toUpperCase();
+    if (currency !== String(row.currency ?? "").toUpperCase()) {
+      patch.currency = currency;
+      changes.push(`currency ${row.currency} → ${currency}`);
+    }
+
+    const needsRate = currency !== "PLN";
+    patch.fxl_exchange_rate = needsRate ? details.exchange_rate : null;
+    patch.fxl_nbp_table = needsRate ? details.nbp_table : null;
+    patch.fxl_rate_date = needsRate ? details.rate_date : null;
+    patch.vat_amount_pln =
+      needsRate && details.exchange_rate
+        ? Math.round(Number(row.vat_amount ?? 0) * Number(details.exchange_rate))
+        : Number(row.vat_amount ?? 0);
+    if (details.due_date && details.due_date !== row.payment_due_date) {
+      patch.payment_due_date = details.due_date;
+      changes.push(`due date ${row.payment_due_date ?? "—"} → ${details.due_date}`);
+    }
+    if (
+      needsRate &&
+      details.exchange_rate != null &&
+      Number(details.exchange_rate) !== Number(row.fxl_exchange_rate ?? 0)
+    ) {
+      changes.push(`rate ${row.fxl_exchange_rate ?? "—"} → ${details.exchange_rate}`);
+    }
+
+    const targetPath =
+      row.pdf_path ?? `${invoiceFileSlug(String(patch.invoice_number ?? row.invoice_number))}.pdf`;
+
+    const pdf = await fetchFakturaXLPdf(String(row.fxl_document_id));
+    const { error: uploadError } = await admin.storage
+      .from("invoices")
+      .upload(targetPath, pdf, { contentType: "application/pdf", upsert: true });
+    if (uploadError) throw new Error(uploadError.message);
+    patch.pdf_path = targetPath;
+
+    await admin.from("invoices").update(patch).eq("id", row.id);
+
+    return {
+      ...base,
+      invoice_number: String(patch.invoice_number ?? row.invoice_number),
+      status: changes.length ? "updated" : "unchanged",
+      changes,
+    };
+  } catch (e) {
+    await admin
+      .from("invoices")
+      .update({ fxl_status: "pdf_pending", ksef_error_desc: (e as Error).message })
+      .eq("id", row.id);
+    return { ...base, status: "failed", issue: (e as Error).message };
+  }
+}
+
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
