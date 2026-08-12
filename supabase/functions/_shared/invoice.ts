@@ -403,7 +403,7 @@ export async function deliverInvoiceDocument(admin: any, invoice: any): Promise<
   }
 
   // ---- Channel 2: FakturaXL's own email, with the PDF attached ----
-  if (!row.fxl_email_status && row.fxl_document_id) {
+  if (!fxlEmailAlreadySettled(row.fxl_email_status) && row.fxl_document_id) {
     if (!buyerEmailsEnabled()) {
       console.log("[buyer-email gate off] FakturaXL email NOT sent", {
         channel: "fakturaxl-email",
