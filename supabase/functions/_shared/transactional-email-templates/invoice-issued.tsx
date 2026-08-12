@@ -20,6 +20,8 @@ interface InvoiceIssuedProps {
   description?: string
   downloadUrl?: string
   buyerName?: string
+  originalInvoiceNumber?: string
+  correctedTotal?: string
 }
 
 const SITE = 'LN-RADS Certification'
@@ -37,6 +39,8 @@ const InvoiceIssuedEmail = ({
   description = '',
   downloadUrl = CANONICAL_PAYMENTS_URL,
   buyerName = '',
+  originalInvoiceNumber = '',
+  correctedTotal = '',
 }: InvoiceIssuedProps) => {
   const isCorrection = docType === 'FK'
   const title = isCorrection ? 'Your correction invoice' : 'Your VAT invoice'
@@ -55,12 +59,20 @@ const InvoiceIssuedEmail = ({
 
           <Text style={text}>
             {isCorrection
-              ? 'A correction invoice has been issued for your purchase.'
+              ? originalInvoiceNumber
+                ? `A correction invoice has been issued: ${invoiceNumber} correcting ${originalInvoiceNumber}.`
+                : `A correction invoice has been issued: ${invoiceNumber}.`
               : 'Thank you for your purchase. Your VAT invoice is ready.'}
           </Text>
 
           <Text style={text}>
-            Invoice number: {invoiceNumber}
+            {isCorrection ? 'Correction number' : 'Invoice number'}: {invoiceNumber}
+            {isCorrection && originalInvoiceNumber ? (
+              <>
+                <br />
+                Corrected document: {originalInvoiceNumber}
+              </>
+            ) : null}
             {description ? (
               <>
                 <br />
@@ -70,13 +82,21 @@ const InvoiceIssuedEmail = ({
             {amount ? (
               <>
                 <br />
-                Total: {amount}
+                {isCorrection ? 'Corrected amount' : 'Total'}: {amount}
+              </>
+            ) : null}
+            {isCorrection && correctedTotal ? (
+              <>
+                <br />
+                Total after correction: {correctedTotal}
               </>
             ) : null}
           </Text>
 
           <Text style={text}>
-            You can download the invoice document here:
+            {isCorrection
+              ? 'Both the invoice and the correction are available for download here:'
+              : 'You can download the invoice document here:'}
             <br />
             <Link href={href} style={link}>
               {href}
@@ -84,8 +104,10 @@ const InvoiceIssuedEmail = ({
           </Text>
 
           <Text style={text}>
-            That page lists this invoice and all your earlier ones in {SITE}. You
-            may be asked to sign in first.
+            That page lists {isCorrection ? 'this correction' : 'this invoice'} and
+            all your earlier documents in {SITE}. You may be asked to sign in
+            first. The PDF is also sent to you separately by our invoicing
+            system.
           </Text>
 
           <Hr style={hr} />
