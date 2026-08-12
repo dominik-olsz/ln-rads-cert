@@ -1,7 +1,10 @@
 import LegalPage, { LegalSection } from "@/components/LegalPage";
+import Seo from "@/components/Seo";
 
 const Terms = () => {
   return (
+    <>
+    <Seo title="Terms and Conditions — LN-RADS Certification" description="The terms governing purchase and use of LN-RADS certification courses, exams, payments, invoicing and certificates." path="/terms" />
     <LegalPage
       title="Terms and Conditions"
       subtitle="Rules for using the LN-RADS Certification platform and for purchasing courses and certification attempts (Regulamin)."
@@ -183,4 +186,4 @@ const Terms = () => {
   );
 };
 
-export default Terms;
+export default Terms
