@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
+import Seo from "@/components/Seo";
 import CourseCard from "@/components/CourseCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -71,8 +72,27 @@ const Courses = () => {
     );
   }
 
+  const coursesJsonLd = filteredCourses.map((course) => ({
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: course.title,
+    description: course.description,
+    url: `https://cert.lnrads.com/course/${course.id}`,
+    provider: {
+      "@type": "Organization",
+      name: "LN-RADS Certification",
+      url: "https://cert.lnrads.com/",
+    },
+  }));
+
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="LN-RADS Courses — Certification Training Catalogue"
+        description="Browse LN-RADS certification courses covering lymph node assessment across ultrasound, CT, MR and PET, with video lessons and radiology use cases."
+        path="/courses"
+        jsonLd={coursesJsonLd.length ? coursesJsonLd : undefined}
+      />
       <Navbar />
       
       <section className="-mt-24 pt-36 pb-12 border-b bg-muted/30">
