@@ -39,6 +39,8 @@ If FakturaXL rejects or times out **after** Stripe already refunded, the money s
   <numer_faktury><![CDATA[FK EDU/1/08/2026]]></numer_faktury>
   <waluta>EUR</waluta>
   <rodzaj_przeliczania_waluty>1</rodzaj_przeliczania_waluty>
+  <kurs>4.2731</kurs>
+
   <data_wystawienia>2026-08-12</data_wystawienia>
   <data_sprzedazy>2026-08-12</data_sprzedazy>
   <termin_platnosci_data>2026-08-12</termin_platnosci_data>
