@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,8 @@ const Training = () => {
   const [passedAttemptId, setPassedAttemptId] = useState<string | null>(null);
   const [hasFailedAttempt, setHasFailedAttempt] = useState(false);
   const [downloadingCertificate, setDownloadingCertificate] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
 
   const handleDownloadCertificate = async () => {
     if (!passedAttemptId) return;
@@ -572,7 +574,7 @@ const Training = () => {
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Card>
+            <Card ref={contentRef} className="scroll-mt-28 lg:scroll-mt-32">
               <CardContent className="pt-6">
                 {currentCourseItem?.locked ? (
                   <div className="text-center py-12 space-y-4">
@@ -844,7 +846,7 @@ const Training = () => {
               </Card>
             )}
 
-            <Card className="sticky top-20">
+            <Card className="sticky top-28 lg:top-32">
               <CardContent className="pt-6">
                 <h3 className="font-semibold mb-4">Course Content</h3>
                 <div className="space-y-2">
@@ -854,6 +856,7 @@ const Training = () => {
                       onClick={async () => {
                         setCurrentItem(index);
                         await updateCourseProgress(index);
+                        contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }}
                       className={`w-full text-left p-3 rounded-lg border transition-colors ${
                         index === currentItem
