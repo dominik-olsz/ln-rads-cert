@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Award, Download, FileText, Percent, Plus, X } from 'lucide-react';
+import { Award, Download, FileText, Percent, Plus, RotateCcw, X } from 'lucide-react';
 
 interface Props {
   userId: string | null;
@@ -110,6 +110,59 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
     onDiscountSaved?.(userId, percent);
     toast({ title: 'Saved', description: `Discount set to ${percent}%` });
   };
+
+  const attemptCourses = Array.from(
+    attempts.reduce((map, a) => {
+      const key = a.course_id ?? 'none';
+      const existing = map.get(key);
+      if (existing) existing.count += 1;
+      else map.set(key, { courseId: a.course_id ?? null, title: a.courses?.title || 'Certification', count: 1 });
+      return map;
+    }, new Map<string, { courseId: string | null; title: string; count: number }>()).values()
+  );
+
+  const resetAttempts = async (courseId: string | null, title: string) => {
+    if (!userId) return;
+    if (
+      !confirm(
+        `Reset all certification attempts for "${title}"? This deletes the test attempts, saved progress and any issued certificates, letting the student take the test again.`
+      )
+    )
+      return;
+
+    setBusy(true);
+    try {
+      const scoped = <T extends { eq: (c: string, v: any) => T }>(q: T) =>
+        courseId ? q.eq('course_id', courseId) : q;
+
+      const prog = await scoped(
+        supabase.from('certification_test_progress').delete().eq('user_id', userId) as any
+      );
+      if (prog.error) throw prog.error;
+
+      const certs = await scoped(
+        supabase.from('certificates').delete().eq('user_id', userId) as any
+      );
+      if (certs.error) throw certs.error;
+
+      const att = await scoped(
+        supabase
+          .from('test_attempts')
+          .delete()
+          .eq('user_id', userId)
+          .eq('is_certification_test', true) as any
+      );
+      if (att.error) throw att.error;
+
+      toast({ title: 'Attempts reset', description: `Certification attempts cleared for "${title}".` });
+      await load();
+    } catch (e) {
+      toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
 
   const setAccess = async (courseId: string, action: 'grant' | 'revoke', wasPaid = false) => {
     if (!userId) return;
@@ -293,6 +346,21 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
               {attempts.length === 0 && (
                 <p className="text-sm text-muted-foreground">No certification attempts yet.</p>
               )}
+              {attemptCourses.map((group) => (
+                <div key={group.courseId ?? 'none'} className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-medium">
+                    {group.title} · {group.count} attempt{group.count === 1 ? '' : 's'}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => resetAttempts(group.courseId, group.title)}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-1" /> Reset attempts
+                  </Button>
+                </div>
+              ))}
               {attempts.map((attempt) => {
                 const cert = certificateForAttempt(attempt.id);
                 return (
@@ -323,6 +391,7 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
                 );
               })}
             </TabsContent>
+
 
             <TabsContent value="payments" className="space-y-3 pt-4">
               {purchases.length === 0 && retakes.length === 0 && (
