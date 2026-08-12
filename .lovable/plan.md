@@ -111,6 +111,8 @@ Three open questions get answered with real test documents in FakturaXL (no KSeF
 
 **`_shared/fakturaxl.ts`**
 - The correction branch reads the before/after grosses from the FK row instead of deriving them from the original, so repeat corrections are right; the full-credit case (powinno_byc 0 / positions inferred) is kept.
+- For non-PLN corrections it sends `<kurs>` taken from the original FV row's `fxl_exchange_rate`, and the FK row inherits `fxl_exchange_rate`, `fxl_nbp_table` and `fxl_rate_date` from the original so the PLN VAT figure shares the original's basis. A code comment records that historical-rate use on corrections should be confirmed with the accountant.
+
 
 **`stripe-webhook` (`charge.refunded`)**
 - Look up `invoices.stripe_refund_id` for every refund on the charge and skip the ones already corrected, so an admin-initiated refund never produces a second FK. Refunds made directly in Stripe still generate one, keyed on their refund id.
