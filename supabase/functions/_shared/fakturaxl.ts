@@ -41,6 +41,9 @@ export const FXL_ERRORS: Record<string, string> = {
   "16": "No NBP exchange rate for this date",
   "19": "Free-plan invoice limit reached",
   "21": "Accounting month is closed",
+  "22": "The document has no buyer email address",
+  "23": "Email sent to the buyer",
+
   "41": "Correction currency must match the original",
   "45": "Cannot delete — already sent to KSeF",
   "49": "Correctly sent to KSeF",
