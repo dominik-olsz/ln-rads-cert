@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { fetchLessonContent } from '@/lib/lessonContent';
 
 interface Lesson {
   id?: string;
@@ -35,16 +36,20 @@ const LessonDialog = ({ open, onOpenChange, lesson, courseId, onSuccess }: Lesso
   const [contentUrl, setContentUrl] = useState('');
   const [duration, setDuration] = useState('');
   const [loading, setLoading] = useState(false);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [contentError, setContentError] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!open) return;
+
     if (lesson) {
       setTitle(lesson.title);
       setOrderIndex(lesson.order_index);
       setContentType(lesson.content_type);
-      setContentText(lesson.content_text || '');
-      setContentUrl(lesson.content_url || '');
       setDuration(lesson.duration || '');
+      setContentText('');
+      setContentUrl('');
     } else {
       setTitle('');
       setOrderIndex(1);
@@ -52,7 +57,40 @@ const LessonDialog = ({ open, onOpenChange, lesson, courseId, onSuccess }: Lesso
       setContentText('');
       setContentUrl('');
       setDuration('');
+      setContentError(false);
+      setContentLoading(false);
+      return;
     }
+
+    if (!lesson.id) {
+      setContentText(lesson.content_text || '');
+      setContentUrl(lesson.content_url || '');
+      setContentError(false);
+      setContentLoading(false);
+      return;
+    }
+
+    // Body content is not readable from the table — load it explicitly so we can
+    // never overwrite real content with blanks.
+    let cancelled = false;
+    setContentLoading(true);
+    setContentError(false);
+    fetchLessonContent(lesson.id)
+      .then((content) => {
+        if (cancelled) return;
+        setContentText(content.content_text || '');
+        setContentUrl(content.content_url || '');
+      })
+      .catch(() => {
+        if (!cancelled) setContentError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setContentLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [lesson, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -188,11 +226,21 @@ const LessonDialog = ({ open, onOpenChange, lesson, courseId, onSuccess }: Lesso
             </div>
           )}
 
+          {contentError && (
+            <p className="text-sm text-destructive">
+              Existing lesson content could not be loaded, so saving is disabled — it would erase
+              the current content. Close this dialog and try again.
+            </p>
+          )}
+          {contentLoading && (
+            <p className="text-sm text-muted-foreground">Loading lesson content…</p>
+          )}
+
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || contentLoading || contentError}>
               {loading ? 'Saving...' : lesson ? 'Update' : 'Create'}
             </Button>
           </div>

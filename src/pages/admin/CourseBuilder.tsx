@@ -123,6 +123,9 @@ const CourseBuilder = () => {
   const [baselineArmed, setBaselineArmed] = useState(false);
   // Guards a destructive save: existing course content must have loaded first
   const [contentLoaded, setContentLoaded] = useState(!courseId || courseId === "new");
+  // Baseline of the content actually retrieved per existing lesson id, used to
+  // refuse a save that would blank content the admin never cleared.
+  const [loadedContent, setLoadedContent] = useState<Record<string, { content_text: string; content_url: string }>>({});
 
 
   const currentSnapshot = useMemo(() => JSON.stringify({
@@ -251,7 +254,28 @@ const CourseBuilder = () => {
         .eq('test_type', 'certification')
         .order('order_index');
 
-      const lessonContents = await attachLessonContent(lessonsData || []);
+      // Throws if any lesson's content could not be retrieved — never treat a
+      // failed load as "no content", the save path rewrites lessons from state.
+      let lessonContents;
+      try {
+        lessonContents = await attachLessonContent(lessonsData || []);
+      } catch (contentError: any) {
+        setContentLoaded(false);
+        throw new Error(
+          "Could not load existing lesson content. Saving is disabled until this succeeds — reload the page and try again."
+        );
+      }
+
+      const baseline: Record<string, { content_text: string; content_url: string }> = {};
+      for (const lesson of lessonContents) {
+        if (lesson.id) {
+          baseline[lesson.id] = {
+            content_text: lesson.content_text ?? "",
+            content_url: lesson.content_url ?? "",
+          };
+        }
+      }
+      setLoadedContent(baseline);
 
       const lessonsWithoutQuestions = lessonContents.map(lesson => ({
         id: lesson.id,
@@ -263,6 +287,7 @@ const CourseBuilder = () => {
         duration: lesson.duration,
         is_free: lesson.is_free || false
       }));
+
 
 
       // Group questions by order_index to recreate question groups
@@ -592,6 +617,28 @@ const CourseBuilder = () => {
         variant: "destructive"
       });
       return false;
+    }
+
+    // Second guard: refuse to blank content that was loaded non-empty unless the
+    // admin explicitly cleared it in the editor and confirms it.
+    const emptied = lessons.filter((lesson) => {
+      if (!lesson.id) return false;
+      const base = loadedContent[lesson.id];
+      if (!base) return false;
+      const nowText = (lesson.content_text || "").trim();
+      const nowUrl = (lesson.content_url || "").trim();
+      const hadText = base.content_text.trim().length > 0;
+      const hadUrl = base.content_url.trim().length > 0;
+      return (hadText && nowText === "") || (hadUrl && nowUrl === "");
+    });
+
+    if (emptied.length > 0) {
+      const names = emptied.map((l) => `• ${l.title || "(untitled lesson)"}`).join("\n");
+      const confirmed = window.confirm(
+        `These lessons had content that will be saved as empty:\n\n${names}\n\n` +
+          `Only continue if you cleared them on purpose. Cancel to keep the existing content.`
+      );
+      if (!confirmed) return false;
     }
 
 

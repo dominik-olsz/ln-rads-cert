@@ -11,7 +11,6 @@ import LessonDialog from '@/components/admin/LessonDialog';
 import CourseMaterialDialog from '@/components/admin/CourseMaterialDialog';
 import TestQuestionDialog from '@/components/admin/TestQuestionDialog';
 import { resolveMaterialUrls } from '@/lib/materialUrl';
-import { attachLessonContent } from '@/lib/lessonContent';
 
 
 
@@ -87,7 +86,9 @@ const CourseContent = () => {
       .select('id, course_id, title, content_type, order_index, duration, is_free')
       .eq('course_id', courseId)
       .order('order_index');
-    if (data) setLessons(await attachLessonContent(data) as any);
+    // Body content is intentionally not fetched here — the lesson dialog loads it
+    // per lesson via the secured edge function when it opens.
+    if (data) setLessons(data as any);
   };
 
 

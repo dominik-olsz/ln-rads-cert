@@ -932,6 +932,45 @@ export type Database = {
           },
         ]
       }
+      lessons_backup_20260812: {
+        Row: {
+          content_text: string | null
+          content_type: string | null
+          content_url: string | null
+          course_id: string | null
+          created_at: string | null
+          duration: string | null
+          id: string | null
+          is_free: boolean | null
+          order_index: number | null
+          title: string | null
+        }
+        Insert: {
+          content_text?: string | null
+          content_type?: string | null
+          content_url?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          duration?: string | null
+          id?: string | null
+          is_free?: boolean | null
+          order_index?: number | null
+          title?: string | null
+        }
+        Update: {
+          content_text?: string | null
+          content_type?: string | null
+          content_url?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          duration?: string | null
+          id?: string | null
+          is_free?: boolean | null
+          order_index?: number | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address_line1: string | null
