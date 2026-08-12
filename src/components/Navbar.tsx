@@ -55,7 +55,7 @@ const Navbar = () => {
           </div>
         </Link>
         
-        <div className="hidden md:flex items-center gap-10">
+        <div className="hidden lg:flex items-center gap-10">
           <a href="https://lnrads.com/" target="_blank" rel="noopener noreferrer" className={navLinkClass}>
             Home
           </a>
@@ -110,7 +110,7 @@ const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
               {isAdmin ? (
-                <Link to="/admin/dashboard" className="hidden md:inline-flex">
+                <Link to="/admin/dashboard" className="hidden lg:inline-flex">
                   <Button
                     variant="outline"
                     className="rounded-xl border-2 hover:bg-muted transition-colors"
@@ -119,7 +119,7 @@ const Navbar = () => {
                   </Button>
                 </Link>
               ) : (
-                <Link to="/dashboard" className="hidden md:inline-flex">
+                <Link to="/dashboard" className="hidden lg:inline-flex">
                   <Button
                     variant="outline"
                     className="rounded-xl border-2 hover:bg-muted transition-colors"
@@ -131,13 +131,13 @@ const Navbar = () => {
               <Button
                 variant="outline"
                 onClick={signOut}
-                className="hidden md:inline-flex rounded-xl border-2 hover:bg-muted transition-colors"
+                className="hidden lg:inline-flex rounded-xl border-2 hover:bg-muted transition-colors"
               >
                 Sign Out
               </Button>
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Open navigation menu" className="md:hidden rounded-xl">
+                  <Button variant="ghost" size="icon" aria-label="Open navigation menu" className="lg:hidden rounded-xl">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
@@ -189,7 +189,7 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <Link to="/auth" className="hidden md:inline-flex text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors px-2">
+              <Link to="/auth" className="hidden lg:inline-flex text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors px-2">
                 Sign In
               </Link>
               <Link to="/auth?tab=signup">
@@ -199,7 +199,7 @@ const Navbar = () => {
               </Link>
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Open navigation menu" className="md:hidden rounded-xl">
+                  <Button variant="ghost" size="icon" aria-label="Open navigation menu" className="lg:hidden rounded-xl">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
