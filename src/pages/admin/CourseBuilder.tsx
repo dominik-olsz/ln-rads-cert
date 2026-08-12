@@ -619,6 +619,28 @@ const CourseBuilder = () => {
       return false;
     }
 
+    // Second guard: refuse to blank content that was loaded non-empty unless the
+    // admin explicitly cleared it in the editor and confirms it.
+    const emptied = lessons.filter((lesson) => {
+      if (!lesson.id) return false;
+      const base = loadedContent[lesson.id];
+      if (!base) return false;
+      const nowText = (lesson.content_text || "").trim();
+      const nowUrl = (lesson.content_url || "").trim();
+      const hadText = base.content_text.trim().length > 0;
+      const hadUrl = base.content_url.trim().length > 0;
+      return (hadText && nowText === "") || (hadUrl && nowUrl === "");
+    });
+
+    if (emptied.length > 0) {
+      const names = emptied.map((l) => `• ${l.title || "(untitled lesson)"}`).join("\n");
+      const confirmed = window.confirm(
+        `These lessons had content that will be saved as empty:\n\n${names}\n\n` +
+          `Only continue if you cleared them on purpose. Cancel to keep the existing content.`
+      );
+      if (!confirmed) return false;
+    }
+
 
 
     if (randomCountInvalid) {
