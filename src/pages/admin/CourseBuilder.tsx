@@ -120,6 +120,9 @@ const CourseBuilder = () => {
   // Unsaved changes tracking
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [baselineArmed, setBaselineArmed] = useState(false);
+  // Guards a destructive save: existing course content must have loaded first
+  const [contentLoaded, setContentLoaded] = useState(!courseId || courseId === "new");
+
 
   const currentSnapshot = useMemo(() => JSON.stringify({
     title, description, price, discountPrice, discountValidUntil, heroImage, courseIncludes, whatYouLearn,
