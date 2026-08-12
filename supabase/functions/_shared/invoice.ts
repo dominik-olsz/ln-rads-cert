@@ -340,7 +340,7 @@ export function buyerEmailsEnabled(): boolean {
  * skipped forever the moment BUYER_EMAILS_ENABLED is turned on.
  */
 const NOTIFY_DONE = new Set(["queued", "sent", "bounced", "complained", "no_email"]);
-const FXL_EMAIL_DONE = new Set(["sent", "no_buyer_email", "capped"]);
+const FXL_EMAIL_DONE = new Set(["sent", "no_buyer_email", "cap_reached"]);
 
 export function notifyAlreadySettled(status: unknown): boolean {
   return NOTIFY_DONE.has(String(status ?? ""));
