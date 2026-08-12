@@ -22,7 +22,6 @@ import {
 const Navbar = () => {
   const { user, signOut } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -49,7 +48,6 @@ const Navbar = () => {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      setIsScrolled(currentScrollY > 10);
 
       if (currentScrollY > lastScrollY && currentScrollY > 80) {
         setIsVisible(false);
@@ -73,8 +71,8 @@ const Navbar = () => {
     )}>
       <nav className={cn(
         "container mx-auto px-4 h-20 flex items-center justify-between transition-colors duration-300",
-        "lg:bg-background/80 lg:backdrop-blur-md lg:border lg:border-border/60 lg:rounded-3xl lg:shadow-nav",
-        isScrolled ? "bg-background/80 backdrop-blur-md border-b border-border/60" : "bg-transparent border-transparent"
+        "bg-background border-b border-border/60",
+        "lg:bg-background/80 lg:backdrop-blur-md lg:border lg:border-border/60 lg:rounded-3xl lg:shadow-nav"
       )}>
         <Link to="/" className="flex items-center gap-3 group cursor-pointer">
           <img src={lnradsLogo} alt="LN-RADS logo" className="h-14 w-auto p-1.5 bg-white rounded-lg border border-border/60 shadow-sm object-contain" />
