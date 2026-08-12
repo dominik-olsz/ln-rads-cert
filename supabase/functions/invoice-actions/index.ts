@@ -533,12 +533,25 @@ serve(async (req) => {
     if (action === "sync_fxl") {
       if (!isAdmin) return json({ error: "Forbidden" }, 403);
 
+      // A correction row belongs to a family: climb to the root sale so Sync
+      // behaves identically no matter which row of the family was clicked.
+      let root: any = invoice;
+      for (let hop = 0; hop < 5 && root?.doc_type === "FK" && root.original_invoice_id; hop++) {
+        const { data: parent } = await admin
+          .from("invoices")
+          .select("*")
+          .eq("id", root.original_invoice_id)
+          .maybeSingle();
+        if (!parent) break;
+        root = parent;
+      }
+
       const { data: linked } = await admin
         .from("invoices")
         .select("*")
-        .eq("original_invoice_id", invoice.id);
+        .eq("original_invoice_id", root.id);
 
-      const rows = [invoice, ...((linked ?? []) as any[])];
+      const rows = [root, ...((linked ?? []) as any[])];
       const results: any[] = [];
 
       for (const row of rows) {
@@ -561,26 +574,41 @@ serve(async (req) => {
         });
       }
 
-      // A correction issued by hand in FakturaXL shows up on the invoice's
-      // relations, so syncing a single sale picks it up without a full pass.
+      // Corrections issued by hand in FakturaXL are found by walking relations
+      // breadth-first: a correction of a correction is only listed on the
+      // correction it corrects, never on the original sale.
       const imported: any[] = [];
-      if (invoice.doc_type === "FV" && invoice.fxl_document_id) {
-        const parentDetails = await readFakturaXLDocument(String(invoice.fxl_document_id)).catch(
-          () => null,
-        );
-        for (const relatedId of parentDetails?.related_document_ids ?? []) {
+      const visited = new Set<string>();
+      const queue: string[] = [];
+      for (const row of rows) {
+        if (row.fxl_document_id) queue.push(String(row.fxl_document_id));
+      }
+
+      const MAX_DOCS = 25;
+      while (queue.length && visited.size < MAX_DOCS) {
+        const docId = queue.shift()!;
+        if (visited.has(docId)) continue;
+        visited.add(docId);
+
+        const details = await readFakturaXLDocument(docId).catch(() => null);
+        for (const relatedId of details?.related_document_ids ?? []) {
+          const id = String(relatedId);
+          if (visited.has(id) || queue.includes(id)) continue;
           const { data: existing } = await admin
             .from("invoices")
             .select("id")
-            .eq("fxl_document_id", relatedId)
+            .eq("fxl_document_id", id)
             .maybeSingle();
-          if (existing) continue;
-          imported.push(await importCorrection(admin, { document_id: relatedId, invoice_number: null }));
+          if (!existing) {
+            imported.push(await importCorrection(admin, { document_id: id, invoice_number: null }));
+          }
+          queue.push(id);
         }
       }
 
       return json({ ok: results.every((r) => r.status !== "failed"), results, imported });
     }
+
 
 
 
