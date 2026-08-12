@@ -815,7 +815,35 @@ const Training = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
+            {hasPurchased && certificationEnabled && (
+              <Card>
+                <CardContent className="pt-6">
+                  {passedAttemptId ? (
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={handleDownloadCertificate}
+                      disabled={downloadingCertificate}
+                    >
+                      <Award className="h-5 w-5 mr-2" />
+                      {downloadingCertificate ? 'Preparing…' : 'Download Certificate'}
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      variant={hasFailedAttempt ? 'outline' : 'default'}
+                      onClick={() => navigate(`/certification-test?courseId=${courseId}`)}
+                    >
+                      <Award className="h-5 w-5 mr-2" />
+                      {hasFailedAttempt ? 'Retake Certification Test' : 'Take Certification Test'}
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="sticky top-20">
               <CardContent className="pt-6">
                 <h3 className="font-semibold mb-4">Course Content</h3>
