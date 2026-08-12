@@ -43,6 +43,7 @@ const Layout = () => (
     <ScrollToTop />
     <Outlet />
     <Footer />
+    <CookieBar />
   </>
 );
 
