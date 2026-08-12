@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import Footer from "./components/Footer";
+import ScrollToTop from "./components/ScrollToTop";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Courses from "./pages/Courses";
@@ -38,6 +39,7 @@ import Unsubscribe from "./pages/Unsubscribe";
 
 const Layout = () => (
   <>
+    <ScrollToTop />
     <Outlet />
     <Footer />
   </>
