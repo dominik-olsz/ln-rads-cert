@@ -291,7 +291,8 @@ serve(async (req) => {
     }
 
     // Pull the latest version of the document (and its corrections) back from
-    // FakturaXL and replace what we store. Never creates a new document.
+    // FakturaXL and replace what we store. Never creates a new document, and
+    // never deletes a row — that only happens in the full sync pass.
     if (action === "sync_fxl") {
       if (!isAdmin) return json({ error: "Forbidden" }, 403);
 
@@ -313,81 +314,19 @@ serve(async (req) => {
           });
           continue;
         }
-
-        try {
-          const details = await readFakturaXLDocument(String(row.fxl_document_id));
-          if (!details) throw new Error("document not found in FakturaXL");
-
-          const changes: string[] = [];
-          const patch: Record<string, unknown> = { fxl_status: "synced" };
-
-          if (details.invoice_number && details.invoice_number !== row.invoice_number) {
-            patch.invoice_number = details.invoice_number;
-            changes.push(`number ${row.invoice_number} → ${details.invoice_number}`);
-          }
-
-          const sign = Number(row.gross_amount ?? 0) < 0 ? -1 : 1;
-          if (details.gross != null) {
-            const remoteGross = Math.round(Math.abs(details.gross) * 100) * sign;
-            if (remoteGross !== Number(row.gross_amount ?? 0)) {
-              patch.gross_amount = remoteGross;
-              changes.push(
-                `gross ${(Number(row.gross_amount ?? 0) / 100).toFixed(2)} → ${(remoteGross / 100).toFixed(2)}`,
-              );
-            }
-          }
-
-          const currency = (details.currency ?? row.currency ?? "EUR").toUpperCase();
-          if (currency !== String(row.currency ?? "").toUpperCase()) {
-            patch.currency = currency;
-            changes.push(`currency ${row.currency} → ${currency}`);
-          }
-
-          const needsRate = currency !== "PLN";
-          patch.fxl_exchange_rate = needsRate ? details.exchange_rate : null;
-          patch.fxl_nbp_table = needsRate ? details.nbp_table : null;
-          patch.fxl_rate_date = needsRate ? details.rate_date : null;
-          patch.vat_amount_pln =
-            needsRate && details.exchange_rate
-              ? Math.round(Number(row.vat_amount ?? 0) * Number(details.exchange_rate))
-              : Number(row.vat_amount ?? 0);
-          if (details.due_date) patch.payment_due_date = details.due_date;
-
-          const targetPath =
-            row.pdf_path ??
-            `${invoiceFileSlug(String(patch.invoice_number ?? row.invoice_number))}.pdf`;
-
-          const pdf = await fetchFakturaXLPdf(String(row.fxl_document_id));
-          const { error: uploadError } = await admin.storage
-            .from("invoices")
-            .upload(targetPath, pdf, { contentType: "application/pdf", upsert: true });
-          if (uploadError) throw new Error(uploadError.message);
-          patch.pdf_path = targetPath;
-
-          await admin.from("invoices").update(patch).eq("id", row.id);
-
-          results.push({
-            invoice_number: patch.invoice_number ?? row.invoice_number,
-            doc_type: row.doc_type,
-            status: "synced",
-            changes,
-          });
-        } catch (e) {
-          await admin
-            .from("invoices")
-            .update({ fxl_status: "pdf_pending", ksef_error_desc: (e as Error).message })
-            .eq("id", row.id);
-          results.push({
-            invoice_number: row.invoice_number,
-            doc_type: row.doc_type,
-            status: "failed",
-            issue: (e as Error).message,
-          });
-        }
+        const outcome = await syncInvoiceRow(admin, row, { allowDelete: false });
+        results.push({
+          invoice_number: outcome.invoice_number,
+          doc_type: outcome.doc_type,
+          status: outcome.status === "failed" ? "failed" : "synced",
+          changes: outcome.changes,
+          issue: outcome.issue,
+        });
       }
 
       return json({ ok: results.every((r) => r.status !== "failed"), results });
     }
+
 
     if (action === "retry_ksef") {
       if (!isAdmin) return json({ error: "Forbidden" }, 403);
