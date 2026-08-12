@@ -591,6 +591,36 @@ export type Database = {
         }
         Relationships: []
       }
+      faq_items: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          is_published: boolean
+          order_index: number
+          question: string
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          order_index?: number
+          question: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          order_index?: number
+          question?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoice_counters: {
         Row: {
           created_at: string
