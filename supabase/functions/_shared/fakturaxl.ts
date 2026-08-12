@@ -191,38 +191,22 @@ export async function pushInvoiceToFakturaXL(admin: any, invoiceRow: any): Promi
 
 
   try {
-    const isCorrection = String(invoiceRow.doc_type ?? "").toUpperCase() === "FK";
-
-    // Corrections need the FakturaXL id of the document they correct.
-    let original: any = null;
-    if (isCorrection) {
-      if (!invoiceRow.original_invoice_id) {
-        await update({
-          ksef_error_code: "no_original_invoice",
-          ksef_error_desc: "Correction has no original_invoice_id — nothing to correct in KSeF",
-        });
-        return;
-      }
-      const { data } = await admin
-        .from("invoices")
-        .select("id, fxl_document_id, currency, gross_amount, line_items")
-        .eq("id", invoiceRow.original_invoice_id)
-        .maybeSingle();
-      original = data;
-      if (!original?.fxl_document_id) {
-        await update({
-          ksef_error_code: "original_not_in_ksef",
-          ksef_error_desc:
-            "Original invoice was never pushed to FakturaXL/KSeF (e.g. consumer invoice) — no correction sent",
-        });
-        return;
-      }
+    // Corrections are created by hand in the FakturaXL panel and discovered by
+    // the sync pass — we never push a correction from here, so its number and
+    // amounts always come from FakturaXL.
+    if (String(invoiceRow.doc_type ?? "").toUpperCase() === "FK") {
+      await update({
+        ksef_error_code: "corrections_are_manual",
+        ksef_error_desc:
+          "Corrections are issued in the FakturaXL panel and imported by the sync — not pushed from the app",
+      });
+      return;
     }
 
-    // FakturaXL rejects a correction whose currency differs from the original (kod=41).
-    const currency = String(
-      (isCorrection ? original?.currency : null) ?? invoiceRow.currency ?? "eur",
-    ).toUpperCase();
+    const isCorrection = false;
+    const original: any = null;
+
+    const currency = String(invoiceRow.currency ?? "eur").toUpperCase();
     const isCompany = Boolean((invoiceRow.buyer_vat_id ?? "").trim());
     const issued = day(invoiceRow.issued_at);
     const gross = decimal(invoiceRow.gross_amount);
@@ -247,36 +231,8 @@ ${indent}</${tag}>`,
 
     const positions = renderPositions(items);
 
-    let correctionSection = "";
-    if (isCorrection) {
-      const originalGross = Math.abs(Number(original?.gross_amount ?? 0));
-      const creditedGross = Math.abs(Number(invoiceRow.gross_amount ?? 0));
-      const isPartial = creditedGross > 0 && creditedGross < originalGross;
+    const correctionSection = "";
 
-      let amountsBlock = "";
-      if (isPartial) {
-        // Partial refund: FakturaXL needs the before/after values explicitly.
-        // "powinno_byc" carries what remains, not what was credited.
-        const originalItems: any[] = Array.isArray(original?.line_items) ? original.line_items : [];
-        const remaining = originalGross - creditedGross;
-        const shouldBe = originalItems.length
-          ? [{ ...originalItems[0], gross: remaining }]
-          : [{ description: items[0]?.description ?? "Correction", quantity: 1, gross: remaining }];
-        // Document-level elements, not children of <korekta>.
-        amountsBlock = `
-${renderPositions(originalItems.length ? originalItems : shouldBe, "faktura_pozycje_bylo")}
-${renderPositions(shouldBe, "faktura_pozycje_powinno_byc")}`;
-      }
-      // Full credit: positions are pulled from the corrected document by FakturaXL.
-
-      correctionSection = `
-  <korekta>
-    <id_faktury_korygowanej>${original.fxl_document_id}</id_faktury_korygowanej>
-    <przyczyna_korekty>${cdata(invoiceRow.refund_reason ?? "Zwrot płatności")}</przyczyna_korekty>
-  </korekta>${amountsBlock}`;
-    }
-
-    // Private persons need imie + nazwisko (kod 38 / 39 when empty); companies use nazwa.
     let buyerIdentity: string;
     if (isCompany) {
       buyerIdentity = `    <nazwa>${cdata(
@@ -453,11 +409,28 @@ ${buyerIdentity}${optional("ulica_i_numer", invoiceRow.buyer_address_line1)}${
 export type FxlDocumentDetails = {
   invoice_number: string | null;
   gross: number | null;
+  net: number | null;
+  vat: number | null;
   exchange_rate: number | null;
   nbp_table: string | null;
   rate_date: string | null;
   due_date: string | null;
+  issued_date: string | null;
   currency: string | null;
+  /** FakturaXL document type: 0 = invoice, 4 = correction. */
+  doc_kind: number | null;
+  /** Correction only: the corrected document, verified as authoritative for linking. */
+  corrects_document_id: string | null;
+  corrects_document_number: string | null;
+  correction_reason: string | null;
+  /** Correction only: totals of the "was" / "should be" position blocks, in major units. */
+  was_gross: number | null;
+  should_be_gross: number | null;
+  should_be_net: number | null;
+  vat_rate: number | null;
+  line_items: { description: string; quantity: number; gross: number }[];
+  /** Documents FakturaXL links to this one (`<relacje>`), same ids as above. */
+  related_document_ids: string[];
 };
 
 const firstValue = (obj: any, keys: string[]): string | null => {
@@ -470,9 +443,25 @@ const firstValue = (obj: any, keys: string[]): string | null => {
   return null;
 };
 
+const asArray = (value: any): any[] =>
+  value == null ? [] : Array.isArray(value) ? value : [value];
+
+const toNumber = (raw: string | null): number | null => {
+  if (!raw) return null;
+  const parsed = Number(raw.replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 /**
- * Reads a created FakturaXL document back so our PDF can copy the values the
- * provider resolved — most importantly the NBP exchange rate used for VAT in PLN.
+ * Reads a FakturaXL document back. Used both for invoices we created (to copy
+ * the NBP rate the provider resolved) and for corrections issued by hand in the
+ * FakturaXL panel, where every value — number, amounts, reason, the corrected
+ * document — originates there.
+ *
+ * Verified against a real correction (FK EDU/2/08/2026): the document totals
+ * express the *difference* (−33.80), while `faktura_pozycje_powinno_byc` carries
+ * the corrected state (40.00), and `id_faktury_korygowanej` /`<relacje>` both
+ * point at the corrected invoice.
  */
 export async function readFakturaXLDocument(
   documentId: string,
@@ -483,23 +472,100 @@ export async function readFakturaXLDocument(
   const number = firstValue(doc, ["numer_faktury", "numer"]);
   if (!number) return null;
 
-  const num = (raw: string | null) => {
-    if (!raw) return null;
-    const parsed = Number(raw.replace(/\s/g, "").replace(",", "."));
-    return Number.isFinite(parsed) ? parsed : null;
-  };
+  const num = toNumber;
   const date = (raw: string | null) => (raw ? raw.slice(0, 10) : null);
+
+  const sumGross = (blocks: any[]) => {
+    if (!blocks.length) return null;
+    let total = 0;
+    for (const b of blocks) {
+      total += num(firstValue(b, ["wartosc_brutto", "brutto"])) ?? 0;
+    }
+    return total;
+  };
+  const sumNet = (blocks: any[]) => {
+    if (!blocks.length) return null;
+    let total = 0;
+    for (const b of blocks) total += num(firstValue(b, ["wartosc_netto", "netto"])) ?? 0;
+    return total;
+  };
+
+  const wasBlocks = asArray(doc.faktura_pozycje_bylo);
+  const shouldBlocks = asArray(doc.faktura_pozycje_powinno_byc);
+  const positions = asArray(doc.faktura_pozycje);
+
+  const itemSource = shouldBlocks.length ? shouldBlocks : positions;
+  const lineItems = itemSource.map((p: any) => ({
+    description: firstValue(p, ["nazwa"]) ?? "",
+    quantity: num(firstValue(p, ["ilosc"])) ?? 1,
+    gross: Math.round((num(firstValue(p, ["wartosc_brutto", "brutto"])) ?? 0) * 100),
+  }));
+
+  const vatRateSource = itemSource.length ? itemSource[0] : null;
 
   return {
     invoice_number: number,
     gross: num(firstValue(doc, ["wartosc_brutto", "brutto", "kwota_brutto"])),
+    net: num(firstValue(doc, ["wartosc_netto", "netto"])),
+    vat: num(firstValue(doc, ["wartosc_vat"])),
     exchange_rate: num(firstValue(doc, ["kurs", "kurs_waluty"])),
     nbp_table: firstValue(doc, ["nr_tabeli_nbp", "numer_tabeli_nbp", "tabela_nbp"]),
     rate_date: date(firstValue(doc, ["data_kursu", "kurs_data"])),
     due_date: date(firstValue(doc, ["termin_platnosci_data", "termin_platnosci"])),
-    currency: firstValue(doc, ["waluta"]),
+    issued_date: date(firstValue(doc, ["data_wystawienia"])),
+    currency: firstValue(doc, ["waluta", "waluta_str"]),
+    doc_kind: num(firstValue(doc, ["typ_faktury"])),
+    corrects_document_id: firstValue(doc, ["id_faktury_korygowanej"]),
+    corrects_document_number: firstValue(doc, ["numer_faktury_korygowanej"]),
+    correction_reason: firstValue(doc, ["przyczyna_korekty"]),
+    was_gross: sumGross(wasBlocks),
+    should_be_gross: sumGross(shouldBlocks),
+    should_be_net: sumNet(shouldBlocks),
+    vat_rate: vatRateSource ? num(firstValue(vatRateSource, ["vat"])) : null,
+    line_items: lineItems,
+    related_document_ids: asArray(doc?.relacje?.rel_dokument_id).map((v: any) => String(v)),
   };
 }
+
+export type FxlListEntry = {
+  document_id: string | null;
+  invoice_number: string | null;
+  doc_kind: number | null;
+  issued_date: string | null;
+  gross: number | null;
+  currency: string | null;
+};
+
+/**
+ * Lists documents in a date range. Verified: bare (non-CDATA) ISO dates work,
+ * and the list carries `<id>` (not `dokument_id`) plus `typ_faktury`, which is
+ * how corrections are discovered. FakturaXL allows one call per 5 seconds.
+ */
+export async function listFakturaXLDocuments(
+  from: string,
+  to: string,
+): Promise<FxlListEntry[]> {
+  const raw = await fxlRaw(
+    FXL_ENDPOINTS.listDocuments,
+    `  <data_od>${from}</data_od>
+  <data_do>${to}</data_do>`,
+    "dokumenty",
+  );
+  const parsed = xmlToObject(raw);
+  const container = parsed?.dokumenty ?? parsed?.dokument ?? {};
+  const docs = asArray(container?.dokument ?? container?.faktura).filter(
+    (d: any) => d && typeof d === "object" && d?.numer_faktury != null,
+  );
+  return docs.map((d: any) => ({
+    document_id: firstValue(d, ["id", "dokument_id"]),
+    invoice_number: firstValue(d, ["numer_faktury"]),
+    doc_kind: toNumber(firstValue(d, ["typ_faktury"])),
+    issued_date: firstValue(d, ["data_wystawienia"])?.slice(0, 10) ?? null,
+    gross: toNumber(firstValue(d, ["wartosc_brutto"])),
+    currency: firstValue(d, ["waluta_str", "waluta"]),
+  }));
+}
+
 
 /**
  * Downloads the PDF FakturaXL rendered for a document, using the authenticated

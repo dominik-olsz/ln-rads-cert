@@ -279,48 +279,16 @@ serve(async (req) => {
         return ok();
       }
 
-      // Amount already credited by earlier correction invoices
-      const { data: corrections } = await admin
+      // Corrections are issued by hand in FakturaXL and imported by the sync
+      // pass — the webhook never creates one, so a refund started here or in the
+      // Stripe dashboard can't produce a duplicate FK. We only record how much
+      // Stripe has actually refunded; /admin/sales compares that against the
+      // corrections found in FakturaXL and flags anything unmatched.
+      await admin
         .from("invoices")
-        .select("gross_amount")
-        .eq("original_invoice_id", original.id);
-      const alreadyCredited = (corrections ?? []).reduce(
-        (sum: number, c: any) => sum + Math.abs(c.gross_amount ?? 0),
-        0,
-      );
-      const delta = refundedCents - alreadyCredited;
-      if (delta <= 0) return ok();
+        .update({ stripe_refunded_amount: refundedCents })
+        .eq("id", original.id);
 
-      await createInvoice(admin, {
-        docType: "FK",
-        originalInvoiceId: original.id,
-        originalInvoiceNumber: original.invoice_number,
-        userId: original.user_id,
-        courseId: original.course_id,
-        purchaseType: original.purchase_type,
-        coursePurchaseId: original.course_purchase_id,
-        retakePurchaseId: original.retake_purchase_id,
-        stripePaymentIntentId: paymentIntentId,
-        buyer: {
-          name: original.buyer_name,
-          company: original.buyer_company,
-          email: original.buyer_email,
-          address_line1: original.buyer_address_line1,
-          address_line2: original.buyer_address_line2,
-          postal_code: original.buyer_postal_code,
-          city: original.buyer_city,
-          country: original.buyer_country,
-          vat_id: original.buyer_vat_id,
-        },
-        currency: original.currency,
-        grossCents: -delta,
-        refundReason: "zwrot płatności / refund",
-        lineItems: (original.line_items ?? []).map((li: any) => ({
-          description: `Korekta / Correction — ${li.description}`,
-          quantity: li.quantity ?? 1,
-          gross: -delta,
-        })),
-      }).catch((e) => console.error("Correction invoice failed:", e));
 
       // A full refund revokes access; a partial one only records the amount
       const fullRefund = refundedCents >= (original.gross_amount ?? 0);
