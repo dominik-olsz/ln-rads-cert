@@ -612,3 +612,52 @@ export async function fetchFakturaXLPdf(documentId: string): Promise<Uint8Array>
   }
   return bytes;
 }
+
+/** Outcome of asking FakturaXL to email a document to its buyer. */
+export type FxlEmailOutcome = {
+  /** Status stored on the invoice row. */
+  status: "sent" | "no_buyer_email" | "cap_reached" | "plan_required" | "failed";
+  code: string | null;
+  message: string;
+};
+
+/**
+ * Asks FakturaXL to email an existing document to its buyer, with the PDF
+ * attached. kod=23 is success; the documented failure codes are mapped to
+ * distinct states so the admin panel can tell "no buyer email" (permanent, the
+ * buyer will never get it) apart from a transient failure.
+ *
+ * One request per second is allowed, so callers get a built-in pause.
+ */
+export async function sendFakturaXLDocumentByEmail(
+  documentId: string,
+): Promise<FxlEmailOutcome> {
+  await sleep(1100);
+
+  let code: string | null = null;
+  let raw = "";
+  try {
+    raw = await fxlRaw(
+      FXL_ENDPOINTS.sendByEmail,
+      `  <dokument_id>${documentId}</dokument_id>
+  <zalacz_dokument_w_formacie_pdf>1</zalacz_dokument_w_formacie_pdf>`,
+    );
+    code = raw.match(/<kod>([^<]*)<\/kod>/i)?.[1]?.trim() ?? null;
+  } catch (e) {
+    return { status: "failed", code: null, message: (e as Error).message };
+  }
+
+  const message = fxlErrorMessage(code, raw.slice(0, 200));
+  switch (code) {
+    case "23":
+      return { status: "sent", code, message };
+    case "22":
+      return { status: "no_buyer_email", code, message };
+    case "78":
+      return { status: "cap_reached", code, message };
+    case "63":
+      return { status: "plan_required", code, message };
+    default:
+      return { status: "failed", code, message };
+  }
+}
