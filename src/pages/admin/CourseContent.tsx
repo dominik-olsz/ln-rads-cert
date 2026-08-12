@@ -11,7 +11,6 @@ import LessonDialog from '@/components/admin/LessonDialog';
 import CourseMaterialDialog from '@/components/admin/CourseMaterialDialog';
 import TestQuestionDialog from '@/components/admin/TestQuestionDialog';
 import { resolveMaterialUrls } from '@/lib/materialUrl';
-import { attachLessonContent } from '@/lib/lessonContent';
 
 
 
