@@ -4,6 +4,7 @@
 import {
   fetchFakturaXLPdf,
   pushInvoiceToFakturaXL,
+  sendFakturaXLDocumentByEmail,
   readFakturaXLDocument,
 } from "./fakturaxl.ts";
 
@@ -354,7 +355,11 @@ export async function deliverInvoiceDocument(admin: any, invoice: any): Promise<
   const row = { ...invoice, ...(fresh ?? {}) };
 
   const update = async (patch: Record<string, unknown>) => {
-    await admin.from("invoices").update(patch).eq("id", invoiceId).catch?.(() => {});
+    try {
+      await admin.from("invoices").update(patch).eq("id", invoiceId);
+    } catch (e) {
+      console.warn("Could not record delivery state", e);
+    }
   };
 
   // ---- Channel 1: our own notification (Resend, via the email queue) ----
