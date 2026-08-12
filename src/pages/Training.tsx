@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, CheckCircle, Star, X, Lock } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Star, X, Lock, Award } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -81,6 +81,35 @@ const Training = () => {
   const [lessonContents, setLessonContents] = useState<Record<string, { content_text: string | null; content_url: string | null }>>({});
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
+  const [certificationEnabled, setCertificationEnabled] = useState(false);
+  const [passedAttemptId, setPassedAttemptId] = useState<string | null>(null);
+  const [hasFailedAttempt, setHasFailedAttempt] = useState(false);
+  const [downloadingCertificate, setDownloadingCertificate] = useState(false);
+
+  const handleDownloadCertificate = async () => {
+    if (!passedAttemptId) return;
+    setDownloadingCertificate(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-certificate', {
+        body: { attemptId: passedAttemptId },
+      });
+      if (error) throw error;
+      const blob = new Blob([data.html], { type: 'text/html' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `certificate-${passedAttemptId}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (e: any) {
+      console.error('Failed to download certificate:', e);
+      toast.error(e.message || 'Could not download your certificate');
+    } finally {
+      setDownloadingCertificate(false);
+    }
+  };
 
   // Grade a practice answer server-side (the answer key is never sent to the browser)
   const handleSelectAnswer = async (questionId: string, optionIndex: number) => {
@@ -123,6 +152,29 @@ const Training = () => {
           purchased = !!purchaseData;
         }
         setHasPurchased(purchased);
+
+        // Certification status for buyers
+        if (purchased && user) {
+          const { data: courseRow } = await supabase
+            .from('courses')
+            .select('certification_enabled')
+            .eq('id', courseId)
+            .maybeSingle();
+          setCertificationEnabled(!!courseRow?.certification_enabled);
+
+          const { data: attempts } = await supabase
+            .from('test_attempts')
+            .select('id, passed, completed_at')
+            .eq('user_id', user.id)
+            .eq('course_id', courseId)
+            .eq('is_certification_test', true)
+            .order('completed_at', { ascending: false });
+
+          const passed = (attempts || []).find((a: any) => a.passed);
+          setPassedAttemptId(passed?.id ?? null);
+          setHasFailedAttempt(!passed && (attempts || []).length > 0);
+        }
+
 
         // Fetch lesson outline (content itself is served by the backend)
         const { data: lessonsData, error: lessonsError } = await supabase
@@ -763,7 +815,35 @@ const Training = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
+            {hasPurchased && certificationEnabled && (
+              <Card>
+                <CardContent className="pt-6">
+                  {passedAttemptId ? (
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={handleDownloadCertificate}
+                      disabled={downloadingCertificate}
+                    >
+                      <Award className="h-5 w-5 mr-2" />
+                      {downloadingCertificate ? 'Preparing…' : 'Download Certificate'}
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      variant={hasFailedAttempt ? 'outline' : 'default'}
+                      onClick={() => navigate(`/certification-test?courseId=${courseId}`)}
+                    >
+                      <Award className="h-5 w-5 mr-2" />
+                      {hasFailedAttempt ? 'Retake Certification Test' : 'Take Certification Test'}
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="sticky top-20">
               <CardContent className="pt-6">
                 <h3 className="font-semibold mb-4">Course Content</h3>
