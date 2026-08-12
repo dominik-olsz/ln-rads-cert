@@ -4,6 +4,7 @@ import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { Users, BookOpen, ClipboardCheck, Award, Receipt, Ticket } from 'lucide-react';
+import FaqManager from '@/components/admin/FaqManager';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -117,6 +118,10 @@ const AdminDashboard = () => {
             </Card>
           </Link>
 
+        </div>
+
+        <div className="mt-8">
+          <FaqManager />
         </div>
 
       </main>
