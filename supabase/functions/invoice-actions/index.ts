@@ -4,7 +4,7 @@ import {
   buyerEmailsEnabled,
   deliverInvoiceDocument,
   invoiceFileSlug,
-  sendInvoiceEmail,
+  
 } from "../_shared/invoice.ts";
 import {
   FXL_ENDPOINTS,
