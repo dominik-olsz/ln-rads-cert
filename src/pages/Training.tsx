@@ -355,30 +355,30 @@ const Training = () => {
   const currentLessonContent =
     currentCourseItem?.type === 'lesson' ? lessonContents[currentCourseItem.id] : undefined;
 
-  const openLightbox = useCallback((clickedSrc: string) => {
-    const images: string[] = [];
-    if (currentCourseItem?.type === 'lesson') {
-      const lesson = currentCourseItem.data as Lesson;
-      if (lesson.content_type === 'image' && currentLessonContent?.content_url) {
-        images.push(currentLessonContent.content_url);
-      }
-      const mats = materials[currentCourseItem.id] || [];
-      mats.forEach((m) => {
-        if (m.file_type === 'image') images.push(m.file_url);
-      });
-    } else if (currentCourseItem?.type === 'questionGroup') {
-      const group = currentCourseItem.data as TestQuestionGroup;
-      group.questions.forEach((q) => {
-        if (q.image_url) images.push(q.image_url);
-      });
+  /**
+   * Opens the lightbox with every image currently rendered in the content area
+   * (including images embedded in the lesson's rich text), in visual order.
+   */
+  const openLightbox = useCallback((clickedSrc: string, clickedEl?: HTMLImageElement | null) => {
+    const nodes = Array.from(
+      contentRef.current?.querySelectorAll<HTMLImageElement>('img') ?? []
+    );
+    const images = nodes.map((img) => img.currentSrc || img.src).filter(Boolean);
+
+    let index = clickedEl ? nodes.indexOf(clickedEl) : -1;
+    if (index === -1) {
+      index = images.findIndex(
+        (src) => src === clickedSrc || src === (clickedEl?.src ?? '')
+      );
     }
-    const index = images.indexOf(clickedSrc);
+
     if (images.length > 0 && index !== -1) {
       setLightbox({ images, index });
     } else {
       setLightbox({ images: [clickedSrc], index: 0 });
     }
-  }, [currentCourseItem, currentLessonContent, materials]);
+  }, []);
+
 
   // Load lesson content from the backend (access checked server-side)
   useEffect(() => {
@@ -645,7 +645,7 @@ const Training = () => {
                           src={currentLessonContent.content_url}
                           alt={currentCourseItem.title}
                           className="w-full max-h-[500px] object-contain cursor-zoom-in"
-                          onClick={() => openLightbox(currentLessonContent.content_url!)}
+                          onClick={(e) => openLightbox(currentLessonContent.content_url!, e.currentTarget)}
                         />
                       </div>
                     )}
@@ -656,7 +656,7 @@ const Training = () => {
                         onClick={(e) => {
                           const target = e.target as HTMLElement;
                           if (target.tagName === 'IMG') {
-                            openLightbox((target as HTMLImageElement).src);
+                            openLightbox((target as HTMLImageElement).src, target as HTMLImageElement);
                           }
                         }}
                         dangerouslySetInnerHTML={{ __html: currentLessonContent.content_text }}
@@ -681,7 +681,7 @@ const Training = () => {
                                     src={material.file_url} 
                                     alt={material.title}
                                     className="w-full max-h-[400px] object-contain rounded-lg cursor-zoom-in"
-                                    onClick={() => openLightbox(material.file_url)}
+                                    onClick={(e) => openLightbox(material.file_url, e.currentTarget)}
                                   />
                                 )}
                                 {material.file_type === 'video' && (
@@ -740,7 +740,7 @@ const Training = () => {
                                     src={q.image_url} 
                                     alt="Question" 
                                     className="w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
-                                    onClick={() => openLightbox(q.image_url)}
+                                    onClick={(e) => openLightbox(q.image_url, e.currentTarget)}
                                   />
                                 )}
                                 
