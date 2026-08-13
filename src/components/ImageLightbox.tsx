@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
@@ -9,13 +9,15 @@ const MAX_ZOOM = 8;
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
 interface ImageLightboxProps {
-  src: string | null;
+  images: string[];
+  currentIndex: number;
   alt?: string;
   onClose: () => void;
+  onIndexChange: (index: number) => void;
 }
 
-/** Full-screen image viewer with cursor-anchored wheel zoom, pinch and drag-to-pan. */
-const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
+/** Full-screen image viewer with cursor-anchored wheel zoom, pinch, drag-to-pan and swipe navigation. */
+const ImageLightbox = ({ images, currentIndex, alt = "Image", onClose, onIndexChange }: ImageLightboxProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -26,15 +28,20 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
   const dragRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
+  const swipeRef = useRef<{ id: number; startX: number; startTime: number } | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
 
   const reset = useCallback(() => {
     setZoom(1);
     setOffset({ x: 0, y: 0 });
   }, []);
 
+  const open = images.length > 0 && currentIndex >= 0 && currentIndex < images.length;
+
   useEffect(() => {
-    if (src) reset();
-  }, [src, reset]);
+    if (open) reset();
+  }, [currentIndex, open, reset]);
 
   /** Cursor position relative to the image's untransformed layout origin. */
   const localPoint = useCallback((clientX: number, clientY: number) => {
@@ -71,7 +78,7 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
   // Native non-passive wheel listener (React's onWheel is passive).
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || !src) return;
+    if (!el || !open) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
@@ -80,7 +87,7 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [src, zoomAt, localPoint]);
+  }, [open, zoomAt, localPoint]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -91,10 +98,15 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
         zoom: stateRef.current.zoom,
       };
       dragRef.current = null;
+      swipeRef.current = null;
       return;
     }
     if (stateRef.current.zoom > MIN_ZOOM) {
       dragRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    } else if (images.length > 1) {
+      swipeRef.current = { id: e.pointerId, startX: e.clientX, startTime: Date.now() };
+      setIsSwiping(true);
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     }
   };
@@ -111,17 +123,39 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
       return;
     }
     const drag = dragRef.current;
-    if (!drag || drag.id !== e.pointerId) return;
-    const dx = e.clientX - drag.x;
-    const dy = e.clientY - drag.y;
-    dragRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
-    setOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+    if (drag && drag.id === e.pointerId) {
+      const dx = e.clientX - drag.x;
+      const dy = e.clientY - drag.y;
+      dragRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      setOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+      return;
+    }
+    const swipe = swipeRef.current;
+    if (swipe && swipe.id === e.pointerId && stateRef.current.zoom === MIN_ZOOM) {
+      setSwipeOffset(e.clientX - swipe.startX);
+    }
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     pointersRef.current.delete(e.pointerId);
     if (pointersRef.current.size < 2) pinchRef.current = null;
     if (dragRef.current?.id === e.pointerId) dragRef.current = null;
+
+    const swipe = swipeRef.current;
+    if (swipe && swipe.id === e.pointerId) {
+      const delta = e.clientX - swipe.startX;
+      const time = Date.now() - swipe.startTime;
+      const threshold = 50;
+      const velocity = Math.abs(delta) / (time || 1);
+      if (delta > threshold || (delta > 0 && velocity > 0.5)) {
+        if (currentIndex > 0) onIndexChange(currentIndex - 1);
+      } else if (delta < -threshold || (delta < 0 && velocity > 0.5)) {
+        if (currentIndex < images.length - 1) onIndexChange(currentIndex + 1);
+      }
+      swipeRef.current = null;
+      setIsSwiping(false);
+      setSwipeOffset(0);
+    }
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -129,8 +163,17 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
     zoomAt(stateRef.current.zoom > MIN_ZOOM ? MIN_ZOOM : 2.5, p.x, p.y);
   };
 
+  const src = images[currentIndex];
+
+  const goPrev = () => {
+    if (currentIndex > 0) onIndexChange(currentIndex - 1);
+  };
+  const goNext = () => {
+    if (currentIndex < images.length - 1) onIndexChange(currentIndex + 1);
+  };
+
   return (
-    <Dialog open={!!src} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-[96vw] w-[96vw] h-[92vh] p-0 overflow-hidden">
         <div className="absolute top-2 right-2 z-20 flex items-center gap-1 rounded-md bg-background/80 backdrop-blur p-1">
           <Button variant="ghost" size="icon" onClick={() => zoomAtCenter(1 / 1.4)} aria-label="Zoom out">
@@ -148,6 +191,34 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
           </Button>
         </div>
 
+        {images.length > 1 && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-20 rounded-full bg-background/80 backdrop-blur disabled:opacity-30"
+              onClick={goPrev}
+              disabled={currentIndex === 0}
+              aria-label="Previous image"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 rounded-full bg-background/80 backdrop-blur disabled:opacity-30"
+              onClick={goNext}
+              disabled={currentIndex === images.length - 1}
+              aria-label="Next image"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 text-xs text-muted-foreground bg-background/80 backdrop-blur rounded px-2 py-1">
+              {currentIndex + 1} / {images.length}
+            </div>
+          </>
+        )}
+
         <div
           ref={containerRef}
           className="relative w-full h-full overflow-hidden bg-background flex items-center justify-center select-none"
@@ -159,22 +230,27 @@ const ImageLightbox = ({ src, alt = "Image", onClose }: ImageLightboxProps) => {
           onDoubleClick={handleDoubleClick}
         >
           {src && (
-            <img
-              ref={imgRef}
-              src={src}
-              alt={alt}
-              draggable={false}
-              className="max-w-full max-h-full object-contain"
-              style={{
-                transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
-                transformOrigin: "0 0",
-                willChange: "transform",
-              }}
-            />
+            <div
+              className={isSwiping ? "" : "transition-transform duration-200"}
+              style={{ transform: `translateX(${swipeOffset}px)` }}
+            >
+              <img
+                ref={imgRef}
+                src={src}
+                alt={`${alt} ${currentIndex + 1}`}
+                draggable={false}
+                className="max-w-full max-h-full object-contain"
+                style={{
+                  transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+                  transformOrigin: "0 0",
+                  willChange: "transform",
+                }}
+              />
+            </div>
           )}
         </div>
         <p className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 text-xs text-muted-foreground bg-background/80 backdrop-blur rounded px-2 py-1">
-          Scroll or pinch to zoom, drag to pan, double-click to toggle
+          Scroll or pinch to zoom, drag to pan, double-click to toggle, swipe to navigate
         </p>
       </DialogContent>
     </Dialog>
