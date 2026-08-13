@@ -672,7 +672,7 @@ export type FxlEmailOutcome = {
 export async function sendFakturaXLDocumentByEmail(
   documentId: string,
 ): Promise<FxlEmailOutcome> {
-  await sleep(1100);
+  // Pacing is handled centrally in fxlRaw.
 
   let code: string | null = null;
   let raw = "";
