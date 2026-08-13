@@ -17,7 +17,7 @@ import { attachLessonContent } from "@/lib/lessonContent";
 import { 
   ArrowLeft, Plus, Trash2, Upload, Video, FileText, 
   GripVertical, Save, PlayCircle, CheckCircle, BookOpen, 
-  FileQuestion, Award 
+  FileQuestion, Award, X 
 } from "lucide-react";
 import {
   Dialog,
