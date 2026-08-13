@@ -364,7 +364,12 @@ const Training = () => {
    * Opens the lightbox with every image currently rendered in the content area
    * (including images embedded in the lesson's rich text), in visual order.
    */
-  const openLightbox = useCallback((clickedSrc: string, clickedEl?: HTMLImageElement | null) => {
+  const openLightbox = useCallback((clickedSrc: string, clickedEl?: HTMLImageElement | null, scopedImages?: string[]) => {
+    if (scopedImages?.length) {
+      const i = scopedImages.indexOf(clickedSrc);
+      setLightbox({ images: scopedImages, index: i === -1 ? 0 : i });
+      return;
+    }
     const nodes = Array.from(
       contentRef.current?.querySelectorAll<HTMLImageElement>('img') ?? []
     );
@@ -816,15 +821,18 @@ const Training = () => {
                                   <h3 className="font-semibold text-lg">Question {qIndex + 1}</h3>
                                 </div>
                                 
-                                {(q.image_urls?.length ? q.image_urls : q.image_url ? [q.image_url] : []).map((url) => (
-                                  <img
-                                    key={url}
-                                    src={url}
-                                    alt="Question"
-                                    className="w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
-                                    onClick={(e) => openLightbox(url, e.currentTarget)}
-                                  />
-                                ))}
+                                {(() => {
+                                  const qImages = q.image_urls?.length ? q.image_urls : q.image_url ? [q.image_url] : [];
+                                  return qImages.map((url) => (
+                                    <img
+                                      key={url}
+                                      src={url}
+                                      alt="Question"
+                                      className="w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
+                                      onClick={(e) => openLightbox(url, e.currentTarget, qImages)}
+                                    />
+                                  ));
+                                })()}
 
                                 
                                 <p className="text-base">{q.question_text}</p>
