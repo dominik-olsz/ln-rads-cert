@@ -190,11 +190,13 @@ const Results = () => {
 
               {!passed && courseId && (
                 <div className="space-y-4">
-                  <Link to={`/certification-test?courseId=${courseId}`}>
-                    <Button size="lg">
-                      Retake Test
-                    </Button>
-                  </Link>
+                  {canRetake && (
+                    <Link to={`/certification-test?courseId=${courseId}&retake=1`}>
+                      <Button size="lg">
+                        Retake Test
+                      </Button>
+                    </Link>
+                  )}
                   <Link to={`/training/${courseId}`} className="block">
                     <Button variant="outline" size="lg" className="w-full">
                       Review Course Material
