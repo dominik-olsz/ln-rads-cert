@@ -51,6 +51,7 @@ interface TestQuestion {
   correct_answer: string;
   explanation?: string;
   image_url?: string;
+  image_urls?: string[] | null;
 }
 
 const CourseContent = () => {
@@ -268,9 +269,9 @@ const CourseContent = () => {
                         <span className="font-medium">Correct: </span>
                         <span className="text-primary">{question.correct_answer}</span>
                       </div>
-                      {question.image_url && (
-                        <img src={question.image_url} alt="" className="max-w-xs rounded mt-2" />
-                      )}
+                      {(question.image_urls?.length ? question.image_urls : question.image_url ? [question.image_url] : []).map((url) => (
+                        <img key={url} src={url} alt="" className="max-w-xs rounded mt-2" />
+                      ))}
                       {question.explanation && (
                         <p className="text-sm text-muted-foreground">{question.explanation}</p>
                       )}
