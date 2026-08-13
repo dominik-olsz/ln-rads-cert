@@ -947,7 +947,12 @@ const Training = () => {
         </div>
 
         {/* Full size image dialog */}
-        <ImageLightbox src={fullSizeImage} onClose={() => setFullSizeImage(null)} />
+        <ImageLightbox
+          images={lightbox?.images ?? []}
+          currentIndex={lightbox?.index ?? 0}
+          onClose={() => setLightbox(null)}
+          onIndexChange={(index) => setLightbox((prev) => (prev ? { ...prev, index } : null))}
+        />
       </div>
     </div>
   );
