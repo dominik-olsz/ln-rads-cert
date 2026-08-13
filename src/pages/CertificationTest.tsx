@@ -62,6 +62,7 @@ const CertificationTest = () => {
   const [attemptsUsed, setAttemptsUsed] = useState(0);
   const [maxAttempts, setMaxAttempts] = useState(MAX_ATTEMPTS);
   const [attemptsIncluded, setAttemptsIncluded] = useState(1);
+  const [passPercent, setPassPercent] = useState(80);
 
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [retakePrice, setRetakePrice] = useState<number>(6900);
@@ -118,7 +119,7 @@ const CertificationTest = () => {
       if (courseId) {
         const { data: courseSettings } = await supabase
           .from('courses')
-          .select('attempts_total, attempts_included, retake_price')
+          .select('attempts_total, attempts_included, retake_price, certification_pass_percent')
           .eq('id', courseId)
           .maybeSingle();
 
@@ -129,6 +130,7 @@ const CertificationTest = () => {
           setMaxAttempts(courseMaxAttempts);
           setAttemptsIncluded(courseAttemptsIncluded);
           setRetakePrice(coursePrice);
+          setPassPercent(courseSettings.certification_pass_percent ?? 80);
         }
       }
 
@@ -822,7 +824,7 @@ const CertificationTest = () => {
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="font-semibold mt-1">•</span>
-                      <span>Passing Score: 80%</span>
+                      <span>Passing Score: {passPercent}%</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="font-semibold mt-1">•</span>
