@@ -952,7 +952,7 @@ const Training = () => {
                       className="w-full"
                       size="lg"
                       variant={hasFailedAttempt ? 'outline' : 'default'}
-                      onClick={() => navigate(`/certification-test?courseId=${courseId}`)}
+                      onClick={() => navigate(`/certification-test?courseId=${courseId}${hasFailedAttempt ? '&retake=1' : ''}`)}
                     >
                       <Award className="h-5 w-5 mr-2" />
                       {hasFailedAttempt ? 'Retake Certification Test' : 'Take Certification Test'}

@@ -116,6 +116,7 @@ const CertificationTest = () => {
       let courseMaxAttempts = MAX_ATTEMPTS;
       let courseAttemptsIncluded = 1;
       let coursePrice = 6900;
+      let coursePassPercent = 80;
       if (courseId) {
         const { data: courseSettings } = await supabase
           .from('courses')
@@ -127,10 +128,11 @@ const CertificationTest = () => {
           courseMaxAttempts = courseSettings.attempts_total ?? MAX_ATTEMPTS;
           courseAttemptsIncluded = courseSettings.attempts_included ?? 1;
           coursePrice = (courseSettings.retake_price ?? 69) * 100;
+          coursePassPercent = courseSettings.certification_pass_percent ?? 80;
           setMaxAttempts(courseMaxAttempts);
           setAttemptsIncluded(courseAttemptsIncluded);
           setRetakePrice(coursePrice);
-          setPassPercent(courseSettings.certification_pass_percent ?? 80);
+          setPassPercent(coursePassPercent);
         }
       }
 
@@ -172,7 +174,7 @@ const CertificationTest = () => {
       // How many certification attempts has this student used?
       let attemptsQuery = supabase
         .from('test_attempts')
-        .select('id, passed, score, completed_at')
+        .select('id, passed, score, completed_at, points_earned, points_possible')
         .eq('user_id', user?.id)
         .eq('is_certification_test', true);
       if (courseId) attemptsQuery = attemptsQuery.eq('course_id', courseId);
@@ -183,6 +185,26 @@ const CertificationTest = () => {
       setAttemptsUsed(used);
       const passedAttempt = (attemptRows ?? []).find((a) => a.passed);
       setLastScore(attemptRows?.[0]?.score ?? null);
+
+      // Coming back to a finished test: show the last result screen again,
+      // where the student can download the certificate or start a retake.
+      const wantsRetake = searchParams.get('retake') === '1';
+      const lastAttempt = attemptRows?.[0];
+      if (!hasResumableAttempt && lastAttempt && !wantsRetake) {
+        const params = new URLSearchParams({
+          score: String(lastAttempt.score ?? 0),
+          passed: String(!!lastAttempt.passed),
+          isCertification: 'true',
+          attemptId: lastAttempt.id,
+          passPercent: String(coursePassPercent),
+          points: String(lastAttempt.points_earned ?? 0),
+          maxPoints: String(lastAttempt.points_possible ?? 0),
+        });
+        if (courseId) params.set('courseId', courseId);
+        navigate(`/results?${params.toString()}`, { replace: true });
+        return;
+      }
+
 
       if (!hasResumableAttempt) {
         if (passedAttempt) {

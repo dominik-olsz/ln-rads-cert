@@ -22,6 +22,7 @@ const Results = () => {
   const navigate = useNavigate();
   const [certificateId, setCertificateId] = useState<string | null>(null);
   const [generatingCert, setGeneratingCert] = useState(false);
+  const [canRetake, setCanRetake] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -29,6 +30,30 @@ const Results = () => {
       return;
     }
   }, [user, navigate]);
+
+  useEffect(() => {
+    if (!user || !courseId || passed) return;
+
+    const checkAttempts = async () => {
+      const [{ count }, { data: course }] = await Promise.all([
+        supabase
+          .from('test_attempts')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('course_id', courseId)
+          .eq('is_certification_test', true),
+        supabase
+          .from('courses')
+          .select('attempts_total')
+          .eq('id', courseId)
+          .maybeSingle(),
+      ]);
+
+      setCanRetake((count ?? 0) < (course?.attempts_total ?? 3));
+    };
+
+    checkAttempts();
+  }, [user, courseId, passed]);
 
   const generateCertificate = async () => {
     if (!attemptId || !passed) return;
@@ -165,11 +190,13 @@ const Results = () => {
 
               {!passed && courseId && (
                 <div className="space-y-4">
-                  <Link to={`/certification-test?courseId=${courseId}`}>
-                    <Button size="lg">
-                      Retake Test
-                    </Button>
-                  </Link>
+                  {canRetake && (
+                    <Link to={`/certification-test?courseId=${courseId}&retake=1`}>
+                      <Button size="lg">
+                        Retake Test
+                      </Button>
+                    </Link>
+                  )}
                   <Link to={`/training/${courseId}`} className="block">
                     <Button variant="outline" size="lg" className="w-full">
                       Review Course Material
