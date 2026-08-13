@@ -645,7 +645,7 @@ const Training = () => {
                           src={currentLessonContent.content_url}
                           alt={currentCourseItem.title}
                           className="w-full max-h-[500px] object-contain cursor-zoom-in"
-                          onClick={() => openLightbox(currentLessonContent.content_url!)}
+                          onClick={(e) => openLightbox(currentLessonContent.content_url!, e.currentTarget)}
                         />
                       </div>
                     )}
