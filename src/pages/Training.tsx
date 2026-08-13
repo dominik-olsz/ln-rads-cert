@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, CheckCircle, Star, X, Lock, Award } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Star, X, Lock, Award, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -842,6 +842,21 @@ const Training = () => {
                       {hasFailedAttempt ? 'Retake Certification Test' : 'Take Certification Test'}
                     </Button>
                   )}
+                </CardContent>
+              </Card>
+            )}
+
+            {!user && (
+              <Card>
+                <CardContent className="pt-6">
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={() => navigate(`/course/${courseId}`)}
+                  >
+                    <CreditCard className="h-5 w-5 mr-2" />
+                    Buy Course
+                  </Button>
                 </CardContent>
               </Card>
             )}
