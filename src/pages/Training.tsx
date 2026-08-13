@@ -355,30 +355,30 @@ const Training = () => {
   const currentLessonContent =
     currentCourseItem?.type === 'lesson' ? lessonContents[currentCourseItem.id] : undefined;
 
-  const openLightbox = useCallback((clickedSrc: string) => {
-    const images: string[] = [];
-    if (currentCourseItem?.type === 'lesson') {
-      const lesson = currentCourseItem.data as Lesson;
-      if (lesson.content_type === 'image' && currentLessonContent?.content_url) {
-        images.push(currentLessonContent.content_url);
-      }
-      const mats = materials[currentCourseItem.id] || [];
-      mats.forEach((m) => {
-        if (m.file_type === 'image') images.push(m.file_url);
-      });
-    } else if (currentCourseItem?.type === 'questionGroup') {
-      const group = currentCourseItem.data as TestQuestionGroup;
-      group.questions.forEach((q) => {
-        if (q.image_url) images.push(q.image_url);
-      });
+  /**
+   * Opens the lightbox with every image currently rendered in the content area
+   * (including images embedded in the lesson's rich text), in visual order.
+   */
+  const openLightbox = useCallback((clickedSrc: string, clickedEl?: HTMLImageElement | null) => {
+    const nodes = Array.from(
+      contentRef.current?.querySelectorAll<HTMLImageElement>('img') ?? []
+    );
+    const images = nodes.map((img) => img.currentSrc || img.src).filter(Boolean);
+
+    let index = clickedEl ? nodes.indexOf(clickedEl) : -1;
+    if (index === -1) {
+      index = images.findIndex(
+        (src) => src === clickedSrc || src === (clickedEl?.src ?? '')
+      );
     }
-    const index = images.indexOf(clickedSrc);
+
     if (images.length > 0 && index !== -1) {
       setLightbox({ images, index });
     } else {
       setLightbox({ images: [clickedSrc], index: 0 });
     }
-  }, [currentCourseItem, currentLessonContent, materials]);
+  }, []);
+
 
   // Load lesson content from the backend (access checked server-side)
   useEffect(() => {
