@@ -567,12 +567,32 @@ const CertificationTest = () => {
   const retakeAmountCents = retakeQuote ? retakeQuote.finalCents : retakePrice;
 
   const handleStartTest = async () => {
-    // Create progress record
+    // Create (or reuse) the progress record for this course
     try {
+      let openQuery = supabase
+        .from('certification_test_progress')
+        .select('id')
+        .eq('user_id', user?.id!)
+        .eq('is_completed', false);
+      if (courseId) openQuery = openQuery.eq('course_id', courseId);
+
+      const { data: openRow } = await openQuery
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (openRow) {
+        setProgressId(openRow.id);
+        setShowWelcome(false);
+        setTimerActive(true);
+        return;
+      }
+
       const { data: progressData, error: progressError } = await supabase
         .from('certification_test_progress')
         .insert({
           user_id: user?.id!,
+          ...(courseId ? { course_id: courseId } : {}),
           current_question_index: 0,
           answers: {} as any,
           time_left: 30,
@@ -586,6 +606,7 @@ const CertificationTest = () => {
       setProgressId(progressData.id);
       setShowWelcome(false);
       setTimerActive(true);
+
     } catch (error) {
       console.error('Error creating progress:', error);
       toast({
