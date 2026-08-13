@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 import { optionLetter } from "@/lib/questionOptions";
 import ImageLightbox from "@/components/ImageLightbox";
+import QuestionImages from "@/components/QuestionImages";
 
 interface TestQuestion {
   id: string;
@@ -890,19 +891,15 @@ const CertificationTest = () => {
                   if (images.length === 0) return null;
                   return (
                     <div className="mb-6 space-y-2">
-                      {images.map((url, i) => (
-                        <img
-                          key={url}
-                          src={url}
-                          alt="Question"
-                          className="max-w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
-                          onClick={() => setLightbox({ images, index: i })}
-                        />
-                      ))}
+                      <QuestionImages
+                        images={images}
+                        onImageClick={(_url, i) => setLightbox({ images, index: i })}
+                      />
                       <p className="text-xs text-muted-foreground mt-1">Click an image to zoom in</p>
                     </div>
                   );
                 })()}
+
 
 
                 <RadioGroup

@@ -12,6 +12,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { optionLetter } from "@/lib/questionOptions";
 import { resolveMaterialUrls } from "@/lib/materialUrl";
 import ImageLightbox from "@/components/ImageLightbox";
+import QuestionImages from "@/components/QuestionImages";
 
 
 interface Lesson {
@@ -823,15 +824,13 @@ const Training = () => {
                                 
                                 {(() => {
                                   const qImages = q.image_urls?.length ? q.image_urls : q.image_url ? [q.image_url] : [];
-                                  return qImages.map((url) => (
-                                    <img
-                                      key={url}
-                                      src={url}
-                                      alt="Question"
-                                      className="w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
-                                      onClick={(e) => openLightbox(url, e.currentTarget, qImages)}
+                                  if (qImages.length === 0) return null;
+                                  return (
+                                    <QuestionImages
+                                      images={qImages}
+                                      onImageClick={(url) => openLightbox(url, null, qImages)}
                                     />
-                                  ));
+                                  );
                                 })()}
 
                                 
