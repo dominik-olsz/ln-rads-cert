@@ -95,6 +95,25 @@ export function xmlToObject(text: string): FxlResponse {
 }
 
 /**
+ * FakturaXL allows at most one API request per second (per token). Every call
+ * goes through this serialized gate so new endpoints get the pacing for free.
+ */
+const FXL_MIN_INTERVAL_MS = 1100;
+let fxlGate: Promise<void> = Promise.resolve();
+let fxlLastCallAt = 0;
+
+function fxlThrottle(): Promise<void> {
+  const next = fxlGate.then(async () => {
+    const wait = FXL_MIN_INTERVAL_MS - (Date.now() - fxlLastCallAt);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    fxlLastCallAt = Date.now();
+  });
+  // Keep the chain alive even if a caller rejects downstream.
+  fxlGate = next.catch(() => {});
+  return next;
+}
+
+/**
  * POSTs an XML body to a FakturaXL endpoint and returns the parsed
  * `<dokument>` / `<dokumenty>` payload.
  */
@@ -110,6 +129,8 @@ export async function fxlRaw(endpoint: string, xmlBody: string, root = "dokument
 ${xmlBody}
 </${root}>`;
 
+  await fxlThrottle();
+
   const res = await fetch(`${FXL_BASE}/${endpoint}.php`, {
     method: "POST",
     headers: { "Content-Type": "application/xml; charset=utf-8" },
@@ -121,6 +142,7 @@ ${xmlBody}
   }
   return text;
 }
+
 
 export async function fxl(endpoint: string, xmlBody: string, root = "dokument"): Promise<FxlResponse> {
   const text = await fxlRaw(endpoint, xmlBody, root);
@@ -480,7 +502,8 @@ export async function readFakturaXLDocument(
   let doc: any = null;
   let number: string | null = null;
   for (let attempt = 0; attempt < 2; attempt++) {
-    await sleep(1100);
+    // Pacing is handled centrally in fxlRaw.
+
     const read = await fxl(FXL_ENDPOINTS.readDocument, `  <dokument_id>${documentId}</dokument_id>`);
     doc = (read?.dokument ?? read) as any;
     if (doc && typeof doc === "object") {
@@ -601,7 +624,8 @@ export async function listFakturaXLDocuments(
  * Returns the decoded PDF bytes, or throws with the reported reason.
  */
 export async function fetchFakturaXLPdf(documentId: string): Promise<Uint8Array> {
-  await sleep(1100);
+  // Pacing is handled centrally in fxlRaw.
+
   const raw = await fxlRaw(
     FXL_ENDPOINTS.documentPdf,
     `  <dokument_id>${documentId}</dokument_id>`,
@@ -648,7 +672,7 @@ export type FxlEmailOutcome = {
 export async function sendFakturaXLDocumentByEmail(
   documentId: string,
 ): Promise<FxlEmailOutcome> {
-  await sleep(1100);
+  // Pacing is handled centrally in fxlRaw.
 
   let code: string | null = null;
   let raw = "";
