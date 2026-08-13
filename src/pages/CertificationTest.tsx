@@ -200,7 +200,7 @@ const CertificationTest = () => {
       ) {
         await supabase
           .from('certification_test_progress')
-          .update({ is_completed: true })
+          .delete()
           .eq('id', existingProgress.id);
         existingProgress = null;
         hasResumableAttempt = false;
