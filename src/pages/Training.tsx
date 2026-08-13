@@ -658,7 +658,27 @@ const Training = () => {
               transition: swipeShift === 0 ? 'transform 200ms ease-out' : undefined,
             }}
           >
+            <div className="flex items-center justify-between lg:hidden">
+              <Button
+                variant="outline"
+                onClick={handlePrevious}
+                disabled={currentItem === 0}
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Previous
+              </Button>
+
+              <Button
+                onClick={handleNext}
+                disabled={currentItem === courseItems.length - 1}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+
             <Card ref={contentRef} className="scroll-mt-28 lg:scroll-mt-32">
+
               <CardContent className="pt-6">
                 {currentCourseItem?.locked ? (
                   <div className="text-center py-12 space-y-4">
