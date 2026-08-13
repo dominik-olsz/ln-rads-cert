@@ -66,8 +66,10 @@ interface TestQuestion {
   options: QuestionOption[];
   explanation?: string;
   image_url?: string;
+  image_urls?: string[];
   order_index?: number;
 }
+
 
 
 interface TestQuestionsGroup {
