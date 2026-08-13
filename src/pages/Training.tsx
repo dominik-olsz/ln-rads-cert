@@ -647,7 +647,17 @@ const Training = () => {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+          <div
+            className="lg:col-span-2 space-y-6"
+            onPointerDown={handleSwipePointerDown}
+            onPointerMove={handleSwipePointerMove}
+            onPointerUp={handleSwipePointerEnd}
+            onPointerCancel={handleSwipePointerEnd}
+            style={{
+              transform: `translateX(${swipeShift}px)`,
+              transition: swipeShift === 0 ? 'transform 200ms ease-out' : undefined,
+            }}
+          >
             <Card ref={contentRef} className="scroll-mt-28 lg:scroll-mt-32">
               <CardContent className="pt-6">
                 {currentCourseItem?.locked ? (
