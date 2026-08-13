@@ -1300,32 +1300,43 @@ const CourseBuilder = () => {
 
 
                               <div className="space-y-2">
-                                <Label>Image (Optional)</Label>
+                                <Label>Images (Optional)</Label>
                                 <Input
                                   type="file"
+                                  multiple
                                   accept={IMAGE_UPLOAD_ACCEPT}
                                   onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    
+                                    const files = Array.from(e.target.files || []);
+                                    if (files.length === 0) return;
+                                    const input = e.target;
+
                                     setUploading(true);
                                     try {
-                                      const prepared = await prepareImageForUpload(file);
-                                      const fileExt = prepared.name.split('.').pop();
-                                      const fileName = `${Math.random()}.${fileExt}`;
-                                      const filePath = `question-images/${fileName}`;
+                                      const uploaded: string[] = [];
+                                      for (const file of files) {
+                                        const prepared = await prepareImageForUpload(file);
+                                        const fileExt = prepared.name.split('.').pop();
+                                        const filePath = `question-images/${Math.random()}.${fileExt}`;
 
-                                      const { error: uploadError } = await supabase.storage
-                                        .from('course-materials')
-                                        .upload(filePath, prepared);
+                                        const { error: uploadError } = await supabase.storage
+                                          .from('course-materials')
+                                          .upload(filePath, prepared);
 
-                                      if (uploadError) throw uploadError;
+                                        if (uploadError) throw uploadError;
 
-                                      const { data } = supabase.storage
-                                        .from('course-materials')
-                                        .getPublicUrl(filePath);
+                                        const { data } = supabase.storage
+                                          .from('course-materials')
+                                          .getPublicUrl(filePath);
+                                        uploaded.push(data.publicUrl);
+                                      }
 
-                                      updateQuestionInGroup(currentItemIndex, idx, { image_url: data.publicUrl });
+                                      const existing = normalizeQuestionImages(question);
+                                      const next = [...existing, ...uploaded];
+                                      updateQuestionInGroup(currentItemIndex, idx, {
+                                        image_urls: next,
+                                        image_url: next[0],
+                                      });
+                                      input.value = '';
                                     } catch (error) {
                                       console.error('Upload error:', error);
                                     } finally {
@@ -1333,14 +1344,32 @@ const CourseBuilder = () => {
                                     }
                                   }}
                                 />
-                                {question.image_url && (
-                                  <img 
-                                    src={question.image_url} 
-                                    alt="" 
-                                    className="max-w-xs rounded mt-2" 
-                                  />
+                                {normalizeQuestionImages(question).length > 0 && (
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {normalizeQuestionImages(question).map((url, imgIdx) => (
+                                      <div key={url} className="relative">
+                                        <img src={url} alt="" className="h-24 w-24 object-cover rounded border" />
+                                        <Button
+                                          type="button"
+                                          variant="destructive"
+                                          size="icon"
+                                          className="absolute -top-2 -right-2 h-6 w-6"
+                                          onClick={() => {
+                                            const next = normalizeQuestionImages(question).filter((_, i) => i !== imgIdx);
+                                            updateQuestionInGroup(currentItemIndex, idx, {
+                                              image_urls: next,
+                                              image_url: next[0],
+                                            });
+                                          }}
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
+
                             </div>
 
                             <div className="space-y-2">
