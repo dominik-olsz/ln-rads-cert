@@ -821,15 +821,18 @@ const Training = () => {
                                   <h3 className="font-semibold text-lg">Question {qIndex + 1}</h3>
                                 </div>
                                 
-                                {(q.image_urls?.length ? q.image_urls : q.image_url ? [q.image_url] : []).map((url) => (
-                                  <img
-                                    key={url}
-                                    src={url}
-                                    alt="Question"
-                                    className="w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
-                                    onClick={(e) => openLightbox(url, e.currentTarget)}
-                                  />
-                                ))}
+                                {(() => {
+                                  const qImages = q.image_urls?.length ? q.image_urls : q.image_url ? [q.image_url] : [];
+                                  return qImages.map((url) => (
+                                    <img
+                                      key={url}
+                                      src={url}
+                                      alt="Question"
+                                      className="w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
+                                      onClick={(e) => openLightbox(url, e.currentTarget, qImages)}
+                                    />
+                                  ));
+                                })()}
 
                                 
                                 <p className="text-base">{q.question_text}</p>
