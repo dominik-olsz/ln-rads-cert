@@ -14,7 +14,7 @@ const json = (body: unknown, status = 200) =>
   });
 
 const SELECT_COLUMNS =
-  'id, lesson_id, question_text, options, option_a, option_b, option_c, option_d, correct_answer, explanation, image_url, created_at, test_type, group_title, order_index, is_free';
+  'id, lesson_id, question_text, options, option_a, option_b, option_c, option_d, correct_answer, explanation, image_url, image_urls, created_at, test_type, group_title, order_index, is_free';
 
 // Strips the answer key and exposes only the option texts.
 const toSafeQuestion = (q: any) => {
