@@ -644,7 +644,8 @@ const Training = () => {
                         <img
                           src={currentLessonContent.content_url}
                           alt={currentCourseItem.title}
-                          className="w-full max-h-[500px] object-contain"
+                          className="w-full max-h-[500px] object-contain cursor-zoom-in"
+                          onClick={() => openLightbox(currentLessonContent.content_url!)}
                         />
                       </div>
                     )}
@@ -655,7 +656,7 @@ const Training = () => {
                         onClick={(e) => {
                           const target = e.target as HTMLElement;
                           if (target.tagName === 'IMG') {
-                            setFullSizeImage((target as HTMLImageElement).src);
+                            openLightbox((target as HTMLImageElement).src);
                           }
                         }}
                         dangerouslySetInnerHTML={{ __html: currentLessonContent.content_text }}
@@ -680,7 +681,7 @@ const Training = () => {
                                     src={material.file_url} 
                                     alt={material.title}
                                     className="w-full max-h-[400px] object-contain rounded-lg cursor-zoom-in"
-                                    onClick={() => setFullSizeImage(material.file_url)}
+                                    onClick={() => openLightbox(material.file_url)}
                                   />
                                 )}
                                 {material.file_type === 'video' && (
@@ -739,7 +740,7 @@ const Training = () => {
                                     src={q.image_url} 
                                     alt="Question" 
                                     className="w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
-                                    onClick={() => setFullSizeImage(q.image_url)}
+                                    onClick={() => openLightbox(q.image_url)}
                                   />
                                 )}
                                 
