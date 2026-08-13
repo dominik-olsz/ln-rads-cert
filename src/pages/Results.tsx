@@ -23,6 +23,11 @@ const Results = () => {
   const [certificateId, setCertificateId] = useState<string | null>(null);
   const [generatingCert, setGeneratingCert] = useState(false);
   const [canRetake, setCanRetake] = useState(false);
+  const [attemptsInfo, setAttemptsInfo] = useState<{
+    freeLeft: number;
+    paidLeft: number;
+    retakePrice: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -44,16 +49,26 @@ const Results = () => {
           .eq('is_certification_test', true),
         supabase
           .from('courses')
-          .select('attempts_total')
+          .select('attempts_total, attempts_included, retake_price')
           .eq('id', courseId)
           .maybeSingle(),
       ]);
 
-      setCanRetake((count ?? 0) < (course?.attempts_total ?? 3));
+      const used = count ?? 0;
+      const total = course?.attempts_total ?? 3;
+      const included = course?.attempts_included ?? 1;
+
+      setCanRetake(used < total);
+      setAttemptsInfo({
+        freeLeft: Math.max(0, included - used),
+        paidLeft: Math.max(0, total - Math.max(used, included)),
+        retakePrice: course?.retake_price ?? 0,
+      });
     };
 
     checkAttempts();
   }, [user, courseId, passed]);
+
 
   const generateCertificate = async () => {
     if (!attemptId || !passed) return;
