@@ -883,17 +883,25 @@ const CertificationTest = () => {
                 
                 <p className="text-foreground mb-4">{question.question_text}</p>
                 
-                {question.image_url && (
-                  <div className="mb-6">
-                    <img 
-                      src={question.image_url} 
-                      alt="Question" 
-                      className="max-w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
-                      onClick={() => setLightbox({ images: [question.image_url!], index: 0 })}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Click the image to zoom in</p>
-                  </div>
-                )}
+                {(() => {
+                  const images = (question.image_urls?.length ? question.image_urls : question.image_url ? [question.image_url] : []);
+                  if (images.length === 0) return null;
+                  return (
+                    <div className="mb-6 space-y-2">
+                      {images.map((url, i) => (
+                        <img
+                          key={url}
+                          src={url}
+                          alt="Question"
+                          className="max-w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
+                          onClick={() => setLightbox({ images, index: i })}
+                        />
+                      ))}
+                      <p className="text-xs text-muted-foreground mt-1">Click an image to zoom in</p>
+                    </div>
+                  );
+                })()}
+
 
                 <RadioGroup
                   value={currentAnswer?.answer || ''}
