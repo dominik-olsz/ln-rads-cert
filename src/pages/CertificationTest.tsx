@@ -134,22 +134,40 @@ const CertificationTest = () => {
         }
       }
 
-      let progressQuery = supabase
+      // Find an unfinished session for this course. Older rows may have been
+      // saved without a course id, so fall back to matching them by the
+      // questions they stored (and repair the row once adopted).
+      const { data: openRows, error: progressError } = await supabase
         .from('certification_test_progress')
         .select('*')
-        .eq('user_id', user?.id);
-      if (courseId) progressQuery = progressQuery.eq('course_id', courseId);
-
-      const { data: existingProgress, error: progressError } = await progressQuery
-        .order('started_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq('user_id', user?.id)
+        .eq('is_completed', false)
+        .order('started_at', { ascending: false });
 
       if (progressError && progressError.code !== 'PGRST116') {
         throw progressError;
       }
 
-      const hasResumableAttempt = !!existingProgress && !existingProgress.is_completed;
+      let existingProgress =
+        (openRows ?? []).find((r) => courseId && r.course_id === courseId) ?? null;
+
+      if (!existingProgress && courseId) {
+        const legacy = (openRows ?? []).find((r) => !r.course_id) ?? null;
+        if (legacy) {
+          existingProgress = legacy;
+          await supabase
+            .from('certification_test_progress')
+            .update({ course_id: courseId })
+            .eq('id', legacy.id);
+        }
+      }
+
+      if (!existingProgress && !courseId) {
+        existingProgress = (openRows ?? [])[0] ?? null;
+      }
+
+      const hasResumableAttempt = !!existingProgress;
+
 
       // How many certification attempts has this student used?
       let attemptsQuery = supabase
@@ -209,37 +227,56 @@ const CertificationTest = () => {
 
 
       // If there's an incomplete attempt, resume it
-      if (existingProgress && !existingProgress.is_completed) {
-        const savedQuestions = existingProgress.questions as unknown as TestQuestion[];
-        const savedAnswers = existingProgress.answers as unknown as Record<string, QuestionAnswer>;
-        
+      if (existingProgress) {
+        const savedQuestions = (existingProgress.questions as unknown as TestQuestion[]) ?? [];
+        const savedAnswers = (existingProgress.answers as unknown as Record<string, QuestionAnswer>) ?? {};
+
+        const savedIndex = existingProgress.current_question_index ?? 0;
+        const isLocked = (i: number) => !!savedAnswers[savedQuestions[i]?.id]?.locked;
+
+        // If the question we stopped on is already locked, move to the first
+        // question that still needs an answer (fresh timer). Otherwise stay put
+        // and continue with the saved remaining time.
+        let resumeIndex = savedIndex;
+        if (isLocked(savedIndex)) {
+          const nextOpen = savedQuestions.findIndex((_, i) => !isLocked(i));
+          resumeIndex = nextOpen === -1 ? savedIndex : nextOpen;
+        }
+
         setQuestions(savedQuestions);
-        setCurrentQuestion(existingProgress.current_question_index);
+        setCurrentQuestion(resumeIndex);
         setAnswers(savedAnswers);
-        
-        // Check if current question is locked
-        const currentQuestionId = savedQuestions[existingProgress.current_question_index]?.id;
-        const isCurrentQuestionLocked = savedAnswers[currentQuestionId]?.locked || false;
-        
-        // Only activate timer if current question is not locked
-        if (isCurrentQuestionLocked) {
+
+        if (isLocked(resumeIndex)) {
+          // Every question is locked — the student only needs to submit.
           setTimeLeft(30);
           setTimerActive(false);
+        } else if (resumeIndex !== savedIndex) {
+          setTimeLeft(30);
+          setTimerActive(true);
         } else {
-          setTimeLeft(existingProgress.time_left);
+          setTimeLeft(existingProgress.time_left > 0 ? existingProgress.time_left : 30);
           setTimerActive(true);
         }
-        
+
         setProgressId(existingProgress.id);
         setShowWelcome(false);
         setLoading(false);
-        
+
+        if (resumeIndex !== savedIndex) {
+          await supabase
+            .from('certification_test_progress')
+            .update({ current_question_index: resumeIndex })
+            .eq('id', existingProgress.id);
+        }
+
         toast({
           title: "Resuming Test",
-          description: `Continuing from question ${existingProgress.current_question_index + 1}`,
+          description: `Continuing from question ${resumeIndex + 1}`,
         });
         return;
       }
+
 
       // No existing attempt, fetch questions
       await fetchQuestions();
@@ -530,12 +567,32 @@ const CertificationTest = () => {
   const retakeAmountCents = retakeQuote ? retakeQuote.finalCents : retakePrice;
 
   const handleStartTest = async () => {
-    // Create progress record
+    // Create (or reuse) the progress record for this course
     try {
+      let openQuery = supabase
+        .from('certification_test_progress')
+        .select('id')
+        .eq('user_id', user?.id!)
+        .eq('is_completed', false);
+      if (courseId) openQuery = openQuery.eq('course_id', courseId);
+
+      const { data: openRow } = await openQuery
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (openRow) {
+        setProgressId(openRow.id);
+        setShowWelcome(false);
+        setTimerActive(true);
+        return;
+      }
+
       const { data: progressData, error: progressError } = await supabase
         .from('certification_test_progress')
         .insert({
           user_id: user?.id!,
+          ...(courseId ? { course_id: courseId } : {}),
           current_question_index: 0,
           answers: {} as any,
           time_left: 30,
@@ -549,6 +606,7 @@ const CertificationTest = () => {
       setProgressId(progressData.id);
       setShowWelcome(false);
       setTimerActive(true);
+
     } catch (error) {
       console.error('Error creating progress:', error);
       toast({
