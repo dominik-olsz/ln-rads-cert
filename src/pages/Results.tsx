@@ -191,8 +191,8 @@ const Results = () => {
               {!passed && courseId && (
                 <div className="space-y-4">
                   {canRetake && (
-                    <Link to={`/certification-test?courseId=${courseId}&retake=1`}>
-                      <Button size="lg">
+                    <Link to={`/certification-test?courseId=${courseId}&retake=1`} className="block">
+                      <Button size="lg" className="w-full">
                         Retake Test
                       </Button>
                     </Link>
