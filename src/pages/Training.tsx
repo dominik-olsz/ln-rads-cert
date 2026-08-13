@@ -12,6 +12,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { optionLetter } from "@/lib/questionOptions";
 import { resolveMaterialUrls } from "@/lib/materialUrl";
 import ImageLightbox from "@/components/ImageLightbox";
+import QuestionImages from "@/components/QuestionImages";
 
 
 interface Lesson {
