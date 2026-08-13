@@ -502,7 +502,8 @@ export async function readFakturaXLDocument(
   let doc: any = null;
   let number: string | null = null;
   for (let attempt = 0; attempt < 2; attempt++) {
-    await sleep(1100);
+    // Pacing is handled centrally in fxlRaw.
+
     const read = await fxl(FXL_ENDPOINTS.readDocument, `  <dokument_id>${documentId}</dokument_id>`);
     doc = (read?.dokument ?? read) as any;
     if (doc && typeof doc === "object") {
