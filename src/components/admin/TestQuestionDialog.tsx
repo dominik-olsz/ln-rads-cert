@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,7 @@ interface TestQuestion {
   correct_answer?: string | null;
   explanation?: string;
   image_url?: string;
+  image_urls?: string[] | null;
   test_type?: 'course' | 'certification';
 }
 
@@ -46,7 +48,7 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
   const [questionText, setQuestionText] = useState('');
   const [options, setOptions] = useState<QuestionOption[]>(emptyOptions());
   const [explanation, setExplanation] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -61,13 +63,13 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
       setQuestionText(question.question_text);
       setOptions(normalizeOptions(question.options, question));
       setExplanation(question.explanation || '');
-      setImageUrl(question.image_url || '');
+      setImageUrls(question.image_urls?.length ? question.image_urls : question.image_url ? [question.image_url] : []);
     } else {
       setCourseId('');
       setQuestionText('');
       setOptions(emptyOptions());
       setExplanation('');
-      setImageUrl('');
+      setImageUrls([]);
     }
   }, [question, open]);
 
@@ -80,30 +82,35 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const input = e.target;
 
     setUploading(true);
     try {
-      const prepared = await prepareImageForUpload(file);
-      const fileExt = prepared.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `question-images/${fileName}`;
+      const uploaded: string[] = [];
+      for (const file of files) {
+        const prepared = await prepareImageForUpload(file);
+        const fileExt = prepared.name.split('.').pop();
+        const filePath = `question-images/${Math.random()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('course-materials')
-        .upload(filePath, prepared);
+        const { error: uploadError } = await supabase.storage
+          .from('course-materials')
+          .upload(filePath, prepared);
 
-      if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage
-        .from('course-materials')
-        .getPublicUrl(filePath);
+        const { data } = supabase.storage
+          .from('course-materials')
+          .getPublicUrl(filePath);
+        uploaded.push(data.publicUrl);
+      }
 
-      setImageUrl(data.publicUrl);
+      setImageUrls((prev) => [...prev, ...uploaded]);
+      input.value = '';
       toast({
         title: 'Success',
-        description: 'Image uploaded successfully',
+        description: 'Images uploaded successfully',
       });
     } catch (error: any) {
       console.error('Error uploading image:', error);
@@ -144,7 +151,8 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
         option_d: null,
         correct_answer: null,
         explanation: explanation || null,
-        image_url: imageUrl || null,
+        image_url: imageUrls[0] || null,
+        image_urls: imageUrls,
         test_type: question?.test_type || testType,
       };
 
@@ -226,23 +234,38 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
           <QuestionOptionsEditor options={options} onChange={setOptions} />
 
           <div>
-            <Label htmlFor="image">Question Image (Optional)</Label>
+            <Label htmlFor="image">Question Images (Optional)</Label>
             <div className="flex items-center gap-2">
               <Input
                 id="image"
                 type="file"
+                multiple
                 accept={IMAGE_UPLOAD_ACCEPT}
                 onChange={handleImageUpload}
                 disabled={uploading}
               />
               {uploading && <span className="text-sm text-muted-foreground">Converting & uploading...</span>}
             </div>
-            {imageUrl && (
-              <div className="mt-2">
-                <img src={imageUrl} alt="Question" className="max-w-xs rounded" />
+            {imageUrls.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {imageUrls.map((url, i) => (
+                  <div key={url} className="relative">
+                    <img src={url} alt="Question" className="h-24 w-24 object-cover rounded border" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6"
+                      onClick={() => setImageUrls((prev) => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
+
 
           <div>
             <Label htmlFor="explanation">Explanation (Optional)</Label>

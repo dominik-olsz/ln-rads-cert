@@ -17,7 +17,7 @@ import { attachLessonContent } from "@/lib/lessonContent";
 import { 
   ArrowLeft, Plus, Trash2, Upload, Video, FileText, 
   GripVertical, Save, PlayCircle, CheckCircle, BookOpen, 
-  FileQuestion, Award 
+  FileQuestion, Award, X 
 } from "lucide-react";
 import {
   Dialog,
@@ -66,8 +66,10 @@ interface TestQuestion {
   options: QuestionOption[];
   explanation?: string;
   image_url?: string;
+  image_urls?: string[];
   order_index?: number;
 }
+
 
 
 interface TestQuestionsGroup {
@@ -77,6 +79,13 @@ interface TestQuestionsGroup {
   is_free?: boolean;
   questions: TestQuestion[];
 }
+
+// Questions used to hold a single image; normalize both shapes to a list.
+const normalizeQuestionImages = (q: any): string[] => {
+  const list = Array.isArray(q?.image_urls) ? q.image_urls.filter((u: any) => typeof u === 'string' && u) : [];
+  if (list.length > 0) return list;
+  return q?.image_url ? [q.image_url] : [];
+};
 
 
 const CourseBuilder = () => {
@@ -306,6 +315,8 @@ const CourseBuilder = () => {
           options: normalizeOptions(q.options, q),
           explanation: q.explanation ?? undefined,
           image_url: q.image_url ?? undefined,
+          image_urls: normalizeQuestionImages(q),
+
           order_index: q.order_index ?? 999
         });
 
@@ -328,6 +339,8 @@ const CourseBuilder = () => {
           options: normalizeOptions(q.options, q),
           explanation: q.explanation ?? undefined,
           image_url: q.image_url ?? undefined,
+          image_urls: normalizeQuestionImages(q),
+
           order_index: q.order_index ?? 0,
         }))
       );
@@ -765,7 +778,9 @@ const CourseBuilder = () => {
             correct_answer: null,
 
             explanation: q.explanation || null,
-            image_url: q.image_url || null,
+            image_url: normalizeQuestionImages(q)[0] || null,
+            image_urls: normalizeQuestionImages(q),
+
             test_type: 'course',
             order_index: group.order_index,
             group_title: group.title || null,
@@ -802,7 +817,9 @@ const CourseBuilder = () => {
                 correct_answer: null,
 
                 explanation: q.explanation || null,
-                image_url: q.image_url || null,
+                image_url: normalizeQuestionImages(q)[0] || null,
+                image_urls: normalizeQuestionImages(q),
+
                 test_type: 'certification',
                 order_index: idx,
                 is_free: false
@@ -1283,32 +1300,43 @@ const CourseBuilder = () => {
 
 
                               <div className="space-y-2">
-                                <Label>Image (Optional)</Label>
+                                <Label>Images (Optional)</Label>
                                 <Input
                                   type="file"
+                                  multiple
                                   accept={IMAGE_UPLOAD_ACCEPT}
                                   onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    
+                                    const files = Array.from(e.target.files || []);
+                                    if (files.length === 0) return;
+                                    const input = e.target;
+
                                     setUploading(true);
                                     try {
-                                      const prepared = await prepareImageForUpload(file);
-                                      const fileExt = prepared.name.split('.').pop();
-                                      const fileName = `${Math.random()}.${fileExt}`;
-                                      const filePath = `question-images/${fileName}`;
+                                      const uploaded: string[] = [];
+                                      for (const file of files) {
+                                        const prepared = await prepareImageForUpload(file);
+                                        const fileExt = prepared.name.split('.').pop();
+                                        const filePath = `question-images/${Math.random()}.${fileExt}`;
 
-                                      const { error: uploadError } = await supabase.storage
-                                        .from('course-materials')
-                                        .upload(filePath, prepared);
+                                        const { error: uploadError } = await supabase.storage
+                                          .from('course-materials')
+                                          .upload(filePath, prepared);
 
-                                      if (uploadError) throw uploadError;
+                                        if (uploadError) throw uploadError;
 
-                                      const { data } = supabase.storage
-                                        .from('course-materials')
-                                        .getPublicUrl(filePath);
+                                        const { data } = supabase.storage
+                                          .from('course-materials')
+                                          .getPublicUrl(filePath);
+                                        uploaded.push(data.publicUrl);
+                                      }
 
-                                      updateQuestionInGroup(currentItemIndex, idx, { image_url: data.publicUrl });
+                                      const existing = normalizeQuestionImages(question);
+                                      const next = [...existing, ...uploaded];
+                                      updateQuestionInGroup(currentItemIndex, idx, {
+                                        image_urls: next,
+                                        image_url: next[0],
+                                      });
+                                      input.value = '';
                                     } catch (error) {
                                       console.error('Upload error:', error);
                                     } finally {
@@ -1316,14 +1344,32 @@ const CourseBuilder = () => {
                                     }
                                   }}
                                 />
-                                {question.image_url && (
-                                  <img 
-                                    src={question.image_url} 
-                                    alt="" 
-                                    className="max-w-xs rounded mt-2" 
-                                  />
+                                {normalizeQuestionImages(question).length > 0 && (
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {normalizeQuestionImages(question).map((url, imgIdx) => (
+                                      <div key={url} className="relative">
+                                        <img src={url} alt="" className="h-24 w-24 object-cover rounded border" />
+                                        <Button
+                                          type="button"
+                                          variant="destructive"
+                                          size="icon"
+                                          className="absolute -top-2 -right-2 h-6 w-6"
+                                          onClick={() => {
+                                            const next = normalizeQuestionImages(question).filter((_, i) => i !== imgIdx);
+                                            updateQuestionInGroup(currentItemIndex, idx, {
+                                              image_urls: next,
+                                              image_url: next[0],
+                                            });
+                                          }}
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
+
                             </div>
 
                             <div className="space-y-2">
@@ -1515,31 +1561,39 @@ const CourseBuilder = () => {
 
 
                                 <div className="space-y-2">
-                                  <Label>Image (Optional)</Label>
+                                  <Label>Images (Optional)</Label>
                                   <Input
                                     type="file"
+                                    multiple
                                     accept={IMAGE_UPLOAD_ACCEPT}
                                     onChange={async (e) => {
-                                      const file = e.target.files?.[0];
-                                      if (!file) return;
+                                      const files = Array.from(e.target.files || []);
+                                      if (files.length === 0) return;
+                                      const input = e.target;
 
                                       setUploading(true);
                                       try {
-                                        const prepared = await prepareImageForUpload(file);
-                                        const fileExt = prepared.name.split('.').pop();
-                                        const filePath = `question-images/${Math.random()}.${fileExt}`;
+                                        const uploaded: string[] = [];
+                                        for (const file of files) {
+                                          const prepared = await prepareImageForUpload(file);
+                                          const fileExt = prepared.name.split('.').pop();
+                                          const filePath = `question-images/${Math.random()}.${fileExt}`;
 
-                                        const { error: uploadError } = await supabase.storage
-                                          .from('course-materials')
-                                          .upload(filePath, prepared);
+                                          const { error: uploadError } = await supabase.storage
+                                            .from('course-materials')
+                                            .upload(filePath, prepared);
 
-                                        if (uploadError) throw uploadError;
+                                          if (uploadError) throw uploadError;
 
-                                        const { data } = supabase.storage
-                                          .from('course-materials')
-                                          .getPublicUrl(filePath);
+                                          const { data } = supabase.storage
+                                            .from('course-materials')
+                                            .getPublicUrl(filePath);
+                                          uploaded.push(data.publicUrl);
+                                        }
 
-                                        updateCertQuestion(idx, { image_url: data.publicUrl });
+                                        const next = [...normalizeQuestionImages(question), ...uploaded];
+                                        updateCertQuestion(idx, { image_urls: next, image_url: next[0] });
+                                        input.value = '';
                                       } catch (error) {
                                         console.error('Upload error:', error);
                                       } finally {
@@ -1547,10 +1601,29 @@ const CourseBuilder = () => {
                                       }
                                     }}
                                   />
-                                  {question.image_url && (
-                                    <img src={question.image_url} alt="" className="max-w-xs rounded mt-2" />
+                                  {normalizeQuestionImages(question).length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                      {normalizeQuestionImages(question).map((url, imgIdx) => (
+                                        <div key={url} className="relative">
+                                          <img src={url} alt="" className="h-24 w-24 object-cover rounded border" />
+                                          <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="icon"
+                                            className="absolute -top-2 -right-2 h-6 w-6"
+                                            onClick={() => {
+                                              const next = normalizeQuestionImages(question).filter((_, i) => i !== imgIdx);
+                                              updateCertQuestion(idx, { image_urls: next, image_url: next[0] });
+                                            }}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                    </div>
                                   )}
                                 </div>
+
                               </div>
 
                               <div className="space-y-2">
