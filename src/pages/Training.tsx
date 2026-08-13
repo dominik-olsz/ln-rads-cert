@@ -86,6 +86,9 @@ const Training = () => {
   const [hasFailedAttempt, setHasFailedAttempt] = useState(false);
   const [downloadingCertificate, setDownloadingCertificate] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const [swipeShift, setSwipeShift] = useState(0);
+  const clampShift = (dx: number) => Math.max(-40, Math.min(40, dx * 0.4));
+
 
 
   const handleDownloadCertificate = async () => {
@@ -560,6 +563,52 @@ const Training = () => {
     }
   };
 
+  // Touch swipe navigation between course items (mobile/tablet)
+  const swipeNavRef = useRef<{ id: number; x: number; y: number; time: number; active: boolean } | null>(null);
+
+  const handleSwipePointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') return;
+    const target = e.target as HTMLElement;
+    if (target.closest('img, video, iframe, [role="radio"], a, button')) return;
+    swipeNavRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, time: Date.now(), active: true };
+  };
+
+  const handleSwipePointerMove = (e: React.PointerEvent) => {
+    const s = swipeNavRef.current;
+    if (!s || !s.active || s.id !== e.pointerId) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    if (Math.abs(dy) > Math.abs(dx)) {
+      swipeNavRef.current = null;
+      setSwipeShift(0);
+      return;
+    }
+    setSwipeShift(clampShift(dx));
+  };
+
+  const handleSwipePointerEnd = async (e: React.PointerEvent) => {
+    const s = swipeNavRef.current;
+    setSwipeShift(0);
+    if (!s || s.id !== e.pointerId) return;
+    swipeNavRef.current = null;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    const dt = Date.now() - s.time || 1;
+    const velocity = Math.abs(dx) / dt;
+    if (Math.abs(dx) <= Math.abs(dy) * 1.5) return;
+    const commit = Math.abs(dx) > 60 || (Math.abs(dx) > 35 && velocity > 0.4);
+    if (!commit) return;
+    if (dx < 0 && currentItem < courseItems.length - 1) {
+      await handleNext();
+      contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (dx > 0 && currentItem > 0) {
+      await handlePrevious();
+      contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -598,7 +647,17 @@ const Training = () => {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+          <div
+            className="lg:col-span-2 space-y-6"
+            onPointerDown={handleSwipePointerDown}
+            onPointerMove={handleSwipePointerMove}
+            onPointerUp={handleSwipePointerEnd}
+            onPointerCancel={handleSwipePointerEnd}
+            style={{
+              transform: `translateX(${swipeShift}px)`,
+              transition: swipeShift === 0 ? 'transform 200ms ease-out' : undefined,
+            }}
+          >
             <Card ref={contentRef} className="scroll-mt-28 lg:scroll-mt-32">
               <CardContent className="pt-6">
                 {currentCourseItem?.locked ? (
