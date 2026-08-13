@@ -540,7 +540,7 @@ const CourseDetail = () => {
 
             <div className="lg:col-span-1 order-1 lg:order-2">
               {/* Pricing card for desktop - hidden on mobile */}
-              <Card className="sticky top-20 hidden lg:block">
+              <Card className="sticky top-28 lg:top-32 hidden lg:block">
                 <CardContent className="pt-6 space-y-6">
                   {!hasPurchased ? (
                     <DiscountPricePanel
