@@ -231,29 +231,18 @@ const CertificationTest = () => {
         const savedQuestions = (existingProgress.questions as unknown as TestQuestion[]) ?? [];
         const savedAnswers = (existingProgress.answers as unknown as Record<string, QuestionAnswer>) ?? {};
 
-        const savedIndex = existingProgress.current_question_index ?? 0;
-        const isLocked = (i: number) => !!savedAnswers[savedQuestions[i]?.id]?.locked;
-
-        // If the question we stopped on is already locked, move to the first
-        // question that still needs an answer (fresh timer). Otherwise stay put
-        // and continue with the saved remaining time.
-        let resumeIndex = savedIndex;
-        if (isLocked(savedIndex)) {
-          const nextOpen = savedQuestions.findIndex((_, i) => !isLocked(i));
-          resumeIndex = nextOpen === -1 ? savedIndex : nextOpen;
-        }
+        // Always come back to the exact question the student stopped on.
+        const resumeIndex = existingProgress.current_question_index ?? 0;
+        const resumeLocked = !!savedAnswers[savedQuestions[resumeIndex]?.id]?.locked;
 
         setQuestions(savedQuestions);
         setCurrentQuestion(resumeIndex);
         setAnswers(savedAnswers);
 
-        if (isLocked(resumeIndex)) {
-          // Every question is locked — the student only needs to submit.
-          setTimeLeft(30);
+        if (resumeLocked) {
+          // The question is finished — the student must click Next themselves.
+          setTimeLeft(0);
           setTimerActive(false);
-        } else if (resumeIndex !== savedIndex) {
-          setTimeLeft(30);
-          setTimerActive(true);
         } else {
           setTimeLeft(existingProgress.time_left > 0 ? existingProgress.time_left : 30);
           setTimerActive(true);
@@ -263,19 +252,13 @@ const CertificationTest = () => {
         setShowWelcome(false);
         setLoading(false);
 
-        if (resumeIndex !== savedIndex) {
-          await supabase
-            .from('certification_test_progress')
-            .update({ current_question_index: resumeIndex })
-            .eq('id', existingProgress.id);
-        }
-
         toast({
           title: "Resuming Test",
           description: `Continuing from question ${resumeIndex + 1}`,
         });
         return;
       }
+
 
 
       // No existing attempt, fetch questions
@@ -315,6 +298,8 @@ const CertificationTest = () => {
             };
 
             setAnswers(newAnswers);
+            setTimerActive(false);
+
             
             // Save the locked state to database
             saveProgress(currentQuestion, newAnswers, 0).then(() => {
