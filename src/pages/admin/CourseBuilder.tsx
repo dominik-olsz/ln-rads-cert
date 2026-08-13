@@ -817,7 +817,9 @@ const CourseBuilder = () => {
                 correct_answer: null,
 
                 explanation: q.explanation || null,
-                image_url: q.image_url || null,
+                image_url: normalizeQuestionImages(q)[0] || null,
+                image_urls: normalizeQuestionImages(q),
+
                 test_type: 'certification',
                 order_index: idx,
                 is_free: false
