@@ -80,6 +80,13 @@ interface TestQuestionsGroup {
   questions: TestQuestion[];
 }
 
+// Questions used to hold a single image; normalize both shapes to a list.
+const normalizeQuestionImages = (q: any): string[] => {
+  const list = Array.isArray(q?.image_urls) ? q.image_urls.filter((u: any) => typeof u === 'string' && u) : [];
+  if (list.length > 0) return list;
+  return q?.image_url ? [q.image_url] : [];
+};
+
 
 const CourseBuilder = () => {
   const { courseId } = useParams();
