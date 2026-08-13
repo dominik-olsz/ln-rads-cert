@@ -656,7 +656,7 @@ const Training = () => {
                         onClick={(e) => {
                           const target = e.target as HTMLElement;
                           if (target.tagName === 'IMG') {
-                            openLightbox((target as HTMLImageElement).src);
+                            openLightbox((target as HTMLImageElement).src, target as HTMLImageElement);
                           }
                         }}
                         dangerouslySetInnerHTML={{ __html: currentLessonContent.content_text }}
