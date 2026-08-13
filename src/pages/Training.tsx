@@ -364,7 +364,12 @@ const Training = () => {
    * Opens the lightbox with every image currently rendered in the content area
    * (including images embedded in the lesson's rich text), in visual order.
    */
-  const openLightbox = useCallback((clickedSrc: string, clickedEl?: HTMLImageElement | null) => {
+  const openLightbox = useCallback((clickedSrc: string, clickedEl?: HTMLImageElement | null, scopedImages?: string[]) => {
+    if (scopedImages?.length) {
+      const i = scopedImages.indexOf(clickedSrc);
+      setLightbox({ images: scopedImages, index: i === -1 ? 0 : i });
+      return;
+    }
     const nodes = Array.from(
       contentRef.current?.querySelectorAll<HTMLImageElement>('img') ?? []
     );
