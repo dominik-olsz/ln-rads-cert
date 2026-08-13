@@ -86,6 +86,9 @@ const Training = () => {
   const [hasFailedAttempt, setHasFailedAttempt] = useState(false);
   const [downloadingCertificate, setDownloadingCertificate] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const [swipeShift, setSwipeShift] = useState(0);
+  const clampShift = (dx: number) => Math.max(-40, Math.min(40, dx * 0.4));
+
 
 
   const handleDownloadCertificate = async () => {
