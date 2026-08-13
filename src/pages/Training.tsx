@@ -52,6 +52,8 @@ interface TestQuestion {
   question_text: string;
   options: { text: string }[];
   image_url: string | null;
+  image_urls?: string[] | null;
+
   group_title: string | null;
   order_index: number;
 }
