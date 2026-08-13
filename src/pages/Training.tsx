@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -80,7 +80,7 @@ const Training = () => {
   const [answerFeedback, setAnswerFeedback] = useState<Record<string, AnswerFeedback>>({});
   const [lessonContents, setLessonContents] = useState<Record<string, { content_text: string | null; content_url: string | null }>>({});
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
-  const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
   const [certificationEnabled, setCertificationEnabled] = useState(false);
   const [passedAttemptId, setPassedAttemptId] = useState<string | null>(null);
   const [hasFailedAttempt, setHasFailedAttempt] = useState(false);
