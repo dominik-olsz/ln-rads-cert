@@ -19,6 +19,8 @@ interface TestQuestion {
   question_text: string;
   options: { text: string }[];
   image_url?: string;
+  image_urls?: string[];
+
 }
 
 
