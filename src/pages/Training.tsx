@@ -740,7 +740,7 @@ const Training = () => {
                                     src={q.image_url} 
                                     alt="Question" 
                                     className="w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
-                                    onClick={() => openLightbox(q.image_url)}
+                                    onClick={(e) => openLightbox(q.image_url, e.currentTarget)}
                                   />
                                 )}
                                 
