@@ -560,6 +560,52 @@ const Training = () => {
     }
   };
 
+  // Touch swipe navigation between course items (mobile/tablet)
+  const swipeNavRef = useRef<{ id: number; x: number; y: number; time: number; active: boolean } | null>(null);
+
+  const handleSwipePointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') return;
+    const target = e.target as HTMLElement;
+    if (target.closest('img, video, iframe, [role="radio"], a, button')) return;
+    swipeNavRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, time: Date.now(), active: true };
+  };
+
+  const handleSwipePointerMove = (e: React.PointerEvent) => {
+    const s = swipeNavRef.current;
+    if (!s || !s.active || s.id !== e.pointerId) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    if (Math.abs(dy) > Math.abs(dx)) {
+      swipeNavRef.current = null;
+      setSwipeShift(0);
+      return;
+    }
+    setSwipeShift(clampShift(dx));
+  };
+
+  const handleSwipePointerEnd = async (e: React.PointerEvent) => {
+    const s = swipeNavRef.current;
+    setSwipeShift(0);
+    if (!s || s.id !== e.pointerId) return;
+    swipeNavRef.current = null;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    const dt = Date.now() - s.time || 1;
+    const velocity = Math.abs(dx) / dt;
+    if (Math.abs(dx) <= Math.abs(dy) * 1.5) return;
+    const commit = Math.abs(dx) > 60 || (Math.abs(dx) > 35 && velocity > 0.4);
+    if (!commit) return;
+    if (dx < 0 && currentItem < courseItems.length - 1) {
+      await handleNext();
+      contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (dx > 0 && currentItem > 0) {
+      await handlePrevious();
+      contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
