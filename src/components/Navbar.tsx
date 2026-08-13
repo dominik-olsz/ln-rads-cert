@@ -89,7 +89,7 @@ const Navbar = () => {
         </Link>
 
         <div className="hidden lg:flex items-center gap-10">
-          <a href="https://lnrads.com/" target="_blank" rel="noopener noreferrer" className={navLinkClass}>
+          <a href="https://cert.lnrads.com/" target="_blank" rel="noopener noreferrer" className={navLinkClass}>
             Home
           </a>
           <a href="https://lnrads.com/our-team/" target="_blank" rel="noopener noreferrer" className={navLinkClass}>
