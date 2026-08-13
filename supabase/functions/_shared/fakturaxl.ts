@@ -474,11 +474,27 @@ const toNumber = (raw: string | null): number | null => {
 export async function readFakturaXLDocument(
   documentId: string,
 ): Promise<FxlDocumentDetails | null> {
-  const read = await fxl(FXL_ENDPOINTS.readDocument, `  <dokument_id>${documentId}</dokument_id>`);
-  const doc = (read?.dokument ?? read) as any;
-  if (!doc || typeof doc !== "object") return null;
-  const number = firstValue(doc, ["numer_faktury", "numer"]);
-  if (!number) return null;
+  // FakturaXL allows one request per second; a read fired straight after another
+  // call comes back as an error envelope with no numer_faktury, which used to be
+  // reported as "could not be read". Pace it, and retry once after the window.
+  let doc: any = null;
+  let number: string | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await sleep(1100);
+    const read = await fxl(FXL_ENDPOINTS.readDocument, `  <dokument_id>${documentId}</dokument_id>`);
+    doc = (read?.dokument ?? read) as any;
+    if (doc && typeof doc === "object") {
+      number = firstValue(doc, ["numer_faktury", "numer"]);
+      if (number) break;
+    }
+  }
+  if (!doc || typeof doc !== "object" || !number) {
+    console.error(
+      `FakturaXL read failed for document ${documentId}:`,
+      JSON.stringify(doc)?.slice(0, 300),
+    );
+    return null;
+  }
 
   const num = toNumber;
   const date = (raw: string | null) => (raw ? raw.slice(0, 10) : null);
