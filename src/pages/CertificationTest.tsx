@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 import { optionLetter } from "@/lib/questionOptions";
 import ImageLightbox from "@/components/ImageLightbox";
+import QuestionImages from "@/components/QuestionImages";
 
 interface TestQuestion {
   id: string;
