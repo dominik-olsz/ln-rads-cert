@@ -64,7 +64,7 @@ const CertificationTest = () => {
   const [retakePrice, setRetakePrice] = useState<number>(6900);
   const [payLoading, setPayLoading] = useState(false);
   const [retakeCode, setRetakeCode] = useState('');
-  const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
   const [retakeQuote, setRetakeQuote] = useState<{ finalCents: number; userPercent: number; codePercent: number } | null>(null);
   const [checkingCode, setCheckingCode] = useState(false);
 
@@ -889,7 +889,7 @@ const CertificationTest = () => {
                       src={question.image_url} 
                       alt="Question" 
                       className="max-w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
-                      onClick={() => setFullSizeImage(question.image_url ?? null)}
+                      onClick={() => setLightbox({ images: [question.image_url!], index: 0 })}
                     />
                     <p className="text-xs text-muted-foreground mt-1">Click the image to zoom in</p>
                   </div>
@@ -969,7 +969,12 @@ const CertificationTest = () => {
         </div>
       </div>
 
-      <ImageLightbox src={fullSizeImage} onClose={() => setFullSizeImage(null)} />
+      <ImageLightbox
+        images={lightbox?.images ?? []}
+        currentIndex={lightbox?.index ?? 0}
+        onClose={() => setLightbox(null)}
+        onIndexChange={(index) => setLightbox((prev) => (prev ? { ...prev, index } : null))}
+      />
     </div>
   );
 };

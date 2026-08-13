@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -80,7 +80,7 @@ const Training = () => {
   const [answerFeedback, setAnswerFeedback] = useState<Record<string, AnswerFeedback>>({});
   const [lessonContents, setLessonContents] = useState<Record<string, { content_text: string | null; content_url: string | null }>>({});
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
-  const [fullSizeImage, setFullSizeImage] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
   const [certificationEnabled, setCertificationEnabled] = useState(false);
   const [passedAttemptId, setPassedAttemptId] = useState<string | null>(null);
   const [hasFailedAttempt, setHasFailedAttempt] = useState(false);
@@ -355,6 +355,31 @@ const Training = () => {
   const currentLessonContent =
     currentCourseItem?.type === 'lesson' ? lessonContents[currentCourseItem.id] : undefined;
 
+  const openLightbox = useCallback((clickedSrc: string) => {
+    const images: string[] = [];
+    if (currentCourseItem?.type === 'lesson') {
+      const lesson = currentCourseItem.data as Lesson;
+      if (lesson.content_type === 'image' && currentLessonContent?.content_url) {
+        images.push(currentLessonContent.content_url);
+      }
+      const mats = materials[currentCourseItem.id] || [];
+      mats.forEach((m) => {
+        if (m.file_type === 'image') images.push(m.file_url);
+      });
+    } else if (currentCourseItem?.type === 'questionGroup') {
+      const group = currentCourseItem.data as TestQuestionGroup;
+      group.questions.forEach((q) => {
+        if (q.image_url) images.push(q.image_url);
+      });
+    }
+    const index = images.indexOf(clickedSrc);
+    if (images.length > 0 && index !== -1) {
+      setLightbox({ images, index });
+    } else {
+      setLightbox({ images: [clickedSrc], index: 0 });
+    }
+  }, [currentCourseItem, currentLessonContent, materials]);
+
   // Load lesson content from the backend (access checked server-side)
   useEffect(() => {
     const item = courseItems[currentItem];
@@ -619,7 +644,8 @@ const Training = () => {
                         <img
                           src={currentLessonContent.content_url}
                           alt={currentCourseItem.title}
-                          className="w-full max-h-[500px] object-contain"
+                          className="w-full max-h-[500px] object-contain cursor-zoom-in"
+                          onClick={() => openLightbox(currentLessonContent.content_url!)}
                         />
                       </div>
                     )}
@@ -630,7 +656,7 @@ const Training = () => {
                         onClick={(e) => {
                           const target = e.target as HTMLElement;
                           if (target.tagName === 'IMG') {
-                            setFullSizeImage((target as HTMLImageElement).src);
+                            openLightbox((target as HTMLImageElement).src);
                           }
                         }}
                         dangerouslySetInnerHTML={{ __html: currentLessonContent.content_text }}
@@ -655,7 +681,7 @@ const Training = () => {
                                     src={material.file_url} 
                                     alt={material.title}
                                     className="w-full max-h-[400px] object-contain rounded-lg cursor-zoom-in"
-                                    onClick={() => setFullSizeImage(material.file_url)}
+                                    onClick={() => openLightbox(material.file_url)}
                                   />
                                 )}
                                 {material.file_type === 'video' && (
@@ -714,7 +740,7 @@ const Training = () => {
                                     src={q.image_url} 
                                     alt="Question" 
                                     className="w-full rounded-lg border cursor-zoom-in hover:opacity-90 transition-opacity"
-                                    onClick={() => setFullSizeImage(q.image_url)}
+                                    onClick={() => openLightbox(q.image_url)}
                                   />
                                 )}
                                 
@@ -921,7 +947,12 @@ const Training = () => {
         </div>
 
         {/* Full size image dialog */}
-        <ImageLightbox src={fullSizeImage} onClose={() => setFullSizeImage(null)} />
+        <ImageLightbox
+          images={lightbox?.images ?? []}
+          currentIndex={lightbox?.index ?? 0}
+          onClose={() => setLightbox(null)}
+          onIndexChange={(index) => setLightbox((prev) => (prev ? { ...prev, index } : null))}
+        />
       </div>
     </div>
   );
