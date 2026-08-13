@@ -116,6 +116,7 @@ const CertificationTest = () => {
       let courseMaxAttempts = MAX_ATTEMPTS;
       let courseAttemptsIncluded = 1;
       let coursePrice = 6900;
+      let coursePassPercent = 80;
       if (courseId) {
         const { data: courseSettings } = await supabase
           .from('courses')
@@ -127,10 +128,11 @@ const CertificationTest = () => {
           courseMaxAttempts = courseSettings.attempts_total ?? MAX_ATTEMPTS;
           courseAttemptsIncluded = courseSettings.attempts_included ?? 1;
           coursePrice = (courseSettings.retake_price ?? 69) * 100;
+          coursePassPercent = courseSettings.certification_pass_percent ?? 80;
           setMaxAttempts(courseMaxAttempts);
           setAttemptsIncluded(courseAttemptsIncluded);
           setRetakePrice(coursePrice);
-          setPassPercent(courseSettings.certification_pass_percent ?? 80);
+          setPassPercent(coursePassPercent);
         }
       }
 
