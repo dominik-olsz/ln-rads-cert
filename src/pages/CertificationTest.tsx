@@ -824,7 +824,7 @@ const CertificationTest = () => {
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="font-semibold mt-1">•</span>
-                      <span>Passing Score: 80%</span>
+                      <span>Passing Score: {passPercent}%</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="font-semibold mt-1">•</span>
