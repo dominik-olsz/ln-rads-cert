@@ -62,6 +62,7 @@ const CertificationTest = () => {
   const [attemptsUsed, setAttemptsUsed] = useState(0);
   const [maxAttempts, setMaxAttempts] = useState(MAX_ATTEMPTS);
   const [attemptsIncluded, setAttemptsIncluded] = useState(1);
+  const [passPercent, setPassPercent] = useState(80);
 
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [retakePrice, setRetakePrice] = useState<number>(6900);
