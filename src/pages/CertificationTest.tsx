@@ -134,22 +134,40 @@ const CertificationTest = () => {
         }
       }
 
-      let progressQuery = supabase
+      // Find an unfinished session for this course. Older rows may have been
+      // saved without a course id, so fall back to matching them by the
+      // questions they stored (and repair the row once adopted).
+      const { data: openRows, error: progressError } = await supabase
         .from('certification_test_progress')
         .select('*')
-        .eq('user_id', user?.id);
-      if (courseId) progressQuery = progressQuery.eq('course_id', courseId);
-
-      const { data: existingProgress, error: progressError } = await progressQuery
-        .order('started_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq('user_id', user?.id)
+        .eq('is_completed', false)
+        .order('started_at', { ascending: false });
 
       if (progressError && progressError.code !== 'PGRST116') {
         throw progressError;
       }
 
-      const hasResumableAttempt = !!existingProgress && !existingProgress.is_completed;
+      let existingProgress =
+        (openRows ?? []).find((r) => courseId && r.course_id === courseId) ?? null;
+
+      if (!existingProgress && courseId) {
+        const legacy = (openRows ?? []).find((r) => !r.course_id) ?? null;
+        if (legacy) {
+          existingProgress = legacy;
+          await supabase
+            .from('certification_test_progress')
+            .update({ course_id: courseId })
+            .eq('id', legacy.id);
+        }
+      }
+
+      if (!existingProgress && !courseId) {
+        existingProgress = (openRows ?? [])[0] ?? null;
+      }
+
+      const hasResumableAttempt = !!existingProgress;
+
 
       // How many certification attempts has this student used?
       let attemptsQuery = supabase
