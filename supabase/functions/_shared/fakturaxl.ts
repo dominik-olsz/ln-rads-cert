@@ -624,7 +624,8 @@ export async function listFakturaXLDocuments(
  * Returns the decoded PDF bytes, or throws with the reported reason.
  */
 export async function fetchFakturaXLPdf(documentId: string): Promise<Uint8Array> {
-  await sleep(1100);
+  // Pacing is handled centrally in fxlRaw.
+
   const raw = await fxlRaw(
     FXL_ENDPOINTS.documentPdf,
     `  <dokument_id>${documentId}</dokument_id>`,
