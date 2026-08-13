@@ -190,6 +190,22 @@ const CertificationTest = () => {
       // where the student can download the certificate or start a retake.
       const wantsRetake = searchParams.get('retake') === '1';
       const lastAttempt = attemptRows?.[0];
+
+      // A saved session that predates a finished attempt is stale (e.g. the test
+      // was submitted from another tab/session). Close it out and show results.
+      if (
+        existingProgress &&
+        lastAttempt?.completed_at &&
+        new Date(lastAttempt.completed_at) >= new Date(existingProgress.started_at)
+      ) {
+        await supabase
+          .from('certification_test_progress')
+          .update({ is_completed: true })
+          .eq('id', existingProgress.id);
+        existingProgress = null;
+        hasResumableAttempt = false;
+      }
+
       if (!hasResumableAttempt && lastAttempt && !wantsRetake) {
         const params = new URLSearchParams({
           score: String(lastAttempt.score ?? 0),
