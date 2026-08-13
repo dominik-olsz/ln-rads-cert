@@ -226,23 +226,38 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
           <QuestionOptionsEditor options={options} onChange={setOptions} />
 
           <div>
-            <Label htmlFor="image">Question Image (Optional)</Label>
+            <Label htmlFor="image">Question Images (Optional)</Label>
             <div className="flex items-center gap-2">
               <Input
                 id="image"
                 type="file"
+                multiple
                 accept={IMAGE_UPLOAD_ACCEPT}
                 onChange={handleImageUpload}
                 disabled={uploading}
               />
               {uploading && <span className="text-sm text-muted-foreground">Converting & uploading...</span>}
             </div>
-            {imageUrl && (
-              <div className="mt-2">
-                <img src={imageUrl} alt="Question" className="max-w-xs rounded" />
+            {imageUrls.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {imageUrls.map((url, i) => (
+                  <div key={url} className="relative">
+                    <img src={url} alt="Question" className="h-24 w-24 object-cover rounded border" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6"
+                      onClick={() => setImageUrls((prev) => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
+
 
           <div>
             <Label htmlFor="explanation">Explanation (Optional)</Label>
