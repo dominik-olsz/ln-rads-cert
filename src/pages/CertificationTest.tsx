@@ -196,7 +196,7 @@ const CertificationTest = () => {
           passed: String(!!lastAttempt.passed),
           isCertification: 'true',
           attemptId: lastAttempt.id,
-          passPercent: String(courseSettingsPassPercent),
+          passPercent: String(coursePassPercent),
           points: String(lastAttempt.points_earned ?? 0),
           maxPoints: String(lastAttempt.points_possible ?? 0),
         });
