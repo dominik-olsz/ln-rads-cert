@@ -315,6 +315,8 @@ const CourseBuilder = () => {
           options: normalizeOptions(q.options, q),
           explanation: q.explanation ?? undefined,
           image_url: q.image_url ?? undefined,
+          image_urls: normalizeQuestionImages(q),
+
           order_index: q.order_index ?? 999
         });
 
