@@ -1123,6 +1123,7 @@ export type Database = {
           group_title: string | null
           id: string
           image_url: string | null
+          image_urls: string[]
           is_free: boolean
           lesson_id: string | null
           option_a: string | null
@@ -1143,6 +1144,7 @@ export type Database = {
           group_title?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string[]
           is_free?: boolean
           lesson_id?: string | null
           option_a?: string | null
@@ -1163,6 +1165,7 @@ export type Database = {
           group_title?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string[]
           is_free?: boolean
           lesson_id?: string | null
           option_a?: string | null
