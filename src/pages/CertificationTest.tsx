@@ -168,7 +168,7 @@ const CertificationTest = () => {
         existingProgress = (openRows ?? [])[0] ?? null;
       }
 
-      const hasResumableAttempt = !!existingProgress;
+      let hasResumableAttempt = !!existingProgress;
 
 
       // How many certification attempts has this student used?
