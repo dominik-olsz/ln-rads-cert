@@ -315,6 +315,8 @@ const CertificationTest = () => {
             };
 
             setAnswers(newAnswers);
+            setTimerActive(false);
+
             
             // Save the locked state to database
             saveProgress(currentQuestion, newAnswers, 0).then(() => {
