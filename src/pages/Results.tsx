@@ -159,8 +159,26 @@ const Results = () => {
                 <p className="text-muted-foreground">
                   {passed
                     ? "You have successfully completed the certification test"
-                    : `You need ${passPercent}% or higher to pass. You can't retake the test.`}
+                    : (() => {
+                        const base = `You need ${passPercent}% or higher to pass.`;
+                        if (!attemptsInfo) return base;
+                        const { freeLeft, paidLeft, retakePrice } = attemptsInfo;
+                        if (freeLeft === 0 && paidLeft === 0) {
+                          return `${base} You have used all your attempts — contact cert@lnrads.com for assistance.`;
+                        }
+                        const parts: string[] = [];
+                        if (freeLeft > 0) {
+                          parts.push(`${freeLeft} free attempt${freeLeft > 1 ? 's' : ''}`);
+                        }
+                        if (paidLeft > 0) {
+                          parts.push(
+                            `${paidLeft} paid attempt${paidLeft > 1 ? 's' : ''}${retakePrice ? ` (€${retakePrice} each)` : ''}`
+                          );
+                        }
+                        return `${base} You have ${parts.join(' and ')} left.`;
+                      })()}
                 </p>
+
               </div>
 
               <div className="py-8">
