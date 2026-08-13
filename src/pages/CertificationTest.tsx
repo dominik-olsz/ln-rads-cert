@@ -227,37 +227,56 @@ const CertificationTest = () => {
 
 
       // If there's an incomplete attempt, resume it
-      if (existingProgress && !existingProgress.is_completed) {
-        const savedQuestions = existingProgress.questions as unknown as TestQuestion[];
-        const savedAnswers = existingProgress.answers as unknown as Record<string, QuestionAnswer>;
-        
+      if (existingProgress) {
+        const savedQuestions = (existingProgress.questions as unknown as TestQuestion[]) ?? [];
+        const savedAnswers = (existingProgress.answers as unknown as Record<string, QuestionAnswer>) ?? {};
+
+        const savedIndex = existingProgress.current_question_index ?? 0;
+        const isLocked = (i: number) => !!savedAnswers[savedQuestions[i]?.id]?.locked;
+
+        // If the question we stopped on is already locked, move to the first
+        // question that still needs an answer (fresh timer). Otherwise stay put
+        // and continue with the saved remaining time.
+        let resumeIndex = savedIndex;
+        if (isLocked(savedIndex)) {
+          const nextOpen = savedQuestions.findIndex((_, i) => !isLocked(i));
+          resumeIndex = nextOpen === -1 ? savedIndex : nextOpen;
+        }
+
         setQuestions(savedQuestions);
-        setCurrentQuestion(existingProgress.current_question_index);
+        setCurrentQuestion(resumeIndex);
         setAnswers(savedAnswers);
-        
-        // Check if current question is locked
-        const currentQuestionId = savedQuestions[existingProgress.current_question_index]?.id;
-        const isCurrentQuestionLocked = savedAnswers[currentQuestionId]?.locked || false;
-        
-        // Only activate timer if current question is not locked
-        if (isCurrentQuestionLocked) {
+
+        if (isLocked(resumeIndex)) {
+          // Every question is locked — the student only needs to submit.
           setTimeLeft(30);
           setTimerActive(false);
+        } else if (resumeIndex !== savedIndex) {
+          setTimeLeft(30);
+          setTimerActive(true);
         } else {
-          setTimeLeft(existingProgress.time_left);
+          setTimeLeft(existingProgress.time_left > 0 ? existingProgress.time_left : 30);
           setTimerActive(true);
         }
-        
+
         setProgressId(existingProgress.id);
         setShowWelcome(false);
         setLoading(false);
-        
+
+        if (resumeIndex !== savedIndex) {
+          await supabase
+            .from('certification_test_progress')
+            .update({ current_question_index: resumeIndex })
+            .eq('id', existingProgress.id);
+        }
+
         toast({
           title: "Resuming Test",
-          description: `Continuing from question ${existingProgress.current_question_index + 1}`,
+          description: `Continuing from question ${resumeIndex + 1}`,
         });
         return;
       }
+
 
       // No existing attempt, fetch questions
       await fetchQuestions();
