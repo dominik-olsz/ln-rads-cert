@@ -681,7 +681,7 @@ const Training = () => {
                                     src={material.file_url} 
                                     alt={material.title}
                                     className="w-full max-h-[400px] object-contain rounded-lg cursor-zoom-in"
-                                    onClick={() => openLightbox(material.file_url)}
+                                    onClick={(e) => openLightbox(material.file_url, e.currentTarget)}
                                   />
                                 )}
                                 {material.file_type === 'video' && (
