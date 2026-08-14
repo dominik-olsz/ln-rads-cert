@@ -77,6 +77,41 @@ export type Database = {
           },
         ]
       }
+      certification_attempt_resets: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          id: string
+          reset_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          reset_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          reset_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certification_attempt_resets_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certification_retake_purchases: {
         Row: {
           amount_paid: number
