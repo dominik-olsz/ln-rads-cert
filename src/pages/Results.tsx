@@ -23,6 +23,7 @@ const Results = () => {
   const [certificateId, setCertificateId] = useState<string | null>(null);
   const [generatingCert, setGeneratingCert] = useState(false);
   const [canRetake, setCanRetake] = useState(false);
+  const [resolvedCourseId, setResolvedCourseId] = useState<string | null>(courseId);
   const [attemptsInfo, setAttemptsInfo] = useState<{
     freeLeft: number;
     paidLeft: number;
