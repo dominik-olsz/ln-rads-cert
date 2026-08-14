@@ -273,6 +273,15 @@ const Results = () => {
                     {score.toFixed(1)}%
                   </p>
                 </div>
+                {!passed && attemptsInfo && (
+                  <div className="col-span-2 space-y-1 border-t pt-3 mt-1">
+                    <p className="text-muted-foreground">Attempts Remaining</p>
+                    <p className="text-lg font-semibold">
+                      {attemptsInfo.freeLeft} free, {attemptsInfo.paidLeft} paid
+                      {attemptsInfo.paidLeft > 0 && attemptsInfo.retakePrice ? ` (€${attemptsInfo.retakePrice} each)` : ''}
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
