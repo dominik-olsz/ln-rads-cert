@@ -647,7 +647,7 @@ const CertificationTest = () => {
         !!openRow && !!resetAt && new Date(openRow.started_at) < resetAt;
       const rowHasLockedAnswers =
         !!openRow &&
-        Object.values((openRow.answers as Record<string, QuestionAnswer>) ?? {}).some(
+        Object.values((openRow.answers as unknown as Record<string, QuestionAnswer>) ?? {}).some(
           (a) => a?.locked
         );
 
