@@ -632,7 +632,7 @@ const CertificationTest = () => {
     try {
       let openQuery = supabase
         .from('certification_test_progress')
-        .select('id')
+        .select('id, started_at, answers')
         .eq('user_id', user?.id!)
         .eq('is_completed', false);
       if (courseId) openQuery = openQuery.eq('course_id', courseId);
@@ -642,12 +642,31 @@ const CertificationTest = () => {
         .limit(1)
         .maybeSingle();
 
-      if (openRow) {
+      const resetAt = user?.id ? await fetchAttemptResetAt(user.id, courseId) : null;
+      const rowIsStale =
+        !!openRow && !!resetAt && new Date(openRow.started_at) < resetAt;
+      const rowHasLockedAnswers =
+        !!openRow &&
+        Object.values((openRow.answers as Record<string, QuestionAnswer>) ?? {}).some(
+          (a) => a?.locked
+        );
+
+      if (openRow && rowIsStale) {
+        await supabase.from('certification_test_progress').delete().eq('id', openRow.id);
+      }
+
+      // Only resume a session that this page actually loaded questions for.
+      if (openRow && !rowIsStale && (!rowHasLockedAnswers || Object.keys(answers).length > 0)) {
         setProgressId(openRow.id);
         setShowWelcome(false);
         setTimerActive(true);
         return;
       }
+
+      if (openRow && !rowIsStale) {
+        await supabase.from('certification_test_progress').delete().eq('id', openRow.id);
+      }
+
 
       const { data: progressData, error: progressError } = await supabase
         .from('certification_test_progress')
