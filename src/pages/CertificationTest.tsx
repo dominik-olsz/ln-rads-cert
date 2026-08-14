@@ -1018,40 +1018,84 @@ const CertificationTest = () => {
                 </RadioGroup>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={handlePrevious}
-                  disabled={currentQuestion === 0}
-                >
-                  Previous
-                </Button>
-
-                <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t">
+                {/* Mobile: Previous + Accept on one row, Next/Submit below */}
+                <div className="flex sm:hidden items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handlePrevious}
+                    disabled={currentQuestion === 0}
+                    className="flex-1"
+                  >
+                    Previous
+                  </Button>
                   {!isLocked && currentAnswer && (
                     <Button
                       onClick={handleAcceptAnswer}
                       variant="default"
+                      className="flex-1"
                     >
                       Accept Answer
                     </Button>
                   )}
+                </div>
 
+                <div className="flex sm:hidden w-full">
                   {currentQuestion === questions.length - 1 ? (
                     <Button
                       onClick={handleSubmit}
                       disabled={!allAnswered || submitting}
+                      className="w-full"
                     >
                       {submitting ? "Submitting..." : "Submit Test"}
                     </Button>
                   ) : (
-                    <Button 
+                    <Button
                       onClick={handleNext}
                       disabled={!isLocked}
+                      className="w-full"
                     >
                       Next Question
                     </Button>
                   )}
+                </div>
+
+                {/* Desktop: keep original layout */}
+                <div className="hidden sm:flex items-center justify-between w-full">
+                  <Button
+                    variant="outline"
+                    onClick={handlePrevious}
+                    disabled={currentQuestion === 0}
+                  >
+                    Previous
+                  </Button>
+
+                  <div className="flex gap-2">
+                    {!isLocked && currentAnswer && (
+                      <Button
+                        onClick={handleAcceptAnswer}
+                        variant="default"
+                      >
+                        Accept Answer
+                      </Button>
+                    )}
+
+                    {currentQuestion === questions.length - 1 ? (
+                      <Button
+                        onClick={handleSubmit}
+                        disabled={!allAnswered || submitting}
+                      >
+                        {submitting ? "Submitting..." : "Submit Test"}
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleNext}
+                        disabled={!isLocked}
+                      >
+                        Next Question
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
