@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 import { supabase } from '@/integrations/supabase/client';
+import { recordAttemptReset } from '@/lib/certificationReset';
+
 import { useToast } from '@/hooks/use-toast';
 import { RotateCcw, CheckCircle, XCircle, Award, Search, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 
