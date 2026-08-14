@@ -701,11 +701,21 @@ const CertificationTest = () => {
         title: passed ? "Congratulations!" : "Test Complete",
         description: passed
           ? `You passed with ${pointsEarned}/${pointsPossible} points (${score}%)!`
-          : `You scored ${score}%. You need ${passPercent}% to pass. You cannot retake this test.`,
+          : `You scored ${score}%. You need ${passPercent}% to pass.`,
         variant: passed ? "default" : "destructive",
       });
 
-      navigate(`/results?score=${score}&passed=${passed}&isCertification=true&attemptId=${attemptId}&passPercent=${passPercent}&points=${pointsEarned}&maxPoints=${pointsPossible}`);
+      const resultsParams = new URLSearchParams({
+        score: String(score),
+        passed: String(passed),
+        isCertification: 'true',
+        attemptId,
+        passPercent: String(passPercent),
+        points: String(pointsEarned),
+        maxPoints: String(pointsPossible),
+      });
+      if (courseId) resultsParams.set('courseId', courseId);
+      navigate(`/results?${resultsParams.toString()}`);
 
     } catch (error: any) {
       console.error('Error submitting test:', error);

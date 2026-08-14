@@ -23,6 +23,7 @@ const Results = () => {
   const [certificateId, setCertificateId] = useState<string | null>(null);
   const [generatingCert, setGeneratingCert] = useState(false);
   const [canRetake, setCanRetake] = useState(false);
+  const [resolvedCourseId, setResolvedCourseId] = useState<string | null>(courseId);
   const [attemptsInfo, setAttemptsInfo] = useState<{
     freeLeft: number;
     paidLeft: number;
@@ -37,20 +38,33 @@ const Results = () => {
   }, [user, navigate]);
 
   useEffect(() => {
-    if (!user || !courseId || passed) return;
+    if (!user || passed) return;
 
     const checkAttempts = async () => {
+      let resolvedCourseId = courseId;
+      if (!resolvedCourseId && attemptId) {
+        const { data: attempt } = await supabase
+          .from('test_attempts')
+          .select('course_id')
+          .eq('id', attemptId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        resolvedCourseId = attempt?.course_id ?? null;
+      }
+      if (!resolvedCourseId) return;
+      setResolvedCourseId(resolvedCourseId);
+
       const [{ count }, { data: course }] = await Promise.all([
         supabase
           .from('test_attempts')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .eq('course_id', courseId)
+          .eq('course_id', resolvedCourseId)
           .eq('is_certification_test', true),
         supabase
           .from('courses')
           .select('attempts_total, attempts_included, retake_price')
-          .eq('id', courseId)
+          .eq('id', resolvedCourseId)
           .maybeSingle(),
       ]);
 
@@ -67,7 +81,7 @@ const Results = () => {
     };
 
     checkAttempts();
-  }, [user, courseId, passed]);
+  }, [user, courseId, passed, attemptId]);
 
 
   const generateCertificate = async () => {
@@ -159,26 +173,8 @@ const Results = () => {
                 <p className="text-muted-foreground">
                   {passed
                     ? "You have successfully completed the certification test"
-                    : (() => {
-                        const base = `You need ${passPercent}% or higher to pass.`;
-                        if (!attemptsInfo) return base;
-                        const { freeLeft, paidLeft, retakePrice } = attemptsInfo;
-                        if (freeLeft === 0 && paidLeft === 0) {
-                          return `${base} You have used all your attempts — contact cert@lnrads.com for assistance.`;
-                        }
-                        const parts: string[] = [];
-                        if (freeLeft > 0) {
-                          parts.push(`${freeLeft} free attempt${freeLeft > 1 ? 's' : ''}`);
-                        }
-                        if (paidLeft > 0) {
-                          parts.push(
-                            `${paidLeft} paid attempt${paidLeft > 1 ? 's' : ''}${retakePrice ? ` (€${retakePrice} each)` : ''}`
-                          );
-                        }
-                        return `${base} You have ${parts.join(' and ')} left.`;
-                      })()}
+                    : `You need ${passPercent}% or higher to pass.`}
                 </p>
-
               </div>
 
               <div className="py-8">
@@ -189,6 +185,30 @@ const Results = () => {
                   Your Score{pointsPossible > 0 ? ` — ${pointsEarned} / ${pointsPossible} points` : ''}
                 </p>
               </div>
+
+              {!passed && attemptsInfo && (
+                <div className="bg-muted rounded-lg p-4 mx-auto max-w-sm">
+                  <p className="text-sm text-muted-foreground mb-2">Attempts remaining</p>
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-accent">{attemptsInfo.freeLeft}</div>
+                      <div className="text-xs text-muted-foreground">free</div>
+                    </div>
+                    <div className="text-muted-foreground">|</div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{attemptsInfo.paidLeft}</div>
+                      <div className="text-xs text-muted-foreground">
+                        paid{attemptsInfo.paidLeft > 0 && attemptsInfo.retakePrice ? ` (€${attemptsInfo.retakePrice})` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  {(attemptsInfo.freeLeft === 0 && attemptsInfo.paidLeft === 0) && (
+                    <p className="text-sm text-destructive mt-2">
+                      You have used all your attempts. Contact cert@lnrads.com for assistance.
+                    </p>
+                  )}
+                </div>
+              )}
 
 
               {passed && (
@@ -221,16 +241,16 @@ const Results = () => {
                 </div>
               )}
 
-              {!passed && courseId && (
+              {!passed && resolvedCourseId && (
                 <div className="space-y-4">
                   {canRetake && (
-                    <Link to={`/certification-test?courseId=${courseId}&retake=1`} className="block">
+                    <Link to={`/certification-test?courseId=${resolvedCourseId}&retake=1`} className="block">
                       <Button size="lg" className="w-full">
                         Retake Test
                       </Button>
                     </Link>
                   )}
-                  <Link to={`/training/${courseId}`} className="block">
+                  <Link to={`/training/${resolvedCourseId}`} className="block">
                     <Button variant="outline" size="lg" className="w-full">
                       Review Course Material
                     </Button>
@@ -267,6 +287,15 @@ const Results = () => {
                     {score.toFixed(1)}%
                   </p>
                 </div>
+                {!passed && attemptsInfo && (
+                  <div className="col-span-2 space-y-1 border-t pt-3 mt-1">
+                    <p className="text-muted-foreground">Attempts Remaining</p>
+                    <p className="text-lg font-semibold">
+                      {attemptsInfo.freeLeft} free, {attemptsInfo.paidLeft} paid
+                      {attemptsInfo.paidLeft > 0 && attemptsInfo.retakePrice ? ` (€${attemptsInfo.retakePrice} each)` : ''}
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
