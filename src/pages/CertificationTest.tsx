@@ -483,22 +483,42 @@ const CertificationTest = () => {
     saveProgress(currentQuestion, newAnswers, timeLeft);
   };
 
+  const handleSessionInvalidated = () => {
+    setTimerActive(false);
+    setProgressId(null);
+    toast({
+      title: "Test reset by administrator",
+      description: "Your saved attempt was cleared. Reloading a fresh test…",
+      variant: "destructive",
+    });
+    setTimeout(() => window.location.reload(), 1500);
+  };
+
   const saveProgress = async (questionIndex: number, currentAnswers: Record<string, QuestionAnswer>, currentTimeLeft: number) => {
     if (!user || !progressId) return;
 
     try {
-      await supabase
+      const { data, error } = await supabase
         .from('certification_test_progress')
         .update({
           current_question_index: questionIndex,
           answers: currentAnswers as any,
           time_left: currentTimeLeft,
         })
-        .eq('id', progressId);
+        .eq('id', progressId)
+        .select('id');
+
+      if (error) throw error;
+
+      // The row is gone (admin reset): never write this stale attempt back.
+      if (!data || data.length === 0) {
+        handleSessionInvalidated();
+      }
     } catch (error) {
       console.error('Error saving progress:', error);
     }
   };
+
 
   const handleAcceptAnswer = async () => {
     const question = questions[currentQuestion];
