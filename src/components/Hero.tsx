@@ -44,15 +44,15 @@ const Hero = () => {
             <div className="flex flex-col items-center gap-3 p-6 rounded-lg bg-card border">
               <Microscope className="h-8 w-8 text-primary" />
               <div className="text-center">
-                <div className="font-bold text-2xl">Practical</div>
-                <div className="text-sm text-muted-foreground">Certification Questions</div>
+                <div className="font-bold text-2xl">200+</div>
+                <div className="text-sm text-muted-foreground">Use Cases</div>
               </div>
             </div>
             <div className="flex flex-col items-center gap-3 p-6 rounded-lg bg-card border">
               <Award className="h-8 w-8 text-accent" />
               <div className="text-center">
-                <div className="font-bold text-2xl">80%</div>
-                <div className="text-sm text-muted-foreground">Pass Rate Required</div>
+                <div className="font-bold text-2xl">Practical</div>
+                <div className="text-sm text-muted-foreground">Certification Test</div>
               </div>
             </div>
             <div className="flex flex-col items-center gap-3 p-6 rounded-lg bg-card border">
