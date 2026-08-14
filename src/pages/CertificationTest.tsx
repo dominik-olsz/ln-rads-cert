@@ -14,6 +14,8 @@ import { AlertCircle } from "lucide-react";
 import { optionLetter } from "@/lib/questionOptions";
 import ImageLightbox from "@/components/ImageLightbox";
 import QuestionImages from "@/components/QuestionImages";
+import { fetchAttemptResetAt } from "@/lib/certificationReset";
+
 
 interface TestQuestion {
   id: string;
