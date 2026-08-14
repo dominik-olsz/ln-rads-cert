@@ -85,7 +85,7 @@ serve(async (req) => {
       // Scope by user_id so a caller can never read another learner's progress row
       const { data: progressData, error: progressError } = await supabaseAdmin
         .from('certification_test_progress')
-        .select('questions, user_id')
+        .select('questions, user_id, started_at, course_id')
         .eq('id', progressId)
         .eq('user_id', user.id)
         .maybeSingle();
@@ -104,6 +104,34 @@ serve(async (req) => {
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      // Refuse submissions from sessions started before an admin reset.
+      const { data: resetRows } = await supabaseAdmin
+        .from('certification_attempt_resets')
+        .select('course_id, reset_at')
+        .eq('user_id', user.id);
+
+      const progressCourseId = progressData.course_id ?? courseId ?? null;
+      const appliesToThisTest = (resetRows ?? []).filter(
+        (r: any) => r.course_id === null || r.course_id === progressCourseId
+      );
+      const staleReset = appliesToThisTest.some(
+        (r: any) => new Date(r.reset_at) > new Date(progressData.started_at)
+      );
+
+      if (staleReset) {
+        await supabaseAdmin
+          .from('certification_test_progress')
+          .delete()
+          .eq('id', progressId);
+
+        return new Response(
+          JSON.stringify({ error: 'This attempt was reset by an administrator. Please start the test again.' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+
 
 
       // Get question IDs from progress
