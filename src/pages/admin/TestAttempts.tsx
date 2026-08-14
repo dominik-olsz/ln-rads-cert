@@ -135,6 +135,19 @@ const AdminTestAttempts = () => {
 
       if (attemptsError) throw attemptsError;
 
+      // Mark the reset so any test session still open in the student's browser
+      // is discarded instead of being written back to the database.
+      const { error: markerError } = await supabase
+        .from('certification_attempt_resets')
+        .upsert(
+          { user_id: userId, course_id: null, reset_at: new Date().toISOString() },
+          { onConflict: 'user_id,course_id' }
+        );
+
+      if (markerError) console.error('Error recording reset marker:', markerError);
+
+
+
       toast({
         title: 'Success',
         description: `Certification attempts and certificates reset for ${userName}`,
