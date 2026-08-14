@@ -150,11 +150,26 @@ const CertificationTest = () => {
         throw progressError;
       }
 
+      // Sessions started before an admin reset are stale: drop them so the
+      // student always begins a reset test from question 1.
+      const resetAt = user?.id ? await fetchAttemptResetAt(user.id, courseId) : null;
+      let usableRows = openRows ?? [];
+      if (resetAt) {
+        const stale = usableRows.filter((r) => new Date(r.started_at) < resetAt);
+        if (stale.length > 0) {
+          await supabase
+            .from('certification_test_progress')
+            .delete()
+            .in('id', stale.map((r) => r.id));
+          usableRows = usableRows.filter((r) => new Date(r.started_at) >= resetAt);
+        }
+      }
+
       let existingProgress =
-        (openRows ?? []).find((r) => courseId && r.course_id === courseId) ?? null;
+        usableRows.find((r) => courseId && r.course_id === courseId) ?? null;
 
       if (!existingProgress && courseId) {
-        const legacy = (openRows ?? []).find((r) => !r.course_id) ?? null;
+        const legacy = usableRows.find((r) => !r.course_id) ?? null;
         if (legacy) {
           existingProgress = legacy;
           await supabase
@@ -165,10 +180,11 @@ const CertificationTest = () => {
       }
 
       if (!existingProgress && !courseId) {
-        existingProgress = (openRows ?? [])[0] ?? null;
+        existingProgress = usableRows[0] ?? null;
       }
 
       let hasResumableAttempt = !!existingProgress;
+
 
 
       // How many certification attempts has this student used?
