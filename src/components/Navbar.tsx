@@ -175,6 +175,20 @@ const Navbar = () => {
               >
                 Sign Out
               </Button>
+              {isAdmin ? (
+                <Link to="/admin/dashboard" className="lg:hidden inline-flex">
+                  <Button className="inline-flex items-center justify-center px-3 py-2 md:px-6 md:py-3 h-auto bg-foreground text-background font-semibold text-xs md:text-sm rounded-2xl transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-xl hover:shadow-primary/20 active:scale-95 shadow-lg">
+                    Admin
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/dashboard" className="lg:hidden inline-flex">
+                  <Button className="inline-flex items-center justify-center px-3 py-2 md:px-6 md:py-3 h-auto bg-foreground text-background font-semibold text-xs md:text-sm rounded-2xl transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-xl hover:shadow-primary/20 active:scale-95 shadow-lg">
+                    Dashboard
+                  </Button>
+                </Link>
+              )}
+
               <Sheet>
                 <SheetTrigger asChild>
                   <Button
