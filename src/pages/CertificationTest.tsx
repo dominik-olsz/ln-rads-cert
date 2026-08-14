@@ -701,7 +701,7 @@ const CertificationTest = () => {
         title: passed ? "Congratulations!" : "Test Complete",
         description: passed
           ? `You passed with ${pointsEarned}/${pointsPossible} points (${score}%)!`
-          : `You scored ${score}%. You need ${passPercent}% to pass. You cannot retake this test.`,
+          : `You scored ${score}%. You need ${passPercent}% to pass.`,
         variant: passed ? "default" : "destructive",
       });
 
