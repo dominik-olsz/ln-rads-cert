@@ -37,20 +37,32 @@ const Results = () => {
   }, [user, navigate]);
 
   useEffect(() => {
-    if (!user || !courseId || passed) return;
+    if (!user || passed) return;
 
     const checkAttempts = async () => {
+      let resolvedCourseId = courseId;
+      if (!resolvedCourseId && attemptId) {
+        const { data: attempt } = await supabase
+          .from('test_attempts')
+          .select('course_id')
+          .eq('id', attemptId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        resolvedCourseId = attempt?.course_id ?? null;
+      }
+      if (!resolvedCourseId) return;
+
       const [{ count }, { data: course }] = await Promise.all([
         supabase
           .from('test_attempts')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .eq('course_id', courseId)
+          .eq('course_id', resolvedCourseId)
           .eq('is_certification_test', true),
         supabase
           .from('courses')
           .select('attempts_total, attempts_included, retake_price')
-          .eq('id', courseId)
+          .eq('id', resolvedCourseId)
           .maybeSingle(),
       ]);
 
@@ -67,7 +79,7 @@ const Results = () => {
     };
 
     checkAttempts();
-  }, [user, courseId, passed]);
+  }, [user, courseId, passed, attemptId]);
 
 
   const generateCertificate = async () => {
