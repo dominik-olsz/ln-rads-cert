@@ -52,6 +52,7 @@ const Results = () => {
         resolvedCourseId = attempt?.course_id ?? null;
       }
       if (!resolvedCourseId) return;
+      setResolvedCourseId(resolvedCourseId);
 
       const [{ count }, { data: course }] = await Promise.all([
         supabase
