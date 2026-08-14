@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 import { supabase } from '@/integrations/supabase/client';
+import { recordAttemptReset } from '@/lib/certificationReset';
+
 import { useToast } from '@/hooks/use-toast';
 import { RotateCcw, CheckCircle, XCircle, Award, Search, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 
@@ -134,6 +136,13 @@ const AdminTestAttempts = () => {
         .eq('is_certification_test', true);
 
       if (attemptsError) throw attemptsError;
+
+      // Mark the reset so any test session still open in the student's browser
+      // is discarded instead of being written back to the database.
+      await recordAttemptReset(userId, null);
+
+
+
 
       toast({
         title: 'Success',

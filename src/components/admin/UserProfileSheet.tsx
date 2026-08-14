@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
+import { recordAttemptReset } from '@/lib/certificationReset';
+
 import { useToast } from '@/hooks/use-toast';
 import { Award, Download, FileText, Percent, Plus, RotateCcw, X } from 'lucide-react';
 
@@ -155,8 +157,12 @@ const UserProfileSheet = ({ userId, onOpenChange, onDiscountSaved }: Props) => {
       );
       if (att.error) throw att.error;
 
+      // Invalidate any test session the student still has open in a browser tab.
+      await recordAttemptReset(userId, courseId);
+
       toast({ title: 'Attempts reset', description: `Certification attempts cleared for "${title}".` });
       await load();
+
     } catch (e) {
       toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' });
     } finally {

@@ -14,6 +14,8 @@ import { AlertCircle } from "lucide-react";
 import { optionLetter } from "@/lib/questionOptions";
 import ImageLightbox from "@/components/ImageLightbox";
 import QuestionImages from "@/components/QuestionImages";
+import { fetchAttemptResetAt } from "@/lib/certificationReset";
+
 
 interface TestQuestion {
   id: string;
@@ -150,11 +152,26 @@ const CertificationTest = () => {
         throw progressError;
       }
 
+      // Sessions started before an admin reset are stale: drop them so the
+      // student always begins a reset test from question 1.
+      const resetAt = user?.id ? await fetchAttemptResetAt(user.id, courseId) : null;
+      let usableRows = openRows ?? [];
+      if (resetAt) {
+        const stale = usableRows.filter((r) => new Date(r.started_at) < resetAt);
+        if (stale.length > 0) {
+          await supabase
+            .from('certification_test_progress')
+            .delete()
+            .in('id', stale.map((r) => r.id));
+          usableRows = usableRows.filter((r) => new Date(r.started_at) >= resetAt);
+        }
+      }
+
       let existingProgress =
-        (openRows ?? []).find((r) => courseId && r.course_id === courseId) ?? null;
+        usableRows.find((r) => courseId && r.course_id === courseId) ?? null;
 
       if (!existingProgress && courseId) {
-        const legacy = (openRows ?? []).find((r) => !r.course_id) ?? null;
+        const legacy = usableRows.find((r) => !r.course_id) ?? null;
         if (legacy) {
           existingProgress = legacy;
           await supabase
@@ -165,10 +182,11 @@ const CertificationTest = () => {
       }
 
       if (!existingProgress && !courseId) {
-        existingProgress = (openRows ?? [])[0] ?? null;
+        existingProgress = usableRows[0] ?? null;
       }
 
       let hasResumableAttempt = !!existingProgress;
+
 
 
       // How many certification attempts has this student used?
@@ -465,22 +483,42 @@ const CertificationTest = () => {
     saveProgress(currentQuestion, newAnswers, timeLeft);
   };
 
+  const handleSessionInvalidated = () => {
+    setTimerActive(false);
+    setProgressId(null);
+    toast({
+      title: "Test reset by administrator",
+      description: "Your saved attempt was cleared. Reloading a fresh test…",
+      variant: "destructive",
+    });
+    setTimeout(() => window.location.reload(), 1500);
+  };
+
   const saveProgress = async (questionIndex: number, currentAnswers: Record<string, QuestionAnswer>, currentTimeLeft: number) => {
     if (!user || !progressId) return;
 
     try {
-      await supabase
+      const { data, error } = await supabase
         .from('certification_test_progress')
         .update({
           current_question_index: questionIndex,
           answers: currentAnswers as any,
           time_left: currentTimeLeft,
         })
-        .eq('id', progressId);
+        .eq('id', progressId)
+        .select('id');
+
+      if (error) throw error;
+
+      // The row is gone (admin reset): never write this stale attempt back.
+      if (!data || data.length === 0) {
+        handleSessionInvalidated();
+      }
     } catch (error) {
       console.error('Error saving progress:', error);
     }
   };
+
 
   const handleAcceptAnswer = async () => {
     const question = questions[currentQuestion];
@@ -594,7 +632,7 @@ const CertificationTest = () => {
     try {
       let openQuery = supabase
         .from('certification_test_progress')
-        .select('id')
+        .select('id, started_at, answers')
         .eq('user_id', user?.id!)
         .eq('is_completed', false);
       if (courseId) openQuery = openQuery.eq('course_id', courseId);
@@ -604,12 +642,31 @@ const CertificationTest = () => {
         .limit(1)
         .maybeSingle();
 
-      if (openRow) {
+      const resetAt = user?.id ? await fetchAttemptResetAt(user.id, courseId) : null;
+      const rowIsStale =
+        !!openRow && !!resetAt && new Date(openRow.started_at) < resetAt;
+      const rowHasLockedAnswers =
+        !!openRow &&
+        Object.values((openRow.answers as unknown as Record<string, QuestionAnswer>) ?? {}).some(
+          (a) => a?.locked
+        );
+
+      if (openRow && rowIsStale) {
+        await supabase.from('certification_test_progress').delete().eq('id', openRow.id);
+      }
+
+      // Only resume a session that this page actually loaded questions for.
+      if (openRow && !rowIsStale && (!rowHasLockedAnswers || Object.keys(answers).length > 0)) {
         setProgressId(openRow.id);
         setShowWelcome(false);
         setTimerActive(true);
         return;
       }
+
+      if (openRow && !rowIsStale) {
+        await supabase.from('certification_test_progress').delete().eq('id', openRow.id);
+      }
+
 
       const { data: progressData, error: progressError } = await supabase
         .from('certification_test_progress')
