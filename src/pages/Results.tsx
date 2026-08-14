@@ -241,16 +241,16 @@ const Results = () => {
                 </div>
               )}
 
-              {!passed && courseId && (
+              {!passed && resolvedCourseId && (
                 <div className="space-y-4">
                   {canRetake && (
-                    <Link to={`/certification-test?courseId=${courseId}&retake=1`} className="block">
+                    <Link to={`/certification-test?courseId=${resolvedCourseId}&retake=1`} className="block">
                       <Button size="lg" className="w-full">
                         Retake Test
                       </Button>
                     </Link>
                   )}
-                  <Link to={`/training/${courseId}`} className="block">
+                  <Link to={`/training/${resolvedCourseId}`} className="block">
                     <Button variant="outline" size="lg" className="w-full">
                       Review Course Material
                     </Button>
