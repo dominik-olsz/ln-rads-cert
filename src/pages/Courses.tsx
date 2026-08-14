@@ -37,9 +37,9 @@ const Courses = () => {
   const fetchCourses = async () => {
     try {
       const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("courses")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (coursesError) throw coursesError;
 
@@ -48,16 +48,17 @@ const Courses = () => {
       toast({
         title: "Error",
         description: "Failed to load courses",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredCourses = courses.filter((course) => {
+    const matchesSearch =
+      course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
@@ -89,19 +90,19 @@ const Courses = () => {
     <div className="min-h-screen bg-background">
       <Seo
         title="LN-RADS Courses — Certification Training Catalogue"
-        description="Browse LN-RADS certification courses covering lymph node assessment across ultrasound, CT, MR and PET, with video lessons and radiology use cases."
+        description="Browse LN-RADS certification courses covering lymph node assessment across ultrasound, CT, MR and PET, with expert lessons and radiology use cases."
         path="/courses"
         jsonLd={coursesJsonLd.length ? coursesJsonLd : undefined}
       />
       <Navbar />
-      
+
       <section className="-mt-24 pt-36 pb-12 border-b bg-muted/30">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl font-bold mb-4">All Courses</h1>
           <p className="text-muted-foreground mb-8">
             Browse our comprehensive collection of radiology training courses
           </p>
-          
+
           <div className="relative max-w-2xl">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -113,7 +114,7 @@ const Courses = () => {
           </div>
         </div>
       </section>
-      
+
       <section className="py-12">
         <div className="container mx-auto px-4">
           {filteredCourses.length === 0 ? (
@@ -123,8 +124,8 @@ const Courses = () => {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredCourses.map((course) => (
-                <CourseCard 
-                  key={course.id} 
+                <CourseCard
+                  key={course.id}
                   id={course.id}
                   title={course.title}
                   description={course.description}

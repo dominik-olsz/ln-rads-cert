@@ -7,20 +7,21 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { CheckCircle, Clock, Users, BookOpen, Award, Video, Image as ImageIcon, FileQuestion } from "lucide-react";
 import lnRadsFlowchart from "@/assets/ln-rads-flowchart.png";
 const Index = () => {
-  return <div className="min-h-screen bg-background">
+  return (
+    <div className="min-h-screen bg-background">
       <Seo
         title="LN-RADS Certification — Lymph Node Imaging Course"
-        description="Learn the LN-RADS system with expert video lessons, annotated US, CT, MR and PET cases, and earn an official certification in lymph node assessment."
+        description="Learn the LN-RADS system with practical lessons, annotated US, CT, MR and PET cases and earn an official certification in lymph node assessment."
         path="/"
       />
       <Navbar />
       <Hero />
-      
+
       <section id="course-details" className="py-16 md:py-24 bg-gradient-subtle relative overflow-hidden">
         {/* Decorative background */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
-        
+
         <div className="container mx-auto px-4 relative">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-16 space-y-4">
@@ -34,7 +35,9 @@ const Index = () => {
             <Card className="mb-8 shadow-card hover:shadow-card-hover transition-all border-primary/10">
               <CardHeader className="space-y-3">
                 <CardTitle className="text-2xl md:text-3xl">What You'll Learn</CardTitle>
-                <CardDescription className="text-base">Master the LN-RADS classification system for lymph node assessment</CardDescription>
+                <CardDescription className="text-base">
+                  Master the LN-RADS classification system for lymph node assessment
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
@@ -42,21 +45,27 @@ const Index = () => {
                     <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
                     <div>
                       <div className="font-semibold">LN-RADS 1: Normal Lymph Nodes</div>
-                      <div className="text-sm text-muted-foreground">No enlargement, oval shape, regular cortex ≤3mm</div>
+                      <div className="text-sm text-muted-foreground">
+                        No enlargement, oval shape, regular cortex ≤3mm
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-3">
                     <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
                     <div>
                       <div className="font-semibold">LN-RADS 2: Steatotic LN</div>
-                      <div className="text-sm text-muted-foreground">Enlarged with hyperechoic hilum, no architectural changes</div>
+                      <div className="text-sm text-muted-foreground">
+                        Enlarged with hyperechoic hilum, no architectural changes
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-3">
                     <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
                     <div>
                       <div className="font-semibold">LN-RADS 3: Reactive LN</div>
-                      <div className="text-sm text-muted-foreground">Thickened cortex &gt;3mm, preserved oval shape and medulla</div>
+                      <div className="text-sm text-muted-foreground">
+                        Thickened cortex &gt;3mm, preserved oval shape and medulla
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-3">
@@ -70,16 +79,17 @@ const Index = () => {
                     <CheckCircle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
                     <div>
                       <div className="font-semibold">LN-RADS 5: Malignant LN</div>
-                      <div className="text-sm text-muted-foreground">Evident features of malignancy with FCT, necrosis</div>
+                      <div className="text-sm text-muted-foreground">
+                        Evident features of malignancy with FCT, necrosis
+                      </div>
                     </div>
                   </div>
-                  
                 </div>
-                
+
                 <div className="mt-8 pt-8 border-t">
-                  <img 
-                    src={lnRadsFlowchart} 
-                    alt="LN-RADS Classification Flowchart" 
+                  <img
+                    src={lnRadsFlowchart}
+                    alt="LN-RADS Classification Flowchart"
                     className="w-full rounded-lg shadow-md"
                   />
                 </div>
@@ -92,11 +102,11 @@ const Index = () => {
                   <div className="p-4 rounded-xl bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
                     <Video className="h-8 w-8 text-primary" />
                   </div>
-                  <CardTitle className="text-xl">Video Lessons</CardTitle>
+                  <CardTitle className="text-xl">Practical Lessons</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Expert-led video tutorials explaining each LN-RADS category with real clinical examples
+                    Expert tutorials explaining each LN-RADS category with real clinical examples
                   </p>
                 </CardContent>
               </Card>
@@ -132,24 +142,22 @@ const Index = () => {
           </div>
         </div>
       </section>
-      
+
       <section className="py-16 md:py-24 relative overflow-hidden">
         {/* Decorative elements */}
         <div className="absolute top-1/4 left-0 w-72 h-72 bg-accent/5 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
-        
+
         <div className="container mx-auto px-4 relative">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-16 space-y-4">
-              <h2 className="text-3xl md:text-5xl font-bold">
-                Why LN-RADS?
-              </h2>
+              <h2 className="text-3xl md:text-5xl font-bold">Why LN-RADS?</h2>
               <div className="h-1 w-24 bg-gradient-to-r from-primary to-accent mx-auto rounded-full" />
               <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
                 Revolutionary approach to lymph node diagnosis with proven clinical benefits
               </p>
             </div>
-            
+
             <div className="grid md:grid-cols-2 gap-6">
               <Card className="group border-primary/20 shadow-card hover:shadow-card-hover transition-all hover:-translate-y-1">
                 <CardHeader className="space-y-4">
@@ -160,8 +168,10 @@ const Index = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground leading-relaxed">
-                    Find over <span className="font-semibold text-accent">20%</span> more metastatic lymph nodes compared to traditional 10mm SAD size criteria. 
-                    Detect macrometastases as small as <span className="font-semibold text-accent">2-3mm</span> using multiparametric morphological criteria.
+                    Find over <span className="font-semibold text-accent">20%</span> more metastatic lymph nodes
+                    compared to traditional 10mm SAD size criteria. Detect macrometastases as small as{" "}
+                    <span className="font-semibold text-accent">2-3mm</span> using multiparametric morphological
+                    criteria.
                   </p>
                 </CardContent>
               </Card>
@@ -175,8 +185,8 @@ const Index = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground leading-relaxed">
-                    Heuristic assessment model ensures rapid evaluation without compromising accuracy. 
-                    Streamline your workflow while maintaining diagnostic excellence.
+                    Heuristic assessment model ensures rapid evaluation without compromising accuracy. Streamline your
+                    workflow while maintaining diagnostic excellence.
                   </p>
                 </CardContent>
               </Card>
@@ -190,8 +200,8 @@ const Index = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground leading-relaxed">
-                    Simple, standardized system improves communication between radiologists and clinicians. 
-                    Clear categorization facilitates better patient management decisions.
+                    Simple, standardized system improves communication between radiologists and clinicians. Clear
+                    categorization facilitates better patient management decisions.
                   </p>
                 </CardContent>
               </Card>
@@ -205,8 +215,8 @@ const Index = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground leading-relaxed">
-                    Apply LN-RADS across all imaging modalities: Ultrasound, CT, MR, and PET. 
-                    One system for all your lymph node assessment needs.
+                    Apply LN-RADS across all imaging modalities: Ultrasound, CT, MR, and PET. One system for all your
+                    lymph node assessment needs.
                   </p>
                 </CardContent>
               </Card>
@@ -216,7 +226,7 @@ const Index = () => {
               <Card className="bg-gradient-to-br from-primary/5 via-accent/5 to-primary/5 border-primary/20 shadow-elegant overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-accent/10 rounded-full blur-3xl" />
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
-                
+
                 <CardHeader className="relative space-y-4 pt-12">
                   <div className="p-4 rounded-2xl bg-gradient-accent w-fit mx-auto">
                     <Award className="h-12 w-12 text-white" />
@@ -261,6 +271,7 @@ const Index = () => {
           </div>
         </div>
       </section>
-    </div>;
+    </div>
+  );
 };
 export default Index;
