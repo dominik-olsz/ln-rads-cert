@@ -2,8 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 
 
-import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Outlet, type RouteObject } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
+import { LanguageProvider } from "./i18n";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import CookieBar from "./components/CookieBar";
@@ -39,37 +40,47 @@ import Terms from "./pages/Terms";
 import Unsubscribe from "./pages/Unsubscribe";
 
 const Layout = () => (
-  <>
+  <LanguageProvider>
     <ScrollToTop />
     <Outlet />
     <Footer />
     <CookieBar />
-  </>
+  </LanguageProvider>
 );
+
+/**
+ * Public + student routes, declared without a leading slash so the exact same
+ * set can be mounted twice: once at "/" (English) and once at "/pl" (Polish).
+ */
+const localizedRoutes: RouteObject[] = [
+  { index: true, element: <Index /> },
+  { path: "auth", element: <Auth /> },
+  { path: "auth/confirm", element: <AuthConfirm /> },
+  { path: "reset-password", element: <ResetPassword /> },
+
+  { path: "dashboard", element: <Dashboard /> },
+  { path: "account", element: <Account /> },
+  { path: "payments", element: <Payments /> },
+  { path: "courses", element: <Courses /> },
+  { path: "course/:id", element: <CourseDetail /> },
+  { path: "payment-success", element: <PaymentSuccess /> },
+  { path: "training/:courseId", element: <Training /> },
+  { path: "test", element: <Test /> },
+  { path: "certification-test", element: <CertificationTest /> },
+  { path: "results", element: <Results /> },
+  { path: "faq", element: <FAQ /> },
+  { path: "privacy-policy", element: <PrivacyPolicy /> },
+  { path: "terms", element: <Terms /> },
+  { path: "unsubscribe", element: <Unsubscribe /> },
+];
 
 const router = createBrowserRouter([
   {
     element: <Layout />,
     children: [
-      { path: "/", element: <Index /> },
-      { path: "/auth", element: <Auth /> },
-      { path: "/auth/confirm", element: <AuthConfirm /> },
-      { path: "/reset-password", element: <ResetPassword /> },
-
-      { path: "/dashboard", element: <Dashboard /> },
-      { path: "/account", element: <Account /> },
-      { path: "/payments", element: <Payments /> },
-      { path: "/courses", element: <Courses /> },
-      { path: "/course/:id", element: <CourseDetail /> },
-      { path: "/payment-success", element: <PaymentSuccess /> },
-      { path: "/training/:courseId", element: <Training /> },
-      { path: "/test", element: <Test /> },
-      { path: "/certification-test", element: <CertificationTest /> },
-      { path: "/results", element: <Results /> },
-      { path: "/faq", element: <FAQ /> },
-      { path: "/privacy-policy", element: <PrivacyPolicy /> },
-      { path: "/terms", element: <Terms /> },
-      { path: "/unsubscribe", element: <Unsubscribe /> },
+      ...localizedRoutes,
+      // Polish mirror of every public/student route.
+      { path: "pl", children: localizedRoutes },
 
       { path: "/admin/dashboard", element: <AdminRoute><AdminDashboard /></AdminRoute> },
       { path: "/admin/users", element: <AdminRoute><AdminUsers /></AdminRoute> },
