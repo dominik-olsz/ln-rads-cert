@@ -13,6 +13,8 @@ type FaqItem = {
   id: string;
   question: string;
   answer: string;
+  question_pl?: string | null;
+  answer_pl?: string | null;
   order_index: number;
   is_published: boolean;
 };
@@ -27,7 +29,7 @@ const FaqManager = () => {
   const load = async () => {
     const { data, error } = await supabase
       .from('faq_items')
-      .select('id, question, answer, order_index, is_published')
+      .select('id, question, answer, question_pl, answer_pl, order_index, is_published')
       .order('order_index', { ascending: true });
     if (error) {
       toast.error(`Could not load FAQ: ${error.message}`);
@@ -102,6 +104,8 @@ const FaqManager = () => {
           .update({
             question: item.question.trim(),
             answer: item.answer.trim(),
+            question_pl: (item.question_pl || '').trim() || null,
+            answer_pl: (item.answer_pl || '').trim() || null,
             order_index: idx + 1,
             is_published: item.is_published,
           })
