@@ -38,6 +38,11 @@ const pl: Record<string, string> = {
   "All rights reserved.": "Wszelkie prawa zastrzeżone.",
   "Legal": "Informacje prawne",
   "Platform": "Platforma",
+  "About us": "O nas",
+  "Publications": "Publikacje",
+  "Account Settings": "Ustawienia konta",
+  "My Payments": "Moje płatności",
+  "Get Started": "Rozpocznij",
 
   // ---- Cookie bar ----
   "We use only strictly necessary cookies to keep you signed in and to make this site work. No tracking, no advertising.":
