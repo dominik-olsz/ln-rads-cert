@@ -99,3 +99,25 @@ export async function syncStripeCustomer(
     return undefined;
   }
 }
+
+/**
+ * Adaptive Pricing cannot offer a local currency when the Stripe Customer
+ * already has a fixed `currency` (Stripe pins it after the first successful
+ * payment). Checkout then always presents the pinned currency, which is why a
+ * returning EUR buyer never sees PLN. Detecting that lets create-checkout fall
+ * back to `customer_email`, so Stripe is free to convert.
+ */
+export async function customerCurrencyLock(
+  stripe: Stripe,
+  customerId?: string | null,
+): Promise<string | null> {
+  if (!customerId) return null;
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if ((customer as any).deleted) return null;
+    return ((customer as Stripe.Customer).currency ?? null) as string | null;
+  } catch (e) {
+    console.error("Could not read customer currency:", (e as Error).message);
+    return null;
+  }
+}
