@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Cookie } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "@/i18n/router";
 
 const STORAGE_KEY = "lnrads_cookie_acknowledged";
 

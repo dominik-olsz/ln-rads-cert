@@ -5,25 +5,29 @@ import Seo from "@/components/Seo";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card } from "@/components/ui/card";
 import { HelpCircle } from "lucide-react";
+import { useLang, useT } from "@/i18n";
+import { FAQ_FIELDS, localizeRows } from "@/lib/localize";
 
 type FaqItem = { id: string; question: string; answer: string };
 
 const FAQ = () => {
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const lang = useLang();
+  const t = useT();
 
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase
         .from("faq_items")
-        .select("id, question, answer")
+        .select("id, question, answer, question_pl, answer_pl")
         .eq("is_published", true)
         .order("order_index", { ascending: true });
-      setFaqs(data ?? []);
+      setFaqs(localizeRows(data ?? [], FAQ_FIELDS, lang) as FaqItem[]);
       setLoading(false);
     };
     load();
-  }, []);
+  }, [lang]);
 
   const faqJsonLd = {
     "@context": "https://schema.org",
@@ -52,11 +56,11 @@ const FAQ = () => {
             <div className="max-w-3xl mx-auto text-center space-y-4">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
                 <HelpCircle className="h-4 w-4" />
-                Frequently Asked Questions
+                {t("Frequently Asked Questions")}
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">LN-RADS Certification FAQ</h1>
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">{t("LN-RADS Certification FAQ")}</h1>
               <p className="text-xl text-muted-foreground">
-                Find answers to common questions about the LN-RADS certification program
+                {t("Find answers to common questions about the LN-RADS certification program")}
               </p>
             </div>
           </div>
@@ -67,7 +71,7 @@ const FAQ = () => {
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
               <Card className="p-6 md:p-8">
-                {loading && <p className="text-muted-foreground">Loading questions…</p>}
+                {loading && <p className="text-muted-foreground">{t("Loading questions…")}</p>}
                 {!loading && faqs.length === 0 && (
                   <p className="text-muted-foreground">
                     No questions published yet. Please contact us with your question.
@@ -85,7 +89,7 @@ const FAQ = () => {
 
               {/* Contact Section */}
               <div className="mt-12 text-center">
-                <h2 className="text-2xl font-bold mb-4">Still have questions?</h2>
+                <h2 className="text-2xl font-bold mb-4">{t("Still have questions?")}</h2>
                 <p className="text-muted-foreground mb-6">
                   Can't find the answer you're looking for? Please reach out to our support team.
                 </p>
@@ -93,7 +97,7 @@ const FAQ = () => {
                   href="mailto:cert@lnrads.com"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
-                  Contact Support
+                  {t("Contact Support")}
                 </a>
               </div>
             </div>

@@ -1,4 +1,5 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { useNavigate } from "@/i18n/router";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Seo from "@/components/Seo";
@@ -7,6 +8,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Award, CheckCircle, PlayCircle, BookOpen, FileQuestion, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useLang } from "@/i18n";
+import { COURSE_FIELDS, localizeRow } from "@/lib/localize";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import DiscountPricePanel, { PricingQuote } from "@/components/DiscountPricePanel";
@@ -60,6 +63,7 @@ const CourseDetail = () => {
   const [courseQuestionsCount, setCourseQuestionsCount] = useState(0);
   const [quote, setQuote] = useState<PricingQuote | null>(null);
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  const lang = useLang();
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -72,12 +76,12 @@ const CourseDetail = () => {
           .single();
 
         if (courseError) throw courseError;
-        setCourse(courseData);
+        setCourse(localizeRow(courseData, COURSE_FIELDS, lang));
 
         // Fetch lessons
         const { data: lessonsData, error: lessonsError } = await supabase
           .from('lessons')
-          .select('id, title, order_index, is_free')
+          .select('id, title, title_pl, order_index, is_free')
           .eq('course_id', id)
           .order('order_index');
 
@@ -85,7 +89,7 @@ const CourseDetail = () => {
 
         // Fetch course questions via edge function
         const { data: questionsData } = await supabase.functions.invoke('get-test-questions', {
-          body: { courseId: id, testType: 'course' },
+          body: { courseId: id, testType: 'course', lang },
         });
 
         const questions = questionsData?.questions || [];
@@ -180,7 +184,8 @@ const CourseDetail = () => {
     if (id) {
       fetchCourseData();
     }
-  }, [id, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, user, lang]);
 
   const handleBuyCourse = async () => {
     if (!user) {

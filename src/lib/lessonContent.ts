@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 export type LessonContent = {
   content_text: string | null;
   content_url: string | null;
+  /** Raw Polish translation, used by the admin editor. */
+  content_text_pl?: string | null;
 };
 
 /**
@@ -27,6 +29,7 @@ export async function fetchLessonContent(lessonId: string): Promise<LessonConten
   return {
     content_text: data.lesson.content_text ?? null,
     content_url: data.lesson.content_url ?? null,
+    content_text_pl: data.lesson.content_text_pl ?? null,
   };
 }
 
@@ -35,7 +38,7 @@ export async function attachLessonContent<T extends { id?: string }>(
 ): Promise<(T & LessonContent)[]> {
   return Promise.all(
     lessons.map(async (lesson) => {
-      if (!lesson.id) return { ...lesson, content_text: null, content_url: null };
+      if (!lesson.id) return { ...lesson, content_text: null, content_url: null, content_text_pl: null };
       const content = await fetchLessonContent(lesson.id);
       return { ...lesson, ...content };
     })

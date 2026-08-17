@@ -30,6 +30,8 @@ interface LessonDialogProps {
 
 const LessonDialog = ({ open, onOpenChange, lesson, courseId, onSuccess }: LessonDialogProps) => {
   const [title, setTitle] = useState('');
+  const [titlePl, setTitlePl] = useState('');
+  const [contentTextPl, setContentTextPl] = useState('');
   const [orderIndex, setOrderIndex] = useState(1);
   const [contentType, setContentType] = useState('video');
   const [contentText, setContentText] = useState('');
@@ -45,6 +47,8 @@ const LessonDialog = ({ open, onOpenChange, lesson, courseId, onSuccess }: Lesso
 
     if (lesson) {
       setTitle(lesson.title);
+      setTitlePl((lesson as any).title_pl || '');
+      setContentTextPl('');
       setOrderIndex(lesson.order_index);
       setContentType(lesson.content_type);
       setDuration(lesson.duration || '');
@@ -52,6 +56,8 @@ const LessonDialog = ({ open, onOpenChange, lesson, courseId, onSuccess }: Lesso
       setContentUrl('');
     } else {
       setTitle('');
+      setTitlePl('');
+      setContentTextPl('');
       setOrderIndex(1);
       setContentType('video');
       setContentText('');
@@ -80,6 +86,7 @@ const LessonDialog = ({ open, onOpenChange, lesson, courseId, onSuccess }: Lesso
         if (cancelled) return;
         setContentText(content.content_text || '');
         setContentUrl(content.content_url || '');
+        setContentTextPl(content.content_text_pl || '');
       })
       .catch(() => {
         if (!cancelled) setContentError(true);
@@ -101,9 +108,11 @@ const LessonDialog = ({ open, onOpenChange, lesson, courseId, onSuccess }: Lesso
       const lessonData = {
         course_id: courseId,
         title,
+        title_pl: titlePl.trim() || null,
         order_index: orderIndex,
         content_type: contentType,
         content_text: contentText || null,
+        content_text_pl: contentTextPl.trim() || null,
         content_url: contentUrl || null,
         duration: duration || null,
       };
@@ -164,6 +173,16 @@ const LessonDialog = ({ open, onOpenChange, lesson, courseId, onSuccess }: Lesso
             />
           </div>
           
+          <div>
+            <Label htmlFor="titlePl">Tytuł (PL)</Label>
+            <Input
+              id="titlePl"
+              value={titlePl}
+              onChange={(e) => setTitlePl(e.target.value)}
+              placeholder="Opcjonalnie"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="orderIndex">Order</Label>
@@ -222,6 +241,19 @@ const LessonDialog = ({ open, onOpenChange, lesson, courseId, onSuccess }: Lesso
                 onChange={(e) => setContentText(e.target.value)}
                 rows={4}
                 placeholder="Enter lesson content..."
+              />
+            </div>
+          )}
+
+          {(contentType === 'text' || contentType === 'mixed') && (
+            <div>
+              <Label htmlFor="contentTextPl">Treść (PL)</Label>
+              <Textarea
+                id="contentTextPl"
+                value={contentTextPl}
+                onChange={(e) => setContentTextPl(e.target.value)}
+                rows={4}
+                placeholder="Polska wersja treści (opcjonalnie)"
               />
             </div>
           )}

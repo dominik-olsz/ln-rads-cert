@@ -278,34 +278,40 @@ export type Database = {
           course_id: string
           created_at: string | null
           explanation: string | null
+          explanation_pl: string | null
           file_size: number | null
           file_type: string
           file_url: string
           id: string
           lesson_id: string | null
           title: string
+          title_pl: string | null
         }
         Insert: {
           course_id: string
           created_at?: string | null
           explanation?: string | null
+          explanation_pl?: string | null
           file_size?: number | null
           file_type: string
           file_url: string
           id?: string
           lesson_id?: string | null
           title: string
+          title_pl?: string | null
         }
         Update: {
           course_id?: string
           created_at?: string | null
           explanation?: string | null
+          explanation_pl?: string | null
           file_size?: number | null
           file_type?: string
           file_url?: string
           id?: string
           lesson_id?: string | null
           title?: string
+          title_pl?: string | null
         }
         Relationships: [
           {
@@ -437,8 +443,10 @@ export type Database = {
           certification_pass_percent: number
           certification_question_count: number | null
           course_includes: string | null
+          course_includes_pl: string | null
           created_at: string | null
           description: string
+          description_pl: string | null
           discount_price: number | null
           discount_valid_until: string | null
           hero_image: string | null
@@ -447,9 +455,11 @@ export type Database = {
           retake_price: number
           test_questions_count: number
           title: string
+          title_pl: string | null
           total_lessons: number
           updated_at: string | null
           what_you_learn: string | null
+          what_you_learn_pl: string | null
         }
         Insert: {
           attempts_included?: number
@@ -459,8 +469,10 @@ export type Database = {
           certification_pass_percent?: number
           certification_question_count?: number | null
           course_includes?: string | null
+          course_includes_pl?: string | null
           created_at?: string | null
           description: string
+          description_pl?: string | null
           discount_price?: number | null
           discount_valid_until?: string | null
           hero_image?: string | null
@@ -469,9 +481,11 @@ export type Database = {
           retake_price?: number
           test_questions_count?: number
           title: string
+          title_pl?: string | null
           total_lessons?: number
           updated_at?: string | null
           what_you_learn?: string | null
+          what_you_learn_pl?: string | null
         }
         Update: {
           attempts_included?: number
@@ -481,8 +495,10 @@ export type Database = {
           certification_pass_percent?: number
           certification_question_count?: number | null
           course_includes?: string | null
+          course_includes_pl?: string | null
           created_at?: string | null
           description?: string
+          description_pl?: string | null
           discount_price?: number | null
           discount_valid_until?: string | null
           hero_image?: string | null
@@ -491,9 +507,11 @@ export type Database = {
           retake_price?: number
           test_questions_count?: number
           title?: string
+          title_pl?: string | null
           total_lessons?: number
           updated_at?: string | null
           what_you_learn?: string | null
+          what_you_learn_pl?: string | null
         }
         Relationships: []
       }
@@ -629,29 +647,35 @@ export type Database = {
       faq_items: {
         Row: {
           answer: string
+          answer_pl: string | null
           created_at: string
           id: string
           is_published: boolean
           order_index: number
           question: string
+          question_pl: string | null
           updated_at: string
         }
         Insert: {
           answer: string
+          answer_pl?: string | null
           created_at?: string
           id?: string
           is_published?: boolean
           order_index?: number
           question: string
+          question_pl?: string | null
           updated_at?: string
         }
         Update: {
           answer?: string
+          answer_pl?: string | null
           created_at?: string
           id?: string
           is_published?: boolean
           order_index?: number
           question?: string
+          question_pl?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -923,6 +947,7 @@ export type Database = {
       lessons: {
         Row: {
           content_text: string | null
+          content_text_pl: string | null
           content_type: string
           content_url: string | null
           course_id: string
@@ -932,9 +957,11 @@ export type Database = {
           is_free: boolean
           order_index: number
           title: string
+          title_pl: string | null
         }
         Insert: {
           content_text?: string | null
+          content_text_pl?: string | null
           content_type: string
           content_url?: string | null
           course_id: string
@@ -944,9 +971,11 @@ export type Database = {
           is_free?: boolean
           order_index: number
           title: string
+          title_pl?: string | null
         }
         Update: {
           content_text?: string | null
+          content_text_pl?: string | null
           content_type?: string
           content_url?: string | null
           course_id?: string
@@ -956,6 +985,7 @@ export type Database = {
           is_free?: boolean
           order_index?: number
           title?: string
+          title_pl?: string | null
         }
         Relationships: [
           {
@@ -1020,6 +1050,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          language: string
           postal_code: string | null
           stripe_customer_id: string | null
           terms_accepted_at: string | null
@@ -1040,6 +1071,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          language?: string
           postal_code?: string | null
           stripe_customer_id?: string | null
           terms_accepted_at?: string | null
@@ -1060,6 +1092,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          language?: string
           postal_code?: string | null
           stripe_customer_id?: string | null
           terms_accepted_at?: string | null
@@ -1155,7 +1188,9 @@ export type Database = {
           course_id: string | null
           created_at: string | null
           explanation: string | null
+          explanation_pl: string | null
           group_title: string | null
+          group_title_pl: string | null
           id: string
           image_url: string | null
           image_urls: string[]
@@ -1166,8 +1201,10 @@ export type Database = {
           option_c: string | null
           option_d: string | null
           options: Json
+          options_pl: Json | null
           order_index: number | null
           question_text: string
+          question_text_pl: string | null
           test_type: string
           updated_at: string | null
         }
@@ -1176,7 +1213,9 @@ export type Database = {
           course_id?: string | null
           created_at?: string | null
           explanation?: string | null
+          explanation_pl?: string | null
           group_title?: string | null
+          group_title_pl?: string | null
           id?: string
           image_url?: string | null
           image_urls?: string[]
@@ -1187,8 +1226,10 @@ export type Database = {
           option_c?: string | null
           option_d?: string | null
           options?: Json
+          options_pl?: Json | null
           order_index?: number | null
           question_text: string
+          question_text_pl?: string | null
           test_type?: string
           updated_at?: string | null
         }
@@ -1197,7 +1238,9 @@ export type Database = {
           course_id?: string | null
           created_at?: string | null
           explanation?: string | null
+          explanation_pl?: string | null
           group_title?: string | null
+          group_title_pl?: string | null
           id?: string
           image_url?: string | null
           image_urls?: string[]
@@ -1208,8 +1251,10 @@ export type Database = {
           option_c?: string | null
           option_d?: string | null
           options?: Json
+          options_pl?: Json | null
           order_index?: number | null
           question_text?: string
+          question_text_pl?: string | null
           test_type?: string
           updated_at?: string | null
         }

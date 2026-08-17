@@ -1,7 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Seo from "@/components/Seo";
 import Hero from "@/components/Hero";
-import { Link } from "react-router-dom";
+import { Link } from "@/i18n/router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Clock, Users, BookOpen, Award, Video, Image as ImageIcon, FileQuestion } from "lucide-react";

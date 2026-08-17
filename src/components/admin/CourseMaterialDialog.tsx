@@ -19,6 +19,9 @@ interface CourseMaterial {
   file_url: string;
   file_type: string;
   file_size?: number;
+  explanation?: string | null;
+  title_pl?: string | null;
+  explanation_pl?: string | null;
 }
 
 interface CourseMaterialDialogProps {
@@ -36,6 +39,8 @@ const CourseMaterialDialog = ({ open, onOpenChange, material, courseId, lessons,
   const [fileUrl, setFileUrl] = useState('');
   const [fileType, setFileType] = useState('image');
   const [explanation, setExplanation] = useState('');
+  const [titlePl, setTitlePl] = useState('');
+  const [explanationPl, setExplanationPl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -46,12 +51,17 @@ const CourseMaterialDialog = ({ open, onOpenChange, material, courseId, lessons,
       setLessonId(material.lesson_id || '');
       setFileUrl(material.file_url);
       setFileType(material.file_type);
+      setExplanation(material.explanation || '');
+      setTitlePl(material.title_pl || '');
+      setExplanationPl(material.explanation_pl || '');
     } else {
       setTitle('');
       setLessonId('');
       setFileUrl('');
       setFileType('image');
       setExplanation('');
+      setTitlePl('');
+      setExplanationPl('');
     }
   }, [material, open]);
 
@@ -103,6 +113,9 @@ const CourseMaterialDialog = ({ open, onOpenChange, material, courseId, lessons,
         title,
         file_url: fileUrl,
         file_type: fileType,
+        explanation: explanation.trim() || null,
+        title_pl: titlePl.trim() || null,
+        explanation_pl: explanationPl.trim() || null,
       };
 
       if (material?.id) {
@@ -221,6 +234,25 @@ const CourseMaterialDialog = ({ open, onOpenChange, material, courseId, lessons,
               rows={3}
               placeholder="Add clinical explanation or teaching points..."
             />
+          </div>
+
+          <div className="space-y-4 rounded-lg border border-dashed p-3 bg-muted/20">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Polish version (optional)
+            </p>
+            <div>
+              <Label htmlFor="titlePl">Tytuł (PL)</Label>
+              <Input id="titlePl" value={titlePl} onChange={(e) => setTitlePl(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="explanationPl">Wyjaśnienie (PL)</Label>
+              <Textarea
+                id="explanationPl"
+                value={explanationPl}
+                onChange={(e) => setExplanationPl(e.target.value)}
+                rows={3}
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-2">

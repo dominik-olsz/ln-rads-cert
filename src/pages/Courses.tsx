@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useLang } from "@/i18n";
+import { COURSE_FIELDS, localizeRows } from "@/lib/localize";
 import { useToast } from "@/hooks/use-toast";
 
 interface Course {
@@ -30,9 +32,12 @@ const Courses = () => {
   const [levelFilter, setLevelFilter] = useState("all");
   const { toast } = useToast();
 
+  const lang = useLang();
+
   useEffect(() => {
     fetchCourses();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
 
   const fetchCourses = async () => {
     try {
@@ -43,7 +48,7 @@ const Courses = () => {
 
       if (coursesError) throw coursesError;
 
-      setCourses(coursesData || []);
+      setCourses(localizeRows(coursesData || [], COURSE_FIELDS, lang) as typeof coursesData);
     } catch (error: any) {
       toast({
         title: "Error",

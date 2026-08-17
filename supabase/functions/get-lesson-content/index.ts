@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { localizeRow, parseLang } from '../_shared/localize.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,6 +23,7 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const lessonId = typeof body?.lessonId === 'string' ? body.lessonId : '';
+    const lang = parseLang(body?.lang);
 
     if (!UUID_RE.test(lessonId)) {
       return json({ error: 'A valid lesson ID is required' }, 400);
@@ -48,7 +50,7 @@ serve(async (req) => {
 
     const { data: lesson, error } = await admin
       .from('lessons')
-      .select('id, course_id, title, content_type, content_text, content_url, is_free')
+      .select('id, course_id, title, title_pl, content_type, content_text, content_text_pl, content_url, is_free')
       .eq('id', lessonId)
       .maybeSingle();
 
@@ -85,13 +87,17 @@ serve(async (req) => {
       }
     }
 
+    const localized = localizeRow(lesson, ['title', 'content_text'], lang);
+
     return json({
       lesson: {
-        id: lesson.id,
-        title: lesson.title,
-        content_type: lesson.content_type,
-        content_text: lesson.content_text,
-        content_url: lesson.content_url,
+        id: localized.id,
+        title: localized.title,
+        content_type: localized.content_type,
+        content_text: localized.content_text,
+        content_url: localized.content_url,
+        // Raw Polish translation, so the admin editor can load and edit it.
+        content_text_pl: lesson.content_text_pl ?? null,
       },
     });
   } catch (e) {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
+import { useNavigate } from "@/i18n/router";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import { optionLetter } from "@/lib/questionOptions";
 import ImageLightbox from "@/components/ImageLightbox";
 import QuestionImages from "@/components/QuestionImages";
 import { fetchAttemptResetAt } from "@/lib/certificationReset";
+import { useLang } from "@/i18n";
 
 
 interface TestQuestion {
@@ -42,6 +44,7 @@ type Gate = 'open' | 'passed' | 'exhausted' | 'payment_required';
 const CertificationTest = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const lang = useLang();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -435,7 +438,7 @@ const CertificationTest = () => {
       }
 
       const { data, error } = await supabase.functions.invoke('get-test-questions', {
-        body: { testType: 'certification', ...(courseId ? { courseId } : {}) },
+        body: { testType: 'certification', lang, ...(courseId ? { courseId } : {}) },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       });
 

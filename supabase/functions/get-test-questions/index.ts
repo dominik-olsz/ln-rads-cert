@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { publicOptions } from './questions.ts';
+import { localizeQuestion, parseLang } from '../_shared/localize.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,11 +15,24 @@ const json = (body: unknown, status = 200) =>
   });
 
 const SELECT_COLUMNS =
-  'id, lesson_id, question_text, options, option_a, option_b, option_c, option_d, correct_answer, explanation, image_url, image_urls, created_at, test_type, group_title, order_index, is_free';
+  'id, lesson_id, question_text, question_text_pl, options, options_pl, option_a, option_b, option_c, option_d, correct_answer, explanation, explanation_pl, image_url, image_urls, created_at, test_type, group_title, group_title_pl, order_index, is_free';
 
 // Strips the answer key and exposes only the option texts.
 const toSafeQuestion = (q: any) => {
-  const { correct_answer, explanation, options, option_a, option_b, option_c, option_d, ...rest } = q;
+  const {
+    correct_answer,
+    explanation,
+    explanation_pl,
+    options,
+    options_pl,
+    question_text_pl,
+    group_title_pl,
+    option_a,
+    option_b,
+    option_c,
+    option_d,
+    ...rest
+  } = q;
   return { ...rest, options: publicOptions(q) };
 };
 
@@ -29,7 +43,8 @@ serve(async (req) => {
   }
 
   try {
-    const { courseId, testType } = await req.json();
+    const { courseId, testType, lang: rawLang } = await req.json();
+    const lang = parseLang(rawLang);
     const isCourseTest = testType !== 'certification';
 
     const supabaseAdmin = createClient(
@@ -87,7 +102,9 @@ serve(async (req) => {
 
       // Never ship the answer key to the client; feedback is graded by the
       // check-answer function after the learner picks an option.
-      const safeCourseQuestions = (questions ?? []).map(toSafeQuestion);
+      const safeCourseQuestions = (questions ?? []).map((q: any) =>
+        toSafeQuestion(localizeQuestion(q, lang)),
+      );
 
 
 
@@ -97,7 +114,7 @@ serve(async (req) => {
       if (!purchased) {
         const { data: allMeta } = await supabaseAdmin
           .from('test_questions')
-          .select('group_title, order_index, is_free')
+          .select('group_title, group_title_pl, order_index, is_free')
           .eq('course_id', courseId)
           .eq('test_type', 'course')
           .is('lesson_id', null);
@@ -107,7 +124,8 @@ serve(async (req) => {
           .filter((q: any) => !q.is_free)
           .forEach((q: any) => {
             const order = q.order_index ?? 999;
-            const entry = map.get(order) ?? { group_title: q.group_title ?? null, order_index: order, count: 0 };
+            const title = localizeQuestion(q, lang).group_title ?? null;
+            const entry = map.get(order) ?? { group_title: title, order_index: order, count: 0 };
             entry.count += 1;
             map.set(order, entry);
           });
@@ -270,7 +288,7 @@ serve(async (req) => {
     }
 
     // Strip answers/explanations to prevent cheating
-    const safeQuestions = certQuestions.map(toSafeQuestion);
+    const safeQuestions = certQuestions.map((q: any) => toSafeQuestion(localizeQuestion(q, lang)));
 
 
     return json({ questions: safeQuestions });

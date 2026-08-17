@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { useNavigate } from "@/i18n/router";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ChevronLeft, ChevronRight, CheckCircle, Star, X, Lock, Award, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useLang } from "@/i18n";
+import { MATERIAL_FIELDS, localizeRows } from "@/lib/localize";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -73,6 +76,8 @@ const Training = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const lang = useLang();
+
   const [currentItem, setCurrentItem] = useState(0);
   const [courseItems, setCourseItems] = useState<CourseItem[]>([]);
   const [materials, setMaterials] = useState<{ [lessonId: string]: CourseMaterial[] }>({});
@@ -124,7 +129,7 @@ const Training = () => {
     setSelectedAnswers((prev) => ({ ...prev, [questionId]: optionIndex }));
     try {
       const { data, error } = await supabase.functions.invoke('check-answer', {
-        body: { questionId, optionIndex },
+        body: { questionId, optionIndex, lang },
       });
       if (error) throw error;
       setAnswerFeedback((prev) => ({
@@ -187,7 +192,7 @@ const Training = () => {
         // Fetch lesson outline (content itself is served by the backend)
         const { data: lessonsData, error: lessonsError } = await supabase
           .from('lessons')
-          .select('id, title, content_type, order_index, is_free, duration, course_id')
+          .select('id, title, title_pl, content_type, order_index, is_free, duration, course_id')
           .eq('course_id', courseId)
           .order('order_index');
 
@@ -199,7 +204,7 @@ const Training = () => {
         let lockedGroups: any[] = [];
         try {
           const { data: fnData, error: fnError } = await supabase.functions.invoke('get-test-questions', {
-            body: { courseId, testType: 'course' },
+            body: { courseId, testType: 'course', lang },
           });
           if (fnError) throw fnError as any;
           questionsData = fnData?.questions || [];
@@ -284,7 +289,9 @@ const Training = () => {
         if (materialsError) throw materialsError;
 
         // Group materials by lesson_id, resolving private storage paths to signed URLs
-        const signedMaterials = await resolveMaterialUrls(materialsData ?? []);
+        const signedMaterials = await resolveMaterialUrls(
+          localizeRows(materialsData ?? [], MATERIAL_FIELDS, lang),
+        );
         const groupedMaterials: { [lessonId: string]: CourseMaterial[] } = {};
         signedMaterials.forEach((material) => {
           if (material.lesson_id) {
@@ -352,7 +359,8 @@ const Training = () => {
     if (courseId) {
       fetchTrainingData();
     }
-  }, [courseId, user, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId, user, navigate, lang]);
 
 
   const currentCourseItem = courseItems[currentItem];
@@ -400,7 +408,7 @@ const Training = () => {
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke('get-lesson-content', {
-          body: { lessonId: item.id },
+          body: { lessonId: item.id, lang },
         });
         if (error) throw error;
         if (cancelled) return;
@@ -420,7 +428,8 @@ const Training = () => {
     return () => {
       cancelled = true;
     };
-  }, [currentItem, courseItems, lessonContents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentItem, courseItems, lessonContents, lang]);
 
 
   // Convert YouTube URLs to embed format
