@@ -38,6 +38,13 @@ const pl: Record<string, string> = {
   "All rights reserved.": "Wszelkie prawa zastrzeżone.",
   "Legal": "Informacje prawne",
   "Platform": "Platforma",
+  "Frequently Asked Questions": "Najczęściej zadawane pytania",
+  "LN-RADS Certification FAQ": "LN-RADS — pytania i odpowiedzi",
+  "Find answers to common questions about the LN-RADS certification program":
+    "Odpowiedzi na najczęstsze pytania o program certyfikacji LN-RADS",
+  "Loading questions…": "Ładowanie pytań…",
+  "Still have questions?": "Masz jeszcze pytania?",
+  "Contact Support": "Skontaktuj się z nami",
   "About us": "O nas",
   "Publications": "Publikacje",
   "Account Settings": "Ustawienia konta",
