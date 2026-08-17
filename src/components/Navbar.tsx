@@ -172,7 +172,6 @@ const Navbar = () => {
                   </Button>
                 </Link>
               )}
-              <LanguageSwitcher className="hidden lg:inline-flex" />
               <Button
                 variant="outline"
                 onClick={signOut}
@@ -180,6 +179,8 @@ const Navbar = () => {
               >
                 {t("Sign Out")}
               </Button>
+              <LanguageSwitcher className="hidden lg:inline-flex" />
+
 
               {isAdmin ? (
                 <Link to="/admin/dashboard" className="lg:hidden inline-flex">
@@ -290,6 +291,8 @@ const Navbar = () => {
                   {t("Get Started")}
                 </Button>
               </Link>
+              <LanguageSwitcher className="hidden lg:inline-flex" />
+
 
               <Sheet>
                 <SheetTrigger asChild>
