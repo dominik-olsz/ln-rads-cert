@@ -91,7 +91,13 @@ serve(async (req) => {
       if (!local || !domain) return null;
       return `${local}+location_PL@${domain}`;
     };
-    const profileLocationTestEmail = buildLocationTestEmail(profile?.country);
+    // This project specifically validates EUR→PLN before going live. Before a
+    // buyer fills Checkout there might be no saved country anywhere, so Stripe
+    // test mode defaults to its documented Poland simulation. Live mode never
+    // uses a synthetic email and continues to detect the real buyer location.
+    const profileLocationTestEmail = isStripeTestMode
+      ? buildLocationTestEmail(profile?.country ?? "PL")
+      : null;
 
     // A saved Stripe Customer pre-fills Checkout, but once Stripe pins a
     // currency on it, Adaptive Pricing can no longer offer the buyer's local
