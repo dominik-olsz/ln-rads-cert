@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { computePricing, getUserDiscountPercent, lookupDiscountCode } from "../_shared/pricing.ts";
-import { customerCurrencyLock, syncStripeCustomer } from "../_shared/stripe-customer.ts";
+import { stripeCustomerContext, syncStripeCustomer } from "../_shared/stripe-customer.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,8 +80,8 @@ serve(async (req) => {
     // traffic. Its documented test mechanism is a +location_XX email suffix.
     // Keep this strictly in test mode and preserve the real account email in
     // metadata for purchases, invoices, and delivery after the webhook fires.
-    const locationTestEmail = (() => {
-      if (!isStripeTestMode || profile?.country?.toUpperCase() !== "PL" || !user.email) {
+    const buildLocationTestEmail = (country?: string | null) => {
+      if (!isStripeTestMode || country?.toUpperCase() !== "PL" || !user.email) {
         return null;
       }
       const at = user.email.lastIndexOf("@");
@@ -90,31 +90,39 @@ serve(async (req) => {
       const domain = user.email.slice(at + 1);
       if (!local || !domain) return null;
       return `${local}+location_PL@${domain}`;
-    })();
+    };
+    const profileLocationTestEmail = buildLocationTestEmail(profile?.country);
 
     // A saved Stripe Customer pre-fills Checkout, but once Stripe pins a
     // currency on it, Adaptive Pricing can no longer offer the buyer's local
     // currency. In that case we deliberately drop the Customer and go with the
     // email only — the billing address is collected at Checkout anyway and the
     // webhook writes it back to /account as before.
-    const buildCustomer = async (stripe: Stripe): Promise<string | undefined> => {
-      if (locationTestEmail) {
+    const buildCustomer = async (
+      stripe: Stripe,
+    ): Promise<{ customerId?: string; customerEmail?: string; testLocation: boolean }> => {
+      if (profileLocationTestEmail) {
         console.log("[adaptive-pricing] checkout_location=test_PL customer_mode=email");
-        return undefined;
+        return { customerEmail: profileLocationTestEmail, testLocation: true };
       }
       const customerId = await syncStripeCustomer(stripe, admin, {
         userId: user.id,
         email: user.email,
         profile,
       });
-      const lockedCurrency = await customerCurrencyLock(stripe, customerId);
-      if (lockedCurrency) {
-        console.log(
-          `[adaptive-pricing] customer ${customerId} is pinned to ${lockedCurrency}; using customer_email so Stripe can convert`,
-        );
-        return undefined;
+      const customerContext = await stripeCustomerContext(stripe, customerId);
+      const customerLocationTestEmail = buildLocationTestEmail(customerContext.country);
+      if (customerLocationTestEmail) {
+        console.log("[adaptive-pricing] checkout_location=test_PL customer_mode=email source=stripe_address");
+        return { customerEmail: customerLocationTestEmail, testLocation: true };
       }
-      return customerId;
+      if (customerContext.currency) {
+        console.log(
+          `[adaptive-pricing] customer currency is pinned to ${customerContext.currency}; using customer_email`,
+        );
+        return { customerEmail: user.email ?? undefined, testLocation: false };
+      }
+      return { customerId, testLocation: false };
     };
 
     const logSession = (session: any, label: string) => {
@@ -221,14 +229,14 @@ serve(async (req) => {
       }
 
       const stripe = stripeInit();
-      const retakeCustomerId = await buildCustomer(stripe);
+      const retakeCustomer = await buildCustomer(stripe);
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         ...({ ui_mode: "hosted" } as any),
         client_reference_id: user.id,
-        customer: retakeCustomerId,
-        customer_email: retakeCustomerId ? undefined : (locationTestEmail ?? user.email ?? undefined),
-        customer_update: retakeCustomerId ? customerUpdate : undefined,
+        customer: retakeCustomer.customerId,
+        customer_email: retakeCustomer.customerId ? undefined : retakeCustomer.customerEmail,
+        customer_update: retakeCustomer.customerId ? customerUpdate : undefined,
         billing_address_collection: "required",
         // Optional: private buyers can continue without a VAT ID, while
         // business buyers can choose to add one for their invoice.
@@ -265,8 +273,8 @@ serve(async (req) => {
           user_id: user.id,
           course_id: retakeCourse.id,
           purchase_type: "certification_retake",
-          original_buyer_email: locationTestEmail ? (user.email ?? "") : "",
-          adaptive_pricing_test_location: locationTestEmail ? "PL" : "",
+          original_buyer_email: retakeCustomer.testLocation ? (user.email ?? "") : "",
+          adaptive_pricing_test_location: retakeCustomer.testLocation ? "PL" : "",
           discount_code_id: pricing.codeId ?? "",
           discount_summary: pricing.discountSummary ?? "",
         },
@@ -335,15 +343,15 @@ serve(async (req) => {
     }
 
     const stripe = stripeInit();
-    const courseCustomerId = await buildCustomer(stripe);
+    const courseCustomer = await buildCustomer(stripe);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       ...({ ui_mode: "hosted" } as any),
       client_reference_id: user.id,
-      customer: courseCustomerId,
-      customer_email: courseCustomerId ? undefined : (locationTestEmail ?? user.email ?? undefined),
-      customer_update: courseCustomerId ? customerUpdate : undefined,
+      customer: courseCustomer.customerId,
+      customer_email: courseCustomer.customerId ? undefined : courseCustomer.customerEmail,
+      customer_update: courseCustomer.customerId ? customerUpdate : undefined,
       billing_address_collection: "required",
       // Optional: private buyers can continue without a VAT ID, while
       // business buyers can choose to add one for their invoice.
@@ -378,8 +386,8 @@ serve(async (req) => {
         user_id: user.id,
         course_id: course.id,
         purchase_type: "course",
-        original_buyer_email: locationTestEmail ? (user.email ?? "") : "",
-        adaptive_pricing_test_location: locationTestEmail ? "PL" : "",
+        original_buyer_email: courseCustomer.testLocation ? (user.email ?? "") : "",
+        adaptive_pricing_test_location: courseCustomer.testLocation ? "PL" : "",
         discount_code_id: pricing.codeId ?? "",
         discount_summary: pricing.discountSummary ?? "",
       },
