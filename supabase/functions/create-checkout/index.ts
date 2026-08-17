@@ -194,6 +194,9 @@ serve(async (req) => {
         // make Stripe the liable merchant and can incorrectly reverse-charge a
         // Polish buyer with a Polish VAT ID.
         ...({ managed_payments: { enabled: false } } as any),
+        // Buyers outside the eurozone (e.g. Poland) are offered their local
+        // currency; Stripe converts the EUR price and settles in that currency.
+        ...({ adaptive_pricing: { enabled: true } } as any),
         automatic_tax: { enabled: true },
         line_items: [
           {
@@ -300,6 +303,8 @@ serve(async (req) => {
       // to the account default, Stripe can classify domestic PL B2B sales as
       // cross-border and return reverse-charge 0% VAT.
       ...({ managed_payments: { enabled: false } } as any),
+      // Adaptive Pricing lets Polish buyers pay in PLN, converted from EUR.
+      ...({ adaptive_pricing: { enabled: true } } as any),
       automatic_tax: { enabled: true },
       line_items: [
 
