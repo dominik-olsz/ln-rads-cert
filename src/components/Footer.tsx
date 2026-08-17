@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "@/i18n/router";
 import { Mail, Linkedin, Twitter } from "lucide-react";
 import lnradsLogo from "@/assets/lnrads-logo.jpg";
 

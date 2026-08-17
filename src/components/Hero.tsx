@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "@/i18n/router";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Microscope, Award, Users } from "lucide-react";
 import heroBackground from "@/assets/hero-background.jpg";

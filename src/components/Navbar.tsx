@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "@/i18n/router";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import lnradsLogo from "@/assets/lnrads-logo.jpg";

@@ -1,4 +1,5 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { useNavigate } from "@/i18n/router";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Seo from "@/components/Seo";
