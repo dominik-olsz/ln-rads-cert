@@ -76,6 +76,8 @@ const Training = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const lang = useLang();
+
   const [currentItem, setCurrentItem] = useState(0);
   const [courseItems, setCourseItems] = useState<CourseItem[]>([]);
   const [materials, setMaterials] = useState<{ [lessonId: string]: CourseMaterial[] }>({});
