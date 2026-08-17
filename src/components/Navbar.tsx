@@ -112,10 +112,10 @@ const Navbar = () => {
           >
             {t("Courses")}
           </Link>
-          <LanguageSwitcher />
         </div>
 
         <div className="flex items-center gap-4">
+
           {user ? (
             <>
               <DropdownMenu>
@@ -172,6 +172,7 @@ const Navbar = () => {
                   </Button>
                 </Link>
               )}
+              <LanguageSwitcher className="hidden lg:inline-flex" />
               <Button
                 variant="outline"
                 onClick={signOut}
@@ -179,6 +180,7 @@ const Navbar = () => {
               >
                 {t("Sign Out")}
               </Button>
+
               {isAdmin ? (
                 <Link to="/admin/dashboard" className="lg:hidden inline-flex">
                   <Button className="inline-flex items-center justify-center px-3 py-2 md:px-6 md:py-3 h-auto bg-foreground text-background font-semibold text-xs md:text-sm rounded-2xl transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-xl hover:shadow-primary/20 active:scale-95 shadow-lg">
@@ -206,8 +208,8 @@ const Navbar = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-64 rounded-l-3xl">
                   <div className="flex flex-col gap-4 mt-8">
-                    <LanguageSwitcher className="self-start" />
                     <div className="text-sm text-muted-foreground border-b pb-3 truncate">{user.email}</div>
+
                     <a
                       href="https://lnrads.com/"
                       target="_blank"
@@ -265,9 +267,11 @@ const Navbar = () => {
                       </Link>
                     )}
 
-                    <Button variant="outline" onClick={signOut} className="justify-center border-2 mt-4 rounded-xl">
+                    <LanguageSwitcher className="self-start" />
+                    <Button variant="outline" onClick={signOut} className="justify-center border-2 rounded-xl">
                       {t("Sign Out")}
                     </Button>
+
                   </div>
                 </SheetContent>
               </Sheet>
@@ -280,11 +284,13 @@ const Navbar = () => {
               >
                 {t("Sign In")}
               </Link>
+              <LanguageSwitcher className="hidden lg:inline-flex" />
               <Link to="/auth?tab=signup">
                 <Button className="inline-flex items-center justify-center px-3 py-2 md:px-6 md:py-3 h-auto bg-foreground text-background font-semibold text-xs md:text-sm rounded-2xl transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-xl hover:shadow-primary/20 active:scale-95 shadow-lg">
                   {t("Get Started")}
                 </Button>
               </Link>
+
               <Sheet>
                 <SheetTrigger asChild>
                   <Button

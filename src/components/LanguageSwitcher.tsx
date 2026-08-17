@@ -1,16 +1,17 @@
 import { cn } from "@/lib/utils";
 import { LANGS, useLanguage } from "@/i18n";
 
-const labels: Record<string, string> = { en: "EN", pl: "PL" };
+const flags: Record<string, string> = { en: "🇬🇧", pl: "🇵🇱" };
+const labels: Record<string, string> = { en: "English", pl: "Polski" };
 
-/** Compact EN / PL switcher that keeps the visitor on the current page. */
+/** Compact flag switcher that keeps the visitor on the current page. */
 const LanguageSwitcher = ({ className }: { className?: string }) => {
   const { lang, setLang } = useLanguage();
 
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-xl border border-border/60 p-0.5",
+        "inline-flex items-center rounded-xl border border-border/60 p-1",
         className,
       )}
       role="group"
@@ -22,14 +23,16 @@ const LanguageSwitcher = ({ className }: { className?: string }) => {
           type="button"
           onClick={() => setLang(code)}
           aria-current={lang === code ? "true" : undefined}
+          aria-label={labels[code]}
+          title={labels[code]}
           className={cn(
-            "px-2 py-1 text-xs font-semibold rounded-lg transition-colors",
+            "text-lg leading-none px-1.5 py-1 rounded-lg transition-colors",
             lang === code
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:text-foreground",
+              ? "bg-foreground/10"
+              : "opacity-60 hover:opacity-100",
           )}
         >
-          {labels[code] ?? code.toUpperCase()}
+          {flags[code]}
         </button>
       ))}
     </div>
