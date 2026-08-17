@@ -1146,7 +1146,7 @@ const CourseBuilder = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="whatYouLearnPl">Czego się naucszysz (PL)</Label>
+                  <Label htmlFor="whatYouLearnPl">Czego się nauczysz (PL)</Label>
                   <Textarea
                     id="whatYouLearnPl"
                     value={whatYouLearnPl}
