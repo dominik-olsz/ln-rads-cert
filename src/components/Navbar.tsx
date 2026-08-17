@@ -181,8 +181,8 @@ const Navbar = () => {
               </Button>
               <LanguageSwitcher className="hidden lg:inline-flex" />
 
-
               {isAdmin ? (
+
                 <Link to="/admin/dashboard" className="lg:hidden inline-flex">
                   <Button className="inline-flex items-center justify-center px-3 py-2 md:px-6 md:py-3 h-auto bg-foreground text-background font-semibold text-xs md:text-sm rounded-2xl transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-xl hover:shadow-primary/20 active:scale-95 shadow-lg">
                     {t("Admin")}
