@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { localizeRow, parseLang } from '../_shared/localize.ts';
 import {
   MAX_POINTS_PER_QUESTION,
   correctIndexes,
@@ -29,6 +30,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
+    const lang = parseLang(body?.lang);
     const questionId = typeof body?.questionId === 'string' ? body.questionId : '';
     const rawAnswer = body?.optionIndex ?? body?.answer;
     const answerIndex = resolveAnswerIndex(rawAnswer);
@@ -57,7 +59,7 @@ serve(async (req) => {
 
     const { data: question, error } = await admin
       .from('test_questions')
-      .select('id, course_id, test_type, is_free, options, correct_answer, explanation, option_a, option_b, option_c, option_d')
+      .select('id, course_id, test_type, is_free, options, correct_answer, explanation, explanation_pl, option_a, option_b, option_c, option_d')
       .eq('id', questionId)
       .maybeSingle();
 
@@ -104,7 +106,7 @@ serve(async (req) => {
       correct: points === MAX_POINTS_PER_QUESTION,
       correctIndexes: correctIndexes(question),
       semiCorrectIndexes: semiCorrectIndexes(question),
-      explanation: question.explanation ?? null,
+      explanation: localizeRow(question, ['explanation'], lang).explanation ?? null,
     });
   } catch (e) {
     console.error('Error in check-answer:', e);
