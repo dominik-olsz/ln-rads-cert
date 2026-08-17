@@ -107,17 +107,21 @@ export async function syncStripeCustomer(
  * returning EUR buyer never sees PLN. Detecting that lets create-checkout fall
  * back to `customer_email`, so Stripe is free to convert.
  */
-export async function customerCurrencyLock(
+export async function stripeCustomerContext(
   stripe: Stripe,
   customerId?: string | null,
-): Promise<string | null> {
-  if (!customerId) return null;
+): Promise<{ currency: string | null; country: string | null }> {
+  if (!customerId) return { currency: null, country: null };
   try {
     const customer = await stripe.customers.retrieve(customerId);
-    if ((customer as any).deleted) return null;
-    return ((customer as Stripe.Customer).currency ?? null) as string | null;
+    if ((customer as any).deleted) return { currency: null, country: null };
+    const active = customer as Stripe.Customer;
+    return {
+      currency: active.currency ?? null,
+      country: active.address?.country?.toUpperCase() ?? null,
+    };
   } catch (e) {
-    console.error("Could not read customer currency:", (e as Error).message);
-    return null;
+    console.error("Could not read Stripe customer context:", (e as Error).message);
+    return { currency: null, country: null };
   }
 }
