@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, ClipboardCheck, Award, Receipt, Ticket } from 'lucide-react';
+import { Users, BookOpen, ClipboardCheck, Award, Receipt, Ticket, ScrollText } from 'lucide-react';
 import FaqManager from '@/components/admin/FaqManager';
 
 const AdminDashboard = () => {
@@ -113,6 +113,20 @@ const AdminDashboard = () => {
               <CardContent>
                 <p className="text-sm text-muted-foreground">
                   Generate single-use discount codes and track redemptions
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/admin/legal">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle>Legal Pages</CardTitle>
+                <ScrollText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Edit the Privacy Policy and Terms in English and Polish
                 </p>
               </CardContent>
             </Card>

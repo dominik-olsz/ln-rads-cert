@@ -86,7 +86,7 @@ const Navbar = () => {
           <div className="flex flex-col -space-y-1">
             <span className="text-foreground font-bold text-lg tracking-tight">LN-RADS</span>
             <span className="text-primary font-semibold text-[10px] uppercase tracking-[0.2em] hidden md:block">
-              Eduradiology
+              {t("Eduradiology")}
             </span>
           </div>
         </Link>

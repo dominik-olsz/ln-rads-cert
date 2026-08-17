@@ -16,7 +16,7 @@ const LanguageSwitcher = ({ className }: { className?: string }) => {
         onClick={() => setLang(otherLang)}
         aria-label={labels[otherLang]}
         title={labels[otherLang]}
-        className="text-lg leading-none px-2 py-1.5 rounded-lg border border-border/60 hover:bg-muted transition-colors"
+        className="text-xl leading-none opacity-90 hover:opacity-100 transition-opacity"
       >
         {flags[otherLang]}
       </button>

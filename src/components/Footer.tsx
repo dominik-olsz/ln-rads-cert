@@ -1,8 +1,10 @@
 import { Link } from "@/i18n/router";
+import { useT } from "@/i18n";
 import { Mail, Linkedin, Twitter } from "lucide-react";
 import lnradsLogo from "@/assets/lnrads-logo.jpg";
 
 const Footer = () => {
+  const t = useT();
   return (
     <footer className="border-t bg-gradient-subtle relative overflow-hidden">
       {/* Decorative elements */}
@@ -15,48 +17,47 @@ const Footer = () => {
           <div className="md:col-span-2 space-y-4">
             <Link to="/" className="flex items-center gap-3">
               <img src={lnradsLogo} alt="LN-RADS" className="h-10 w-auto" />
-              <span className="font-bold text-lg">LN-RADS Certification</span>
+              <span className="font-bold text-lg">{t("LN-RADS Certification")}</span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
-              The official certification program for the Lymph Nodes Reporting and Data System. 
-              Advancing diagnostic accuracy in lymph node assessment.
+              {t("The official certification program for the Lymph Nodes Reporting and Data System. Advancing diagnostic accuracy in lymph node assessment.")}
             </p>
           </div>
           
           {/* Quick links */}
           <div>
-            <h3 className="font-semibold mb-4">Quick Links</h3>
+            <h3 className="font-semibold mb-4">{t("Quick Links")}</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a href="https://lnrads.com/" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Home</a>
+                <a href="https://lnrads.com/" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{t("Home")}</a>
               </li>
               <li>
-                <a href="https://lnrads.com/our-team/" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">About us</a>
+                <a href="https://lnrads.com/our-team/" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{t("About us")}</a>
               </li>
               <li>
-                <a href="https://lnrads.com/from-internet/" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Publications</a>
+                <a href="https://lnrads.com/from-internet/" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{t("Publications")}</a>
               </li>
               <li>
-                <a href="https://lnrads.com/contact-us/" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Contact</a>
+                <a href="https://lnrads.com/contact-us/" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{t("Contact")}</a>
               </li>
               <li>
-                <Link to="/courses" className="hover:text-primary transition-colors">Courses</Link>
+                <Link to="/courses" className="hover:text-primary transition-colors">{t("Courses")}</Link>
               </li>
             </ul>
           </div>
           
           {/* Resources */}
           <div>
-            <h3 className="font-semibold mb-4">Resources</h3>
+            <h3 className="font-semibold mb-4">{t("Resources")}</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link to="/faq" className="hover:text-primary transition-colors">FAQ</Link>
+                <Link to="/faq" className="hover:text-primary transition-colors">{t("FAQ")}</Link>
               </li>
               <li>
-                <Link to="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+                <Link to="/privacy-policy" className="hover:text-primary transition-colors">{t("Privacy Policy")}</Link>
               </li>
               <li>
-                <Link to="/terms" className="hover:text-primary transition-colors">Terms and Conditions</Link>
+                <Link to="/terms" className="hover:text-primary transition-colors">{t("Terms and Conditions")}</Link>
               </li>
             </ul>
           </div>
@@ -66,7 +67,7 @@ const Footer = () => {
         {/* Bottom bar */}
         <div className="pt-8 border-t border-border/50">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} LN-RADS Certification. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} {t("LN-RADS Certification")}. {t("All rights reserved.")}</p>
 
           </div>
         </div>

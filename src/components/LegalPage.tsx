@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import Navbar from "@/components/Navbar";
+import { useT } from "@/i18n";
 
 interface LegalPageProps {
   title: string;
@@ -26,6 +27,7 @@ export const LegalSection = ({
 );
 
 const LegalPage = ({ title, subtitle, lastUpdated, children }: LegalPageProps) => {
+  const t = useT();
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -34,7 +36,7 @@ const LegalPage = ({ title, subtitle, lastUpdated, children }: LegalPageProps) =
           <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{title}</h1>
           {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Last updated: {lastUpdated}
+            {t("Last updated")}: {lastUpdated}
           </p>
         </header>
         <div className="space-y-10">{children}</div>

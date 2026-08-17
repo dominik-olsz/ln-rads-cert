@@ -134,6 +134,82 @@ const pl: Record<string, string> = {
   "No payments yet": "Brak płatności",
   "Payment successful": "Płatność zakończona sukcesem",
   "Thank you for your purchase!": "Dziękujemy za zakup!",
+  // ---- Home page (hero) ----
+  "Eduradiology": "Eduradiologia",
+  "Official LN-RADS Certification": "Oficjalna certyfikacja LN-RADS",
+  "Lymph Nodes Reporting and Data System": "System oceny i raportowania węzłów chłonnych",
+  "Transform the way you diagnose lymph nodes with our innovative multiparametric approach. Detect macrometastases as small as 2-3mm and improve diagnostic accuracy by over 20% compared to traditional methods.":
+    "Zmień sposób, w jaki diagnozujesz węzły chłonne, dzięki naszemu innowacyjnemu podejściu wieloparametrycznemu. Wykrywaj makroprzerzuty już od 2–3 mm i zwiększ dokładność diagnostyczną o ponad 20% w porównaniu z metodami tradycyjnymi.",
+  "Start Certification Course": "Rozpocznij kurs certyfikacyjny",
+  "Practical": "Praktyczny",
+  "All Modalities": "Wszystkie modalności",
+  "LN-RADS Certification": "Certyfikacja LN-RADS",
+  "LN-RADS Certification — Lymph Node Imaging Course": "Certyfikacja LN-RADS — kurs obrazowania węzłów chłonnych",
+  "Learn the LN-RADS system with practical lessons, annotated US, CT, MR and PET cases and earn an official certification in lymph node assessment.":
+    "Poznaj system LN-RADS dzięki praktycznym lekcjom oraz opisanym przypadkom USG, TK, MR i PET i zdobądź oficjalny certyfikat w ocenie węzłów chłonnych.",
+
+  // ---- Home page (course overview) ----
+  "Course Overview": "Przegląd kursu",
+  "Complete LN-RADS certification program with comprehensive training materials":
+    "Kompletny program certyfikacji LN-RADS z obszernymi materiałami szkoleniowymi",
+  "What You'll Learn": "Czego się nauczysz",
+  "Master the LN-RADS classification system for lymph node assessment":
+    "Opanuj system klasyfikacji LN-RADS w ocenie węzłów chłonnych",
+  "LN-RADS 1: Normal Lymph Nodes": "LN-RADS 1: prawidłowe węzły chłonne",
+  "No enlargement, oval shape, regular cortex ≤3mm":
+    "Bez powiększenia, owalny kształt, regularna kora ≤3 mm",
+  "LN-RADS 2: Steatotic LN": "LN-RADS 2: węzeł stłuszczony",
+  "Enlarged with hyperechoic hilum, no architectural changes":
+    "Powiększony, z hiperechogenną wnęką, bez zmian architektury",
+  "LN-RADS 3: Reactive LN": "LN-RADS 3: węzeł odczynowy",
+  "Thickened cortex >3mm, preserved oval shape and medulla":
+    "Pogrubiała kora >3 mm, zachowany owalny kształt i rdzeń",
+  "LN-RADS 4: Suspicious LN": "LN-RADS 4: węzeł podejrzany",
+  "4a (low) and 4b (high) suspicion categories":
+    "Kategorie 4a (niskie) i 4b (wysokie) podejrzenie",
+  "LN-RADS 5: Malignant LN": "LN-RADS 5: węzeł złośliwy",
+  "Evident features of malignancy with FCT, necrosis":
+    "Wyraźne cechy złośliwości z FCT i martwicą",
+  "LN-RADS Classification Flowchart": "Schemat klasyfikacji LN-RADS",
+  "Practical Lessons": "Praktyczne lekcje",
+  "Expert tutorials explaining each LN-RADS category with real clinical examples":
+    "Eksperckie omówienia każdej kategorii LN-RADS na prawdziwych przykładach klinicznych",
+  "Radiological Images": "Obrazy radiologiczne",
+  "Detailed US, CT, MR, and PET images with annotations and diagnostic explanations":
+    "Szczegółowe obrazy USG, TK, MR i PET z opisami i wyjaśnieniami diagnostycznymi",
+  "Complete a certification exam to earn your official LN-RADS certificate":
+    "Zdaj egzamin certyfikacyjny i zdobądź oficjalny certyfikat LN-RADS",
+
+  // ---- Home page (why LN-RADS) ----
+  "Why LN-RADS?": "Dlaczego LN-RADS?",
+  "Revolutionary approach to lymph node diagnosis with proven clinical benefits":
+    "Przełomowe podejście do diagnostyki węzłów chłonnych o udowodnionych korzyściach klinicznych",
+  "Superior Detection Rate": "Wyższa wykrywalność",
+  "Find over 20% more metastatic lymph nodes compared to traditional 10mm SAD size criteria. Detect macrometastases as small as 2-3mm using multiparametric morphological criteria.":
+    "Wykryj o ponad 20% więcej przerzutowych węzłów chłonnych niż przy tradycyjnym kryterium wielkości 10 mm SAD. Rozpoznawaj makroprzerzuty już od 2–3 mm dzięki wieloparametrycznym kryteriom morfologicznym.",
+  "Quick Evaluations": "Szybka ocena",
+  "Heuristic assessment model ensures rapid evaluation without compromising accuracy. Streamline your workflow while maintaining diagnostic excellence.":
+    "Heurystyczny model oceny pozwala działać szybko bez utraty dokładności. Usprawnij swoją pracę, zachowując najwyższą jakość diagnostyki.",
+  "Better Communication": "Lepsza komunikacja",
+  "Simple, standardized system improves communication between radiologists and clinicians. Clear categorization facilitates better patient management decisions.":
+    "Prosty, ustandaryzowany system poprawia komunikację między radiologami a klinicystami. Jasna kategoryzacja wspiera lepsze decyzje o postępowaniu z pacjentem.",
+  "Universal Application": "Uniwersalne zastosowanie",
+  "Apply LN-RADS across all imaging modalities: Ultrasound, CT, MR, and PET. One system for all your lymph node assessment needs.":
+    "Stosuj LN-RADS we wszystkich modalnościach: USG, TK, MR i PET. Jeden system do każdej oceny węzłów chłonnych.",
+  "Get Certified Today": "Zdobądź certyfikat już dziś",
+  "Join radiologists and oncologists worldwide who are mastering the LN-RADS system":
+    "Dołącz do radiologów i onkologów z całego świata, którzy opanowują system LN-RADS",
+  "Self-paced learning": "Nauka we własnym tempie",
+  "Practical test": "Praktyczny test",
+  "Official certificate": "Oficjalny certyfikat",
+  "Enroll Now": "Zapisz się teraz",
+
+  // ---- Footer ----
+  "The official certification program for the Lymph Nodes Reporting and Data System. Advancing diagnostic accuracy in lymph node assessment.":
+    "Oficjalny program certyfikacji systemu LN-RADS. Podnosimy dokładność diagnostyki węzłów chłonnych.",
+  "Quick Links": "Szybkie linki",
+  "Resources": "Materiały",
+  "Last updated": "Ostatnia aktualizacja",
 };
 
 export default pl;

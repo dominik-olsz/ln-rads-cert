@@ -1,8 +1,10 @@
 import { Link } from "@/i18n/router";
+import { useT } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Microscope, Award, Users } from "lucide-react";
 import heroBackground from "@/assets/hero-background.jpg";
 const Hero = () => {
+  const t = useT();
   return (
     <section className="relative -mt-16 pt-32 pb-20 md:-mt-20 md:pt-44 md:pb-32 min-h-screen flex items-center overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
@@ -15,25 +17,23 @@ const Hero = () => {
           <div className="inline-block">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium">
               <Award className="h-4 w-4" />
-              Official LN-RADS Certification
+              {t("Official LN-RADS Certification")}
             </span>
           </div>
 
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
             LN-RADS
-            <span className="block text-primary mt-2">Lymph Nodes Reporting and Data System</span>
+            <span className="block text-primary mt-2">{t("Lymph Nodes Reporting and Data System")}</span>
           </h1>
 
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Transform the way you diagnose lymph nodes with our innovative multiparametric approach. Detect
-            macrometastases as small as 2-3mm and improve diagnostic accuracy by over 20% compared to traditional
-            methods.
+            {t("Transform the way you diagnose lymph nodes with our innovative multiparametric approach. Detect macrometastases as small as 2-3mm and improve diagnostic accuracy by over 20% compared to traditional methods.")}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link to="/courses">
               <Button size="lg" className="gap-2">
-                Start Certification Course
+                {t("Start Certification Course")}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -45,21 +45,21 @@ const Hero = () => {
               <Microscope className="h-8 w-8 text-primary" />
               <div className="text-center">
                 <div className="font-bold text-2xl">200+</div>
-                <div className="text-sm text-muted-foreground">Use Cases</div>
+                <div className="text-sm text-muted-foreground">{t("Use Cases")}</div>
               </div>
             </div>
             <div className="flex flex-col items-center gap-3 p-6 rounded-lg bg-card border">
               <Award className="h-8 w-8 text-accent" />
               <div className="text-center">
-                <div className="font-bold text-2xl">Practical</div>
-                <div className="text-sm text-muted-foreground">Certification Test</div>
+                <div className="font-bold text-2xl">{t("Practical")}</div>
+                <div className="text-sm text-muted-foreground">{t("Certification Test")}</div>
               </div>
             </div>
             <div className="flex flex-col items-center gap-3 p-6 rounded-lg bg-card border">
               <Users className="h-8 w-8 text-primary" />
               <div className="text-center">
                 <div className="font-bold text-2xl">US, CT, MR, PET</div>
-                <div className="text-sm text-muted-foreground">All Modalities</div>
+                <div className="text-sm text-muted-foreground">{t("All Modalities")}</div>
               </div>
             </div>
           </div>

@@ -944,6 +944,48 @@ export type Database = {
           },
         ]
       }
+      legal_documents: {
+        Row: {
+          body_en: string
+          body_pl: string
+          created_at: string
+          last_updated_en: string
+          last_updated_pl: string
+          slug: string
+          subtitle_en: string
+          subtitle_pl: string
+          title_en: string
+          title_pl: string
+          updated_at: string
+        }
+        Insert: {
+          body_en?: string
+          body_pl?: string
+          created_at?: string
+          last_updated_en?: string
+          last_updated_pl?: string
+          slug: string
+          subtitle_en?: string
+          subtitle_pl?: string
+          title_en?: string
+          title_pl?: string
+          updated_at?: string
+        }
+        Update: {
+          body_en?: string
+          body_pl?: string
+          created_at?: string
+          last_updated_en?: string
+          last_updated_pl?: string
+          slug?: string
+          subtitle_en?: string
+          subtitle_pl?: string
+          title_en?: string
+          title_pl?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lessons: {
         Row: {
           content_text: string | null
