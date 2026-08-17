@@ -268,12 +268,12 @@ const Navbar = () => {
                       </Link>
                     )}
 
-                    <LanguageSwitcher className="self-start" />
                     <Button variant="outline" onClick={signOut} className="justify-center border-2 rounded-xl">
                       {t("Sign Out")}
                     </Button>
-
+                    <LanguageSwitcher className="self-start" />
                   </div>
+
                 </SheetContent>
               </Sheet>
             </>
@@ -307,7 +307,6 @@ const Navbar = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-64 rounded-l-3xl">
                   <div className="flex flex-col gap-4 mt-8">
-                    <LanguageSwitcher className="self-start" />
                     <a
                       href="https://lnrads.com/"
                       target="_blank"
@@ -352,7 +351,9 @@ const Navbar = () => {
                     <Link to="/auth?tab=signup" className="text-sm font-medium hover:text-primary transition-colors">
                       {t("Get Started")}
                     </Link>
+                    <LanguageSwitcher className="self-start" />
                   </div>
+
                 </SheetContent>
               </Sheet>
             </>
