@@ -46,12 +46,15 @@ import {
 } from "@/lib/questionOptions";
 import { formatEuro } from "@/lib/pricing";
 import { Badge } from "@/components/ui/badge";
+import PolishQuestionFields, { PolishOption } from "@/components/admin/PolishQuestionFields";
 import { IMAGE_UPLOAD_ACCEPT, prepareImageForUpload } from "@/lib/imageUpload";
 
 
 interface Lesson {
   id?: string;
   title: string;
+  title_pl?: string;
+  content_text_pl?: string;
   order_index: number;
   content_type: string;
   content_url?: string;
@@ -63,8 +66,11 @@ interface Lesson {
 interface TestQuestion {
   id?: string;
   question_text: string;
+  question_text_pl?: string;
   options: QuestionOption[];
+  options_pl?: PolishOption[];
   explanation?: string;
+  explanation_pl?: string;
   image_url?: string;
   image_urls?: string[];
   order_index?: number;
@@ -75,6 +81,7 @@ interface TestQuestion {
 interface TestQuestionsGroup {
   id?: string;
   title?: string;
+  title_pl?: string;
   order_index: number;
   is_free?: boolean;
   questions: TestQuestion[];
@@ -104,6 +111,11 @@ const CourseBuilder = () => {
   const [heroImage, setHeroImage] = useState<string | null>(null);
   const [courseIncludes, setCourseIncludes] = useState("");
   const [whatYouLearn, setWhatYouLearn] = useState("");
+  // Polish translations (optional — blank falls back to English)
+  const [titlePl, setTitlePl] = useState("");
+  const [descriptionPl, setDescriptionPl] = useState("");
+  const [courseIncludesPl, setCourseIncludesPl] = useState("");
+  const [whatYouLearnPl, setWhatYouLearnPl] = useState("");
   
 
   // Certification test configuration
@@ -139,10 +151,12 @@ const CourseBuilder = () => {
 
   const currentSnapshot = useMemo(() => JSON.stringify({
     title, description, price, discountPrice, discountValidUntil, heroImage, courseIncludes, whatYouLearn,
+    titlePl, descriptionPl, courseIncludesPl, whatYouLearnPl,
     certificationEnabled, certificationMode, certificationQuestionCount, certificationPassPercent,
     attemptsIncluded, attemptsTotal, courseRetakePrice,
     certQuestions, lessons, questionGroups,
   }), [title, description, price, discountPrice, discountValidUntil, heroImage, courseIncludes, whatYouLearn,
+    titlePl, descriptionPl, courseIncludesPl, whatYouLearnPl,
     certificationEnabled, certificationMode, certificationQuestionCount, certificationPassPercent,
     attemptsIncluded, attemptsTotal, courseRetakePrice,
     certQuestions, lessons, questionGroups]);
@@ -229,6 +243,10 @@ const CourseBuilder = () => {
       setHeroImage(courseData.hero_image);
       setCourseIncludes(courseData.course_includes || "");
       setWhatYouLearn(courseData.what_you_learn || "");
+      setTitlePl(courseData.title_pl || "");
+      setDescriptionPl(courseData.description_pl || "");
+      setCourseIncludesPl(courseData.course_includes_pl || "");
+      setWhatYouLearnPl(courseData.what_you_learn_pl || "");
       setCertificationEnabled(courseData.certification_enabled || false);
       setCertificationMode((courseData.certification_mode === 'custom' ? 'custom' : 'random'));
       setCertificationQuestionCount(courseData.certification_question_count ?? 0);
@@ -240,7 +258,7 @@ const CourseBuilder = () => {
 
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
-        .select('id, course_id, title, content_type, order_index, duration, is_free')
+        .select('id, course_id, title, title_pl, content_type, order_index, duration, is_free')
         .eq('course_id', courseId)
         .order('order_index');
 
@@ -289,6 +307,8 @@ const CourseBuilder = () => {
       const lessonsWithoutQuestions = lessonContents.map(lesson => ({
         id: lesson.id,
         title: lesson.title,
+        title_pl: (lesson as any).title_pl || "",
+        content_text_pl: lesson.content_text_pl || "",
         order_index: lesson.order_index,
         content_type: lesson.content_type,
         content_url: lesson.content_url ?? undefined,
@@ -305,6 +325,7 @@ const CourseBuilder = () => {
         if (!acc[order]) {
           acc[order] = {
             title: q.group_title || null,
+            title_pl: q.group_title_pl || null,
             is_free: q.is_free || false,
             questions: []
           };
@@ -312,8 +333,11 @@ const CourseBuilder = () => {
         acc[order].questions.push({
           id: q.id,
           question_text: q.question_text,
+          question_text_pl: q.question_text_pl ?? undefined,
           options: normalizeOptions(q.options, q),
+          options_pl: Array.isArray(q.options_pl) ? (q.options_pl as any) : undefined,
           explanation: q.explanation ?? undefined,
+          explanation_pl: q.explanation_pl ?? undefined,
           image_url: q.image_url ?? undefined,
           image_urls: normalizeQuestionImages(q),
 
@@ -321,11 +345,12 @@ const CourseBuilder = () => {
         });
 
         return acc;
-      }, {} as Record<number, { title: string | null, is_free: boolean, questions: TestQuestion[] }>);
+      }, {} as Record<number, { title: string | null, title_pl: string | null, is_free: boolean, questions: TestQuestion[] }>);
 
       const groups: TestQuestionsGroup[] = Object.entries(questionsByOrder).map(([order, data]) => ({
         order_index: parseInt(order),
         title: data.title || undefined,
+        title_pl: data.title_pl || undefined,
         is_free: data.is_free,
         questions: data.questions
       }));
@@ -336,8 +361,11 @@ const CourseBuilder = () => {
         (certQuestionsData || []).map((q: any) => ({
           id: q.id,
           question_text: q.question_text,
+          question_text_pl: q.question_text_pl ?? undefined,
           options: normalizeOptions(q.options, q),
+          options_pl: Array.isArray(q.options_pl) ? q.options_pl : undefined,
           explanation: q.explanation ?? undefined,
+          explanation_pl: q.explanation_pl ?? undefined,
           image_url: q.image_url ?? undefined,
           image_urls: normalizeQuestionImages(q),
 
@@ -682,6 +710,10 @@ const CourseBuilder = () => {
         total_lessons: lessons.length,
         course_includes: courseIncludes,
         what_you_learn: whatYouLearn,
+        title_pl: titlePl.trim() || null,
+        description_pl: descriptionPl.trim() || null,
+        course_includes_pl: courseIncludesPl.trim() || null,
+        what_you_learn_pl: whatYouLearnPl.trim() || null,
         certification_enabled: certificationEnabled,
         certification_mode: certificationMode,
         certification_question_count:
@@ -731,10 +763,12 @@ const CourseBuilder = () => {
           .insert({
             course_id: finalCourseId,
             title: lesson.title,
+            title_pl: (lesson.title_pl || "").trim() || null,
             order_index: lesson.order_index,
             content_type: lesson.content_type,
             content_url: lesson.content_url,
             content_text: lesson.content_text,
+            content_text_pl: (lesson.content_text_pl || "").trim() || null,
             duration: lesson.duration,
             is_free: lesson.is_free || false
           });
@@ -770,7 +804,11 @@ const CourseBuilder = () => {
             course_id: finalCourseId,
             lesson_id: null,
             question_text: q.question_text,
+            question_text_pl: (q.question_text_pl || "").trim() || null,
             options: q.options as unknown as any,
+            options_pl: (q.options_pl && q.options_pl.some((o) => (o?.text || "").trim() !== "")
+              ? q.options_pl
+              : null) as unknown as any,
             option_a: null,
             option_b: null,
             option_c: null,
@@ -778,12 +816,14 @@ const CourseBuilder = () => {
             correct_answer: null,
 
             explanation: q.explanation || null,
+            explanation_pl: (q.explanation_pl || "").trim() || null,
             image_url: normalizeQuestionImages(q)[0] || null,
             image_urls: normalizeQuestionImages(q),
 
             test_type: 'course',
             order_index: group.order_index,
             group_title: group.title || null,
+            group_title_pl: (group.title_pl || "").trim() || null,
             is_free: group.is_free || false
           }));
 
@@ -809,7 +849,11 @@ const CourseBuilder = () => {
                 course_id: finalCourseId,
                 lesson_id: null,
                 question_text: q.question_text,
+                question_text_pl: (q.question_text_pl || "").trim() || null,
                 options: q.options as unknown as any,
+                options_pl: (q.options_pl && q.options_pl.some((o) => (o?.text || "").trim() !== "")
+                  ? q.options_pl
+                  : null) as unknown as any,
                 option_a: null,
                 option_b: null,
                 option_c: null,
@@ -817,6 +861,7 @@ const CourseBuilder = () => {
                 correct_answer: null,
 
                 explanation: q.explanation || null,
+                explanation_pl: (q.explanation_pl || "").trim() || null,
                 image_url: normalizeQuestionImages(q)[0] || null,
                 image_urls: normalizeQuestionImages(q),
 
@@ -981,11 +1026,30 @@ const CourseBuilder = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="titlePl">Tytuł kursu (PL)</Label>
+                  <Input
+                    id="titlePl"
+                    value={titlePl}
+                    onChange={(e) => setTitlePl(e.target.value)}
+                    placeholder="Polska wersja tytułu (opcjonalnie)"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
                   <RichTextEditor
                     content={description}
                     onChange={setDescription}
                     placeholder="Describe what students will learn..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="descriptionPl">Opis (PL)</Label>
+                  <RichTextEditor
+                    content={descriptionPl}
+                    onChange={setDescriptionPl}
+                    placeholder="Polska wersja opisu (opcjonalnie)"
                   />
                 </div>
 
@@ -1060,12 +1124,34 @@ const CourseBuilder = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="courseIncludesPl">Kurs zawiera (PL)</Label>
+                  <Textarea
+                    id="courseIncludesPl"
+                    value={courseIncludesPl}
+                    onChange={(e) => setCourseIncludesPl(e.target.value)}
+                    placeholder="Polska wersja (opcjonalnie)"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="whatYouLearn">What You'll Learn</Label>
                   <Textarea
                     id="whatYouLearn"
                     value={whatYouLearn}
                     onChange={(e) => setWhatYouLearn(e.target.value)}
                     placeholder="Key learning outcomes..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="whatYouLearnPl">Czego się naucszysz (PL)</Label>
+                  <Textarea
+                    id="whatYouLearnPl"
+                    value={whatYouLearnPl}
+                    onChange={(e) => setWhatYouLearnPl(e.target.value)}
+                    placeholder="Polska wersja (opcjonalnie)"
                     rows={3}
                   />
                 </div>
@@ -1171,6 +1257,14 @@ const CourseBuilder = () => {
                           />
                         </div>
                         <div className="space-y-2">
+                          <Label>Tytuł lekcji (PL)</Label>
+                          <Input
+                            value={lessons[currentItemIndex]?.title_pl || ""}
+                            onChange={(e) => updateLesson(currentItemIndex, { title_pl: e.target.value })}
+                            placeholder="Opcjonalnie"
+                          />
+                        </div>
+                        <div className="space-y-2">
                           <Label>Duration</Label>
                           <Input
                             value={lessons[currentItemIndex]?.duration || ""}
@@ -1218,6 +1312,19 @@ const CourseBuilder = () => {
                           placeholder="Write your lesson content here. Drag and drop images to include them."
                         />
                       </div>
+
+                      <div className="space-y-2">
+                        <Label>Treść lekcji (PL)</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Optional Polish version. Leave empty to show the English content to Polish visitors.
+                        </p>
+                        <RichTextEditor
+                          key={`pl-${currentItemIndex}`}
+                          content={lessons[currentItemIndex]?.content_text_pl || ""}
+                          onChange={(content) => updateLesson(currentItemIndex, { content_text_pl: content })}
+                          placeholder="Polska wersja treści lekcji"
+                        />
+                      </div>
                     </CardContent>
                   </>
                 ) : currentItemType === 'questions' && questionGroups[currentItemIndex] ? (
@@ -1238,6 +1345,21 @@ const CourseBuilder = () => {
                             <Plus className="h-4 w-4 mr-2" />
                             Add More Questions
                           </Button>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Tytuł grupy (PL)</Label>
+                          <Input
+                            value={questionGroups[currentItemIndex].title_pl || ''}
+                            onChange={(e) => {
+                              const updated = [...questionGroups];
+                              updated[currentItemIndex] = {
+                                ...updated[currentItemIndex],
+                                title_pl: e.target.value,
+                              };
+                              setQuestionGroups(updated);
+                            }}
+                            placeholder="Opcjonalnie"
+                          />
                         </div>
                         <div className="flex items-center space-x-2">
                           <Checkbox
@@ -1383,6 +1505,12 @@ const CourseBuilder = () => {
                                 rows={2}
                               />
                             </div>
+
+                            <PolishQuestionFields
+                              options={question.options}
+                              value={question}
+                              onChange={(patch) => updateQuestionInGroup(currentItemIndex, idx, patch)}
+                            />
                           </CardContent>
                         </Card>
                       ))}
@@ -1635,6 +1763,12 @@ const CourseBuilder = () => {
                                   rows={2}
                                 />
                               </div>
+
+                              <PolishQuestionFields
+                                options={question.options}
+                                value={question}
+                                onChange={(patch) => updateCertQuestion(idx, patch)}
+                              />
                             </CardContent>
                           </Card>
                         ))}
