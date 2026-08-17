@@ -60,7 +60,7 @@ const pl: Record<string, string> = {
   "Lesson": "Lekcja",
   "Use Cases": "Przypadki",
   "Use Case": "Przypadek",
-  "What you'll learn": "Czego się naucz***",
+  "What you'll learn": "Czego się nauczysz",
   "This course includes": "Ten kurs zawiera",
   "Preview free content": "Zobacz darmową treść",
   "Free preview": "Darmowy podgląd",
