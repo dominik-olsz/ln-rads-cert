@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 
 
-import { createBrowserRouter, RouterProvider, Outlet, type RouteObject } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Outlet, Navigate, useLocation, type RouteObject } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import { LanguageProvider } from "./i18n";
 import Footer from "./components/Footer";
@@ -75,6 +75,12 @@ const localizedRoutes: RouteObject[] = [
   { path: "unsubscribe", element: <Unsubscribe /> },
 ];
 
+/** Redirects /pl/<path> to /<path> (admin panel is not localized). */
+const StripPlRedirect = () => {
+  const { pathname, search, hash } = useLocation();
+  return <Navigate to={`${pathname.replace(/^\/pl(?=\/|$)/, "") || "/"}${search}${hash}`} replace />;
+};
+
 const router = createBrowserRouter([
   {
     element: <Layout />,
@@ -82,6 +88,8 @@ const router = createBrowserRouter([
       ...localizedRoutes,
       // Polish mirror of every public/student route.
       { path: "pl", children: localizedRoutes },
+      // Admin panel is English-only: /pl/admin/... redirects to /admin/...
+      { path: "pl/admin/*", element: <StripPlRedirect /> },
 
       { path: "/admin/dashboard", element: <AdminRoute><AdminDashboard /></AdminRoute> },
       { path: "/admin/users", element: <AdminRoute><AdminUsers /></AdminRoute> },
