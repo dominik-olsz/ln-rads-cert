@@ -169,7 +169,8 @@ serve(async (req) => {
           .insert({
             user_id: userId,
             course_id: courseId ?? null,
-            amount_paid: grossCents,
+            // Internal bookkeeping stays in the settlement currency (EUR).
+            amount_paid: settlementGrossCents,
             stripe_session_id: session.id,
             stripe_payment_intent_id: paymentIntentId,
             buyer_email: buyer.email,
@@ -231,7 +232,8 @@ serve(async (req) => {
         .insert({
           user_id: userId,
           course_id: courseId,
-          amount_paid: Math.round(grossCents / 100),
+          // Internal bookkeeping stays in the settlement currency (EUR).
+          amount_paid: Math.round(settlementGrossCents / 100),
           payment_status: "completed",
           stripe_session_id: session.id,
           stripe_payment_intent_id: paymentIntentId,
@@ -319,8 +321,12 @@ serve(async (req) => {
         .eq("id", original.id);
 
 
-      // A full refund revokes access; a partial one only records the amount
-      const fullRefund = refundedCents >= (original.gross_amount ?? 0);
+      // A full refund revokes access; a partial one only records the amount.
+      // Compared against the charge itself, because a converted (Adaptive
+      // Pricing) invoice is stored in the buyer's currency while Stripe refunds
+      // in the settlement currency.
+      const chargeTotal = charge.amount ?? original.gross_amount ?? 0;
+      const fullRefund = refundedCents >= chargeTotal;
       if (original.purchase_type === "certification_retake" && original.retake_purchase_id) {
         if (fullRefund) {
           await admin
