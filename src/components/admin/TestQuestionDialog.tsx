@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import QuestionOptionsEditor from '@/components/admin/QuestionOptionsEditor';
 import { IMAGE_UPLOAD_ACCEPT, prepareImageForUpload } from '@/lib/imageUpload';
+import PolishQuestionFields, { PolishOption } from '@/components/admin/PolishQuestionFields';
 import {
   QuestionOption,
   emptyOptions,
@@ -28,6 +29,9 @@ interface TestQuestion {
   option_c?: string | null;
   option_d?: string | null;
   correct_answer?: string | null;
+  question_text_pl?: string | null;
+  options_pl?: unknown;
+  explanation_pl?: string | null;
   explanation?: string;
   image_url?: string;
   image_urls?: string[] | null;
@@ -48,6 +52,9 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
   const [questionText, setQuestionText] = useState('');
   const [options, setOptions] = useState<QuestionOption[]>(emptyOptions());
   const [explanation, setExplanation] = useState('');
+  const [questionTextPl, setQuestionTextPl] = useState('');
+  const [explanationPl, setExplanationPl] = useState('');
+  const [optionsPl, setOptionsPl] = useState<PolishOption[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -63,12 +70,18 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
       setQuestionText(question.question_text);
       setOptions(normalizeOptions(question.options, question));
       setExplanation(question.explanation || '');
+      setQuestionTextPl(question.question_text_pl || '');
+      setExplanationPl(question.explanation_pl || '');
+      setOptionsPl(Array.isArray(question.options_pl) ? (question.options_pl as PolishOption[]) : []);
       setImageUrls(question.image_urls?.length ? question.image_urls : question.image_url ? [question.image_url] : []);
     } else {
       setCourseId('');
       setQuestionText('');
       setOptions(emptyOptions());
       setExplanation('');
+      setQuestionTextPl('');
+      setExplanationPl('');
+      setOptionsPl([]);
       setImageUrls([]);
     }
   }, [question, open]);
@@ -151,6 +164,11 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
         option_d: null,
         correct_answer: null,
         explanation: explanation || null,
+        question_text_pl: questionTextPl.trim() || null,
+        explanation_pl: explanationPl.trim() || null,
+        options_pl: (optionsPl.some((o) => (o?.text || '').trim() !== '')
+          ? optionsPl
+          : null) as unknown as any,
         image_url: imageUrls[0] || null,
         image_urls: imageUrls,
         test_type: question?.test_type || testType,
@@ -276,6 +294,20 @@ const TestQuestionDialog = ({ open, onOpenChange, question, onSuccess, testType 
               rows={2}
             />
           </div>
+
+          <PolishQuestionFields
+            options={options}
+            value={{
+              question_text_pl: questionTextPl,
+              explanation_pl: explanationPl,
+              options_pl: optionsPl,
+            }}
+            onChange={(patch) => {
+              if (patch.question_text_pl !== undefined) setQuestionTextPl(patch.question_text_pl);
+              if (patch.explanation_pl !== undefined) setExplanationPl(patch.explanation_pl);
+              if (patch.options_pl !== undefined) setOptionsPl(patch.options_pl);
+            }}
+          />
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

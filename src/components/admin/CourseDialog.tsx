@@ -15,6 +15,10 @@ interface Course {
   price?: number;
   course_includes?: string;
   what_you_learn?: string;
+  title_pl?: string | null;
+  description_pl?: string | null;
+  course_includes_pl?: string | null;
+  what_you_learn_pl?: string | null;
 }
 
 interface CourseDialogProps {
@@ -31,6 +35,10 @@ const CourseDialog = ({ open, onOpenChange, course, onSuccess }: CourseDialogPro
   const [price, setPrice] = useState(0);
   const [courseIncludes, setCourseIncludes] = useState('');
   const [whatYouLearn, setWhatYouLearn] = useState('');
+  const [titlePl, setTitlePl] = useState('');
+  const [descriptionPl, setDescriptionPl] = useState('');
+  const [courseIncludesPl, setCourseIncludesPl] = useState('');
+  const [whatYouLearnPl, setWhatYouLearnPl] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -42,6 +50,10 @@ const CourseDialog = ({ open, onOpenChange, course, onSuccess }: CourseDialogPro
       setPrice(course.price || 0);
       setCourseIncludes(course.course_includes || '');
       setWhatYouLearn(course.what_you_learn || '');
+      setTitlePl(course.title_pl || '');
+      setDescriptionPl(course.description_pl || '');
+      setCourseIncludesPl(course.course_includes_pl || '');
+      setWhatYouLearnPl(course.what_you_learn_pl || '');
     } else {
       setTitle('');
       setDescription('');
@@ -49,6 +61,10 @@ const CourseDialog = ({ open, onOpenChange, course, onSuccess }: CourseDialogPro
       setPrice(0);
       setCourseIncludes('');
       setWhatYouLearn('');
+      setTitlePl('');
+      setDescriptionPl('');
+      setCourseIncludesPl('');
+      setWhatYouLearnPl('');
     }
   }, [course, open]);
 
@@ -64,6 +80,10 @@ const CourseDialog = ({ open, onOpenChange, course, onSuccess }: CourseDialogPro
         price,
         course_includes: courseIncludes || null,
         what_you_learn: whatYouLearn || null,
+        title_pl: titlePl.trim() || null,
+        description_pl: descriptionPl.trim() || null,
+        course_includes_pl: courseIncludesPl.trim() || null,
+        what_you_learn_pl: whatYouLearnPl.trim() || null,
       };
 
       if (course?.id) {
@@ -173,6 +193,43 @@ const CourseDialog = ({ open, onOpenChange, course, onSuccess }: CourseDialogPro
               rows={3}
             />
           </div>
+          <div className="space-y-4 rounded-lg border border-dashed p-3 bg-muted/20">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Polish version (optional)
+            </p>
+            <div>
+              <Label htmlFor="titlePl">Tytuł (PL)</Label>
+              <Input id="titlePl" value={titlePl} onChange={(e) => setTitlePl(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="descriptionPl">Opis (PL)</Label>
+              <Textarea
+                id="descriptionPl"
+                value={descriptionPl}
+                onChange={(e) => setDescriptionPl(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div>
+              <Label htmlFor="courseIncludesPl">Kurs zawiera (PL)</Label>
+              <Textarea
+                id="courseIncludesPl"
+                value={courseIncludesPl}
+                onChange={(e) => setCourseIncludesPl(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="whatYouLearnPl">Czego się nauczysz (PL)</Label>
+              <Textarea
+                id="whatYouLearnPl"
+                value={whatYouLearnPl}
+                onChange={(e) => setWhatYouLearnPl(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
