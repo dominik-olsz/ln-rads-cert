@@ -197,6 +197,24 @@ const FaqManager = () => {
                   rows={3}
                   maxLength={2000}
                 />
+                <div className="space-y-2 rounded-lg border border-dashed p-3 bg-muted/20">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Polish version (optional)
+                  </p>
+                  <Input
+                    value={item.question_pl || ''}
+                    onChange={(e) => patch(item.id, { question_pl: e.target.value })}
+                    placeholder="Pytanie (PL)"
+                    maxLength={300}
+                  />
+                  <Textarea
+                    value={item.answer_pl || ''}
+                    onChange={(e) => patch(item.id, { answer_pl: e.target.value })}
+                    placeholder="Odpowiedź (PL)"
+                    rows={3}
+                    maxLength={2000}
+                  />
+                </div>
                 <div className="flex items-center gap-2">
                   <Switch
                     id={`published-${item.id}`}
