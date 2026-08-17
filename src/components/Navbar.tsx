@@ -208,8 +208,8 @@ const Navbar = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-64 rounded-l-3xl">
                   <div className="flex flex-col gap-4 mt-8">
-                    <LanguageSwitcher className="self-start" />
                     <div className="text-sm text-muted-foreground border-b pb-3 truncate">{user.email}</div>
+
                     <a
                       href="https://lnrads.com/"
                       target="_blank"
@@ -267,9 +267,11 @@ const Navbar = () => {
                       </Link>
                     )}
 
-                    <Button variant="outline" onClick={signOut} className="justify-center border-2 mt-4 rounded-xl">
+                    <LanguageSwitcher className="self-start" />
+                    <Button variant="outline" onClick={signOut} className="justify-center border-2 rounded-xl">
                       {t("Sign Out")}
                     </Button>
+
                   </div>
                 </SheetContent>
               </Sheet>
