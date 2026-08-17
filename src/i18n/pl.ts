@@ -210,6 +210,13 @@ const pl: Record<string, string> = {
   "Quick Links": "Szybkie linki",
   "Resources": "Materiały",
   "Last updated": "Ostatnia aktualizacja",
+
+  // ---- 404 ----
+  "Page not found": "Nie znaleziono strony",
+  "The page you are looking for does not exist or has been moved.":
+    "Strona, której szukasz, nie istnieje lub została przeniesiona.",
+  "Back to Home": "Wróć na stronę główną",
+  "Browse Courses": "Przeglądaj kursy",
 };
 
 export default pl;
