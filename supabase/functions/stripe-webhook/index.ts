@@ -87,11 +87,40 @@ serve(async (req) => {
           .eq("id", discountCodeId)
           .is("redeemed_at", null);
       };
-      const grossCents = session.amount_total ?? 0;
-      const currency = session.currency ?? "eur";
+      // Settlement figures (always the price currency, EUR): used for internal
+      // bookkeeping and for comparing against Stripe refunds.
+      const settlementGrossCents = session.amount_total ?? 0;
+      const settlementCurrency = session.currency ?? "eur";
+
+      // With Adaptive Pricing the buyer sees and pays a converted amount. The
+      // invoice — and therefore FakturaXL — must be issued in that currency.
+      const presentment = (session as any).presentment_details ?? null;
+      const presentmentCurrency = presentment?.presentment_currency ?? null;
+      const presentmentAmount = presentment?.presentment_amount ?? null;
+      const converted =
+        presentmentCurrency &&
+        presentmentAmount != null &&
+        String(presentmentCurrency).toLowerCase() !== String(settlementCurrency).toLowerCase();
+
+      console.log(
+        `[adaptive-pricing] session=${session.id} settlement=${settlementGrossCents} ${settlementCurrency} ` +
+          `presentment=${JSON.stringify(presentment)}`,
+      );
+
+      const currency = converted ? String(presentmentCurrency).toLowerCase() : settlementCurrency;
+      const grossCents = converted ? Number(presentmentAmount) : settlementGrossCents;
       // Stripe Tax figures: the invoice must mirror exactly what was charged.
-      const vatCents = session.total_details?.amount_tax ?? null;
+      // Stripe reports tax in the settlement currency only, so for a converted
+      // payment the same ratio is applied to keep net + VAT = gross exactly.
+      const settlementVatCents = session.total_details?.amount_tax ?? null;
+      const vatCents =
+        settlementVatCents == null
+          ? null
+          : converted && settlementGrossCents > 0
+          ? Math.round((settlementVatCents / settlementGrossCents) * grossCents)
+          : settlementVatCents;
       const netCents = vatCents != null ? grossCents - vatCents : null;
+
 
       // Never issue a 0% invoice for a transaction that is not legitimately
       // reverse charged. This also catches Stripe incorrectly classifying a
