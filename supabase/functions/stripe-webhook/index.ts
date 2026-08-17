@@ -70,6 +70,11 @@ serve(async (req) => {
           ? session.payment_intent
           : session.payment_intent?.id ?? null;
       const buyer = buyerFromSession(session);
+      // A location-formatted email is used only to simulate Poland in Stripe
+      // test mode. Never store it or send invoices to it: this metadata was set
+      // by our authenticated checkout function, not accepted from the client.
+      const originalBuyerEmail = session.metadata?.original_buyer_email?.trim();
+      if (originalBuyerEmail) buyer.email = originalBuyerEmail;
       const discountCodeId = session.metadata?.discount_code_id || null;
       const discountSummary = session.metadata?.discount_summary || null;
 
@@ -104,7 +109,8 @@ serve(async (req) => {
 
       console.log(
         `[adaptive-pricing] session=${session.id} settlement=${settlementGrossCents} ${settlementCurrency} ` +
-          `presentment=${JSON.stringify(presentment)}`,
+          `presentment=${JSON.stringify(presentment)} ` +
+          `test_location=${session.metadata?.adaptive_pricing_test_location || "none"}`,
       );
 
       const currency = converted ? String(presentmentCurrency).toLowerCase() : settlementCurrency;

@@ -65,6 +65,7 @@ serve(async (req) => {
     const userPercent = await getUserDiscountPercent(admin, user.id);
 
     const stripeInit = () => new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
+    const isStripeTestMode = stripeKey.includes("_test_");
 
     // Saved invoice details (Account settings) are used to pre-fill Stripe Checkout.
     const { data: profile } = await admin
@@ -75,12 +76,32 @@ serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
+    // Stripe does not infer a reliable geographic location from ordinary test
+    // traffic. Its documented test mechanism is a +location_XX email suffix.
+    // Keep this strictly in test mode and preserve the real account email in
+    // metadata for purchases, invoices, and delivery after the webhook fires.
+    const locationTestEmail = (() => {
+      if (!isStripeTestMode || profile?.country?.toUpperCase() !== "PL" || !user.email) {
+        return null;
+      }
+      const at = user.email.lastIndexOf("@");
+      if (at <= 0) return null;
+      const local = user.email.slice(0, at).split("+")[0];
+      const domain = user.email.slice(at + 1);
+      if (!local || !domain) return null;
+      return `${local}+location_PL@${domain}`;
+    })();
+
     // A saved Stripe Customer pre-fills Checkout, but once Stripe pins a
     // currency on it, Adaptive Pricing can no longer offer the buyer's local
     // currency. In that case we deliberately drop the Customer and go with the
     // email only — the billing address is collected at Checkout anyway and the
     // webhook writes it back to /account as before.
     const buildCustomer = async (stripe: Stripe): Promise<string | undefined> => {
+      if (locationTestEmail) {
+        console.log("[adaptive-pricing] checkout_location=test_PL customer_mode=email");
+        return undefined;
+      }
       const customerId = await syncStripeCustomer(stripe, admin, {
         userId: user.id,
         email: user.email,
@@ -203,9 +224,10 @@ serve(async (req) => {
       const retakeCustomerId = await buildCustomer(stripe);
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
+        ...({ ui_mode: "hosted" } as any),
         client_reference_id: user.id,
         customer: retakeCustomerId,
-        customer_email: retakeCustomerId ? undefined : (user.email ?? undefined),
+        customer_email: retakeCustomerId ? undefined : (locationTestEmail ?? user.email ?? undefined),
         customer_update: retakeCustomerId ? customerUpdate : undefined,
         billing_address_collection: "required",
         // Optional: private buyers can continue without a VAT ID, while
@@ -243,6 +265,8 @@ serve(async (req) => {
           user_id: user.id,
           course_id: retakeCourse.id,
           purchase_type: "certification_retake",
+          original_buyer_email: locationTestEmail ? (user.email ?? "") : "",
+          adaptive_pricing_test_location: locationTestEmail ? "PL" : "",
           discount_code_id: pricing.codeId ?? "",
           discount_summary: pricing.discountSummary ?? "",
         },
@@ -315,9 +339,10 @@ serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      ...({ ui_mode: "hosted" } as any),
       client_reference_id: user.id,
       customer: courseCustomerId,
-      customer_email: courseCustomerId ? undefined : (user.email ?? undefined),
+      customer_email: courseCustomerId ? undefined : (locationTestEmail ?? user.email ?? undefined),
       customer_update: courseCustomerId ? customerUpdate : undefined,
       billing_address_collection: "required",
       // Optional: private buyers can continue without a VAT ID, while
@@ -353,6 +378,8 @@ serve(async (req) => {
         user_id: user.id,
         course_id: course.id,
         purchase_type: "course",
+        original_buyer_email: locationTestEmail ? (user.email ?? "") : "",
+        adaptive_pricing_test_location: locationTestEmail ? "PL" : "",
         discount_code_id: pricing.codeId ?? "",
         discount_summary: pricing.discountSummary ?? "",
       },
