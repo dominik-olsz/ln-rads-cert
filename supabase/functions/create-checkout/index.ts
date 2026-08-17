@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { computePricing, getUserDiscountPercent, lookupDiscountCode } from "../_shared/pricing.ts";
-import { syncStripeCustomer } from "../_shared/stripe-customer.ts";
+import { customerCurrencyLock, syncStripeCustomer } from "../_shared/stripe-customer.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -250,6 +250,7 @@ serve(async (req) => {
         cancel_url: `${origin}/certification-test?courseId=${retakeCourse.id}&payment=cancelled`,
       });
 
+      logSession(session, "retake");
       // The code is marked as redeemed by the webhook once payment succeeds.
       return json({ url: session.url });
     }
@@ -359,6 +360,7 @@ serve(async (req) => {
       cancel_url: `${origin}/course/${course.id}?payment=cancelled`,
     });
 
+    logSession(session, "course");
     // The code is marked as redeemed by the webhook once payment succeeds.
     return json({ url: session.url });
   } catch (error) {
