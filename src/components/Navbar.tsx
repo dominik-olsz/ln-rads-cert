@@ -1,4 +1,6 @@
 import { Link } from "@/i18n/router";
+import { useT } from "@/i18n";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import lnradsLogo from "@/assets/lnrads-logo.jpg";
@@ -17,6 +19,7 @@ import {
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
+  const t = useT();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -90,7 +93,7 @@ const Navbar = () => {
 
         <div className="hidden lg:flex items-center gap-10">
           <a href="https://lnrads.com/our-team/" target="_blank" rel="noopener noreferrer" className={navLinkClass}>
-            About us
+            {t("About us")}
           </a>
           <a
             href="https://lnrads.com/from-internet/"
@@ -98,17 +101,18 @@ const Navbar = () => {
             rel="noopener noreferrer"
             className={navLinkClass}
           >
-            Publications
+            {t("Publications")}
           </a>
           <a href="https://lnrads.com/contact-us/" target="_blank" rel="noopener noreferrer" className={navLinkClass}>
-            Contact
+            {t("Contact")}
           </a>
           <Link
             to="/courses"
             className="text-sm font-semibold text-accent hover:text-accent/80 transition-colors px-2 py-2"
           >
-            Courses
+            {t("Courses")}
           </Link>
+          <LanguageSwitcher />
         </div>
 
         <div className="flex items-center gap-4">
@@ -124,13 +128,13 @@ const Navbar = () => {
                 <DropdownMenuContent align="end" className="w-52 rounded-xl">
                   <DropdownMenuItem asChild>
                     <Link to="/account" className="cursor-pointer">
-                      Account Settings
+                      {t("Account Settings")}
                     </Link>
                   </DropdownMenuItem>
                   {!isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link to="/payments" className="cursor-pointer">
-                        My Payments
+                        {t("My Payments")}
                       </Link>
                     </DropdownMenuItem>
                   )}
@@ -138,33 +142,33 @@ const Navbar = () => {
                   {isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link to="/admin/dashboard" className="cursor-pointer">
-                        Admin
+                        {t("Admin")}
                       </Link>
                     </DropdownMenuItem>
                   )}
                   {!isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link to="/dashboard" className="cursor-pointer">
-                        My Dashboard
+                        {t("My Dashboard")}
                       </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={signOut} className="cursor-pointer">
-                    Sign Out
+                    {t("Sign Out")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               {isAdmin ? (
                 <Link to="/admin/dashboard" className="hidden lg:inline-flex">
                   <Button variant="outline" className="rounded-xl border-2 hover:bg-muted transition-colors">
-                    Admin
+                    {t("Admin")}
                   </Button>
                 </Link>
               ) : (
                 <Link to="/dashboard" className="hidden lg:inline-flex">
                   <Button variant="outline" className="rounded-xl border-2 hover:bg-muted transition-colors">
-                    My Dashboard
+                    {t("My Dashboard")}
                   </Button>
                 </Link>
               )}
@@ -173,18 +177,18 @@ const Navbar = () => {
                 onClick={signOut}
                 className="hidden lg:inline-flex rounded-xl border-2 hover:bg-muted transition-colors"
               >
-                Sign Out
+                {t("Sign Out")}
               </Button>
               {isAdmin ? (
                 <Link to="/admin/dashboard" className="lg:hidden inline-flex">
                   <Button className="inline-flex items-center justify-center px-3 py-2 md:px-6 md:py-3 h-auto bg-foreground text-background font-semibold text-xs md:text-sm rounded-2xl transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-xl hover:shadow-primary/20 active:scale-95 shadow-lg">
-                    Admin
+                    {t("Admin")}
                   </Button>
                 </Link>
               ) : (
                 <Link to="/dashboard" className="lg:hidden inline-flex">
                   <Button className="inline-flex items-center justify-center px-3 py-2 md:px-6 md:py-3 h-auto bg-foreground text-background font-semibold text-xs md:text-sm rounded-2xl transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-xl hover:shadow-primary/20 active:scale-95 shadow-lg">
-                    Dashboard
+                    {t("Dashboard")}
                   </Button>
                 </Link>
               )}
@@ -202,6 +206,7 @@ const Navbar = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-64 rounded-l-3xl">
                   <div className="flex flex-col gap-4 mt-8">
+                    <LanguageSwitcher className="self-start" />
                     <div className="text-sm text-muted-foreground border-b pb-3 truncate">{user.email}</div>
                     <a
                       href="https://lnrads.com/"
@@ -209,7 +214,7 @@ const Navbar = () => {
                       rel="noopener noreferrer"
                       className="text-sm font-medium hover:text-primary transition-colors"
                     >
-                      Home
+                      {t("Home")}
                     </a>
                     <a
                       href="https://lnrads.com/our-team/"
@@ -217,7 +222,7 @@ const Navbar = () => {
                       rel="noopener noreferrer"
                       className="text-sm font-medium hover:text-primary transition-colors"
                     >
-                      About us
+                      {t("About us")}
                     </a>
                     <a
                       href="https://lnrads.com/from-internet/"
@@ -225,7 +230,7 @@ const Navbar = () => {
                       rel="noopener noreferrer"
                       className="text-sm font-medium hover:text-primary transition-colors"
                     >
-                      Publications
+                      {t("Publications")}
                     </a>
                     <a
                       href="https://lnrads.com/contact-us/"
@@ -233,35 +238,35 @@ const Navbar = () => {
                       rel="noopener noreferrer"
                       className="text-sm font-medium hover:text-primary transition-colors"
                     >
-                      Contact
+                      {t("Contact")}
                     </a>
                     <Link
                       to="/courses"
                       className="text-sm font-medium text-accent hover:text-accent/80 transition-colors"
                     >
-                      Courses
+                      {t("Courses")}
                     </Link>
                     {!isAdmin && (
                       <Link to="/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
-                        My Dashboard
+                        {t("My Dashboard")}
                       </Link>
                     )}
                     {isAdmin && (
                       <Link to="/admin/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
-                        Admin
+                        {t("Admin")}
                       </Link>
                     )}
                     <Link to="/account" className="text-sm font-medium hover:text-primary transition-colors">
-                      Account Settings
+                      {t("Account Settings")}
                     </Link>
                     {!isAdmin && (
                       <Link to="/payments" className="text-sm font-medium hover:text-primary transition-colors">
-                        My Payments
+                        {t("My Payments")}
                       </Link>
                     )}
 
                     <Button variant="outline" onClick={signOut} className="justify-center border-2 mt-4 rounded-xl">
-                      Sign Out
+                      {t("Sign Out")}
                     </Button>
                   </div>
                 </SheetContent>
@@ -273,11 +278,11 @@ const Navbar = () => {
                 to="/auth"
                 className="hidden lg:inline-flex text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors px-2"
               >
-                Sign In
+                {t("Sign In")}
               </Link>
               <Link to="/auth?tab=signup">
                 <Button className="inline-flex items-center justify-center px-3 py-2 md:px-6 md:py-3 h-auto bg-foreground text-background font-semibold text-xs md:text-sm rounded-2xl transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-xl hover:shadow-primary/20 active:scale-95 shadow-lg">
-                  Get Started
+                  {t("Get Started")}
                 </Button>
               </Link>
               <Sheet>
@@ -293,13 +298,14 @@ const Navbar = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-64 rounded-l-3xl">
                   <div className="flex flex-col gap-4 mt-8">
+                    <LanguageSwitcher className="self-start" />
                     <a
                       href="https://lnrads.com/"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm font-medium hover:text-primary transition-colors"
                     >
-                      Home
+                      {t("Home")}
                     </a>
                     <a
                       href="https://lnrads.com/our-team/"
@@ -307,7 +313,7 @@ const Navbar = () => {
                       rel="noopener noreferrer"
                       className="text-sm font-medium hover:text-primary transition-colors"
                     >
-                      About us
+                      {t("About us")}
                     </a>
                     <a
                       href="https://lnrads.com/from-internet/"
@@ -315,7 +321,7 @@ const Navbar = () => {
                       rel="noopener noreferrer"
                       className="text-sm font-medium hover:text-primary transition-colors"
                     >
-                      Publications
+                      {t("Publications")}
                     </a>
                     <a
                       href="https://lnrads.com/contact-us/"
@@ -323,19 +329,19 @@ const Navbar = () => {
                       rel="noopener noreferrer"
                       className="text-sm font-medium hover:text-primary transition-colors"
                     >
-                      Contact
+                      {t("Contact")}
                     </a>
                     <Link
                       to="/courses"
                       className="text-sm font-medium text-accent hover:text-accent/80 transition-colors"
                     >
-                      Courses
+                      {t("Courses")}
                     </Link>
                     <Link to="/auth" className="text-sm font-medium hover:text-primary transition-colors">
-                      Sign In
+                      {t("Sign In")}
                     </Link>
                     <Link to="/auth?tab=signup" className="text-sm font-medium hover:text-primary transition-colors">
-                      Get Started
+                      {t("Get Started")}
                     </Link>
                   </div>
                 </SheetContent>
