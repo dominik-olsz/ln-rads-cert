@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { computePricing, getUserDiscountPercent, lookupDiscountCode } from "../_shared/pricing.ts";
-import { syncStripeCustomer } from "../_shared/stripe-customer.ts";
+import { customerCurrencyLock, syncStripeCustomer } from "../_shared/stripe-customer.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,12 +75,36 @@ serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
-    const buildCustomer = async (stripe: Stripe): Promise<string | undefined> =>
-      await syncStripeCustomer(stripe, admin, {
+    // A saved Stripe Customer pre-fills Checkout, but once Stripe pins a
+    // currency on it, Adaptive Pricing can no longer offer the buyer's local
+    // currency. In that case we deliberately drop the Customer and go with the
+    // email only — the billing address is collected at Checkout anyway and the
+    // webhook writes it back to /account as before.
+    const buildCustomer = async (stripe: Stripe): Promise<string | undefined> => {
+      const customerId = await syncStripeCustomer(stripe, admin, {
         userId: user.id,
         email: user.email,
         profile,
       });
+      const lockedCurrency = await customerCurrencyLock(stripe, customerId);
+      if (lockedCurrency) {
+        console.log(
+          `[adaptive-pricing] customer ${customerId} is pinned to ${lockedCurrency}; using customer_email so Stripe can convert`,
+        );
+        return undefined;
+      }
+      return customerId;
+    };
+
+    const logSession = (session: any, label: string) => {
+      console.log(
+        `[adaptive-pricing] ${label} session=${session.id} currency=${session.currency} ` +
+          `adaptive_pricing=${JSON.stringify(session.adaptive_pricing ?? null)} ` +
+          `currency_conversion=${JSON.stringify(session.currency_conversion ?? null)} ` +
+          `customer=${typeof session.customer === "string" ? session.customer : session.customer?.id ?? "none"}`,
+      );
+    };
+
 
     const customerUpdate = { address: "auto", name: "auto" } as const;
     // Nothing about the buyer type is carried over from the profile: the
@@ -226,6 +250,7 @@ serve(async (req) => {
         cancel_url: `${origin}/certification-test?courseId=${retakeCourse.id}&payment=cancelled`,
       });
 
+      logSession(session, "retake");
       // The code is marked as redeemed by the webhook once payment succeeds.
       return json({ url: session.url });
     }
@@ -335,6 +360,7 @@ serve(async (req) => {
       cancel_url: `${origin}/course/${course.id}?payment=cancelled`,
     });
 
+    logSession(session, "course");
     // The code is marked as redeemed by the webhook once payment succeeds.
     return json({ url: session.url });
   } catch (error) {
