@@ -82,14 +82,30 @@ const DiscountPricePanel = ({
 
   return (
     <div className="space-y-4">
+      {fx && onCurrencyChange && (
+        <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="Payment currency">
+          {(["eur", "pln"] as CheckoutCurrency[]).map((c) => (
+            <Button
+              key={c}
+              type="button"
+              size="sm"
+              variant={currency === c ? "default" : "ghost"}
+              className="h-7 px-3 text-xs"
+              onClick={() => onCurrencyChange(c)}
+            >
+              {c === "eur" ? "EUR €" : "PLN zł"}
+            </Button>
+          ))}
+        </div>
+      )}
       <div>
         <div className="flex items-end gap-3 mb-1 flex-wrap">
           <span className="text-4xl font-bold text-primary">
-            {quote?.isFree ? "Free" : formatEuro(finalPrice)}
+            {quote?.isFree ? "Free" : usePln ? moneyEuros(finalPrice) : formatEuro(finalPrice)}
           </span>
           {showStrikethrough && (
             <span className="text-xl text-muted-foreground line-through">
-              {formatEuro(basePrice)}
+              {usePln ? moneyEuros(basePrice) : formatEuro(basePrice)}
             </span>
           )}
           {!quote?.isFree && (
@@ -100,8 +116,10 @@ const DiscountPricePanel = ({
         {!quote?.isFree && (
           <p className="mt-1 text-xs text-muted-foreground">
             VAT is calculated at checkout based on your billing country.
+            {usePln && " You will be charged in PLN."}
           </p>
         )}
+
 
         {countdownUntil && (
           <p className="mt-2 text-sm font-medium text-accent">
