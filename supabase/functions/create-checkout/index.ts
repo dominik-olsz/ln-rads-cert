@@ -325,15 +325,19 @@ serve(async (req) => {
     }
 
     const stripe = stripeInit();
-    const courseCustomer = await buildCustomer(stripe);
+    const courseCustomerId = await syncStripeCustomer(stripe, admin, {
+      userId: user.id,
+      email: user.email,
+      profile,
+    });
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await createSession(stripe, {
       mode: "payment",
       ...({ ui_mode: "hosted" } as any),
       client_reference_id: user.id,
-      customer: courseCustomer.customerId,
-      customer_email: courseCustomer.customerId ? undefined : courseCustomer.customerEmail,
-      customer_update: courseCustomer.customerId ? customerUpdate : undefined,
+      customer: courseCustomerId,
+      customer_email: courseCustomerId ? undefined : (user.email ?? undefined),
+      customer_update: courseCustomerId ? customerUpdate : undefined,
       billing_address_collection: "required",
       // Optional: private buyers can continue without a VAT ID, while
       // business buyers can choose to add one for their invoice.
@@ -343,16 +347,13 @@ serve(async (req) => {
       // to the account default, Stripe can classify domestic PL B2B sales as
       // cross-border and return reverse-charge 0% VAT.
       ...({ managed_payments: { enabled: false } } as any),
-      // Adaptive Pricing lets Polish buyers pay in PLN, converted from EUR.
-      ...({ adaptive_pricing: { enabled: true } } as any),
       automatic_tax: { enabled: true },
       line_items: [
-
         {
           quantity: 1,
           price_data: {
-            currency: "eur",
-            unit_amount: pricing.finalCents,
+            currency,
+            unit_amount: amountFor(pricing.finalCents),
             tax_behavior: "exclusive",
             product_data: {
               name: course.title,
@@ -368,8 +369,7 @@ serve(async (req) => {
         user_id: user.id,
         course_id: course.id,
         purchase_type: "course",
-        original_buyer_email: courseCustomer.testLocation ? (user.email ?? "") : "",
-        adaptive_pricing_test_location: courseCustomer.testLocation ? "PL" : "",
+        ...fxMetadata(pricing.finalCents),
         discount_code_id: pricing.codeId ?? "",
         discount_summary: pricing.discountSummary ?? "",
       },
@@ -377,9 +377,9 @@ serve(async (req) => {
       cancel_url: `${origin}/course/${course.id}?payment=cancelled`,
     });
 
-    logSession(session, "course");
     // The code is marked as redeemed by the webhook once payment succeeds.
     return json({ url: session.url });
+
   } catch (error) {
     console.error("create-checkout error:", error);
     return json({ error: (error as Error).message }, 500);
