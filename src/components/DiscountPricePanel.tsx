@@ -5,6 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tag, X } from "lucide-react";
 import DiscountCountdown from "@/components/DiscountCountdown";
 import { formatEuro, formatEuroCents } from "@/lib/pricing";
+import {
+  CommercialFxRate,
+  eurCentsToPlnCents,
+  formatPlnCents,
+} from "@/lib/fxPricing";
 
 export type PricingQuote = {
   baseCents: number;
@@ -18,6 +23,8 @@ export type PricingQuote = {
   isFree: boolean;
 };
 
+export type CheckoutCurrency = "eur" | "pln";
+
 interface Props {
   /** Regular list price in euros (fallback before the server quote arrives) */
   basePrice: number;
@@ -29,6 +36,10 @@ interface Props {
   onClearCode: () => void;
   appliedCode: string | null;
   subtitle?: string;
+  /** Buyer-chosen payment currency; PLN prices come from the admin FX rate. */
+  currency?: CheckoutCurrency;
+  onCurrencyChange?: (currency: CheckoutCurrency) => void;
+  fx?: CommercialFxRate | null;
 }
 
 const DiscountPricePanel = ({
@@ -41,6 +52,9 @@ const DiscountPricePanel = ({
   onClearCode,
   appliedCode,
   subtitle = "One-time payment · Lifetime access",
+  currency = "eur",
+  onCurrencyChange,
+  fx = null,
 }: Props) => {
   const [codeInput, setCodeInput] = useState("");
   const [applying, setApplying] = useState(false);
@@ -48,6 +62,14 @@ const DiscountPricePanel = ({
   const finalPrice = quote ? quote.finalCents / 100 : saleActive ? salePrice : basePrice;
   const showStrikethrough = finalPrice < basePrice;
   const countdownUntil = quote?.saleValidUntil ?? (saleActive ? saleValidUntil : null);
+
+  const usePln = currency === "pln" && !!fx;
+  const toPln = (eurCents: number) =>
+    fx ? eurCentsToPlnCents(eurCents, fx.rate, fx.roundingMode) : eurCents;
+  const money = (eurCents: number) =>
+    usePln ? formatPlnCents(toPln(eurCents)) : formatEuroCents(eurCents);
+  const moneyEuros = (euros: number) => money(Math.round(euros * 100));
+
 
   const handleApply = async () => {
     const code = codeInput.trim();
