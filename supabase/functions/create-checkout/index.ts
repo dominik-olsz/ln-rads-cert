@@ -2,7 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { computePricing, getUserDiscountPercent, lookupDiscountCode } from "../_shared/pricing.ts";
-import { stripeCustomerContext, syncStripeCustomer } from "../_shared/stripe-customer.ts";
+import { syncStripeCustomer } from "../_shared/stripe-customer.ts";
+import { eurCentsToPlnCents, getCommercialFxRate } from "../_shared/pln-pricing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
