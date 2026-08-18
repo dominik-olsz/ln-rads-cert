@@ -319,9 +319,9 @@ serve(async (req) => {
 
 
       // A full refund revokes access; a partial one only records the amount.
-      // Compared against the charge itself, because a converted (Adaptive
-      // Pricing) invoice is stored in the buyer's currency while Stripe refunds
-      // in the settlement currency.
+      // Compared against the charge itself, so it works for both EUR and PLN
+      // payments (the invoice is always in the charged currency).
+
       const chargeTotal = charge.amount ?? original.gross_amount ?? 0;
       const fullRefund = refundedCents >= chargeTotal;
       if (original.purchase_type === "certification_retake" && original.retake_purchase_id) {
