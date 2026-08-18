@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, ClipboardCheck, Award, Receipt, Ticket, ScrollText } from 'lucide-react';
+import { Users, BookOpen, ClipboardCheck, Award, Receipt, Ticket, ScrollText, Coins } from 'lucide-react';
 import FaqManager from '@/components/admin/FaqManager';
 
 const AdminDashboard = () => {
