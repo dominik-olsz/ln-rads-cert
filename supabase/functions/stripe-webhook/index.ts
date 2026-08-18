@@ -70,11 +70,6 @@ serve(async (req) => {
           ? session.payment_intent
           : session.payment_intent?.id ?? null;
       const buyer = buyerFromSession(session);
-      // A location-formatted email is used only to simulate Poland in Stripe
-      // test mode. Never store it or send invoices to it: this metadata was set
-      // by our authenticated checkout function, not accepted from the client.
-      const originalBuyerEmail = session.metadata?.original_buyer_email?.trim();
-      if (originalBuyerEmail) buyer.email = originalBuyerEmail;
       const discountCodeId = session.metadata?.discount_code_id || null;
       const discountSummary = session.metadata?.discount_summary || null;
 
@@ -92,40 +87,34 @@ serve(async (req) => {
           .eq("id", discountCodeId)
           .is("redeemed_at", null);
       };
-      // Settlement figures (always the price currency, EUR): used for internal
-      // bookkeeping and for comparing against Stripe refunds.
-      const settlementGrossCents = session.amount_total ?? 0;
-      const settlementCurrency = session.currency ?? "eur";
 
-      // With Adaptive Pricing the buyer sees and pays a converted amount. The
-      // invoice — and therefore FakturaXL — must be issued in that currency.
-      const presentment = (session as any).presentment_details ?? null;
-      const presentmentCurrency = presentment?.presentment_currency ?? null;
-      const presentmentAmount = presentment?.presentment_amount ?? null;
-      const converted =
-        presentmentCurrency &&
-        presentmentAmount != null &&
-        String(presentmentCurrency).toLowerCase() !== String(settlementCurrency).toLowerCase();
+      // The session currency is what the buyer chose and paid: EUR, or PLN
+      // derived from the admin-set commercial rate. Everything (bookkeeping,
+      // refund comparisons and the FakturaXL document) uses that one currency.
+      const currency = (session.currency ?? "eur").toLowerCase();
+      const grossCents = session.amount_total ?? 0;
+      const vatCents = session.total_details?.amount_tax ?? null;
+      const netCents = vatCents != null ? grossCents - vatCents : null;
+
+      // Audit trail: which commercial rate produced this PLN amount. The rate is
+      // a pricing rate only and is never used for invoice or VAT figures.
+      const fxAudit = currency === "pln"
+        ? {
+            currency,
+            amount_paid_pln: grossCents,
+            fx_rate_id: session.metadata?.fx_rate_id || null,
+            eur_pln_commercial_rate_used: session.metadata?.eur_pln_commercial_rate
+              ? Number(session.metadata.eur_pln_commercial_rate)
+              : null,
+            pln_rounding_mode: session.metadata?.pln_rounding_mode || null,
+          }
+        : { currency };
 
       console.log(
-        `[adaptive-pricing] session=${session.id} settlement=${settlementGrossCents} ${settlementCurrency} ` +
-          `presentment=${JSON.stringify(presentment)} ` +
-          `test_location=${session.metadata?.adaptive_pricing_test_location || "none"}`,
+        `[checkout] session=${session.id} currency=${currency} gross=${grossCents} ` +
+          `rate=${session.metadata?.eur_pln_commercial_rate ?? "n/a"}`,
       );
 
-      const currency = converted ? String(presentmentCurrency).toLowerCase() : settlementCurrency;
-      const grossCents = converted ? Number(presentmentAmount) : settlementGrossCents;
-      // Stripe Tax figures: the invoice must mirror exactly what was charged.
-      // Stripe reports tax in the settlement currency only, so for a converted
-      // payment the same ratio is applied to keep net + VAT = gross exactly.
-      const settlementVatCents = session.total_details?.amount_tax ?? null;
-      const vatCents =
-        settlementVatCents == null
-          ? null
-          : converted && settlementGrossCents > 0
-          ? Math.round((settlementVatCents / settlementGrossCents) * grossCents)
-          : settlementVatCents;
-      const netCents = vatCents != null ? grossCents - vatCents : null;
 
 
       // Never issue a 0% invoice for a transaction that is not legitimately
