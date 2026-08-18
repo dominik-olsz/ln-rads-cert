@@ -164,8 +164,9 @@ serve(async (req) => {
           .insert({
             user_id: userId,
             course_id: courseId ?? null,
-            // Internal bookkeeping stays in the settlement currency (EUR).
-            amount_paid: settlementGrossCents,
+            // Recorded in the currency the buyer actually paid.
+            amount_paid: grossCents,
+            ...fxAudit,
             stripe_session_id: session.id,
             stripe_payment_intent_id: paymentIntentId,
             buyer_email: buyer.email,
