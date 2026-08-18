@@ -73,6 +73,19 @@ const CertificationTest = () => {
   const [retakePrice, setRetakePrice] = useState<number>(6900);
   const { fx } = useCommercialFxRate();
   const [retakeCurrency, setRetakeCurrency] = useState<'eur' | 'pln'>('eur');
+
+  // Default to PLN for Polish buyers; the choice stays changeable below.
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('country')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.country?.toUpperCase() === 'PL') setRetakeCurrency('pln');
+      });
+  }, [user?.id]);
   const [payLoading, setPayLoading] = useState(false);
   const [retakeCode, setRetakeCode] = useState('');
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
