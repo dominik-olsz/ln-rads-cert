@@ -143,12 +143,12 @@ const DiscountPricePanel = ({
         <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Regular price</span>
-            <span>{formatEuroCents(quote.baseCents)}</span>
+            <span>{money(quote.baseCents)}</span>
           </div>
           {quote.saleActive && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">Sale price</span>
-              <span>{formatEuroCents(quote.saleCents)}</span>
+              <span>{money(quote.saleCents)}</span>
             </div>
           )}
           {quote.userPercent > 0 && (
@@ -165,7 +165,7 @@ const DiscountPricePanel = ({
           )}
           <div className="flex justify-between font-semibold pt-1 border-t">
             <span>Total (excl. VAT)</span>
-            <span>{quote.isFree ? "Free" : formatEuroCents(quote.finalCents)}</span>
+            <span>{quote.isFree ? "Free" : money(quote.finalCents)}</span>
           </div>
         </div>
       )}
