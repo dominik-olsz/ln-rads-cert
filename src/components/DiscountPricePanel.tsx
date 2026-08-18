@@ -5,6 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tag, X } from "lucide-react";
 import DiscountCountdown from "@/components/DiscountCountdown";
 import { formatEuro, formatEuroCents } from "@/lib/pricing";
+import {
+  CommercialFxRate,
+  eurCentsToPlnCents,
+  formatPlnCents,
+} from "@/lib/fxPricing";
 
 export type PricingQuote = {
   baseCents: number;
@@ -18,6 +23,8 @@ export type PricingQuote = {
   isFree: boolean;
 };
 
+export type CheckoutCurrency = "eur" | "pln";
+
 interface Props {
   /** Regular list price in euros (fallback before the server quote arrives) */
   basePrice: number;
@@ -29,6 +36,10 @@ interface Props {
   onClearCode: () => void;
   appliedCode: string | null;
   subtitle?: string;
+  /** Buyer-chosen payment currency; PLN prices come from the admin FX rate. */
+  currency?: CheckoutCurrency;
+  onCurrencyChange?: (currency: CheckoutCurrency) => void;
+  fx?: CommercialFxRate | null;
 }
 
 const DiscountPricePanel = ({
@@ -41,6 +52,9 @@ const DiscountPricePanel = ({
   onClearCode,
   appliedCode,
   subtitle = "One-time payment · Lifetime access",
+  currency = "eur",
+  onCurrencyChange,
+  fx = null,
 }: Props) => {
   const [codeInput, setCodeInput] = useState("");
   const [applying, setApplying] = useState(false);
@@ -48,6 +62,14 @@ const DiscountPricePanel = ({
   const finalPrice = quote ? quote.finalCents / 100 : saleActive ? salePrice : basePrice;
   const showStrikethrough = finalPrice < basePrice;
   const countdownUntil = quote?.saleValidUntil ?? (saleActive ? saleValidUntil : null);
+
+  const usePln = currency === "pln" && !!fx;
+  const toPln = (eurCents: number) =>
+    fx ? eurCentsToPlnCents(eurCents, fx.rate, fx.roundingMode) : eurCents;
+  const money = (eurCents: number) =>
+    usePln ? formatPlnCents(toPln(eurCents)) : formatEuroCents(eurCents);
+  const moneyEuros = (euros: number) => money(Math.round(euros * 100));
+
 
   const handleApply = async () => {
     const code = codeInput.trim();
@@ -60,14 +82,30 @@ const DiscountPricePanel = ({
 
   return (
     <div className="space-y-4">
+      {fx && onCurrencyChange && (
+        <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="Payment currency">
+          {(["eur", "pln"] as CheckoutCurrency[]).map((c) => (
+            <Button
+              key={c}
+              type="button"
+              size="sm"
+              variant={currency === c ? "default" : "ghost"}
+              className="h-7 px-3 text-xs"
+              onClick={() => onCurrencyChange(c)}
+            >
+              {c === "eur" ? "EUR €" : "PLN zł"}
+            </Button>
+          ))}
+        </div>
+      )}
       <div>
         <div className="flex items-end gap-3 mb-1 flex-wrap">
           <span className="text-4xl font-bold text-primary">
-            {quote?.isFree ? "Free" : formatEuro(finalPrice)}
+            {quote?.isFree ? "Free" : usePln ? moneyEuros(finalPrice) : formatEuro(finalPrice)}
           </span>
           {showStrikethrough && (
             <span className="text-xl text-muted-foreground line-through">
-              {formatEuro(basePrice)}
+              {usePln ? moneyEuros(basePrice) : formatEuro(basePrice)}
             </span>
           )}
           {!quote?.isFree && (
@@ -78,8 +116,10 @@ const DiscountPricePanel = ({
         {!quote?.isFree && (
           <p className="mt-1 text-xs text-muted-foreground">
             VAT is calculated at checkout based on your billing country.
+            {usePln && " You will be charged in PLN."}
           </p>
         )}
+
 
         {countdownUntil && (
           <p className="mt-2 text-sm font-medium text-accent">
@@ -103,12 +143,12 @@ const DiscountPricePanel = ({
         <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Regular price</span>
-            <span>{formatEuroCents(quote.baseCents)}</span>
+            <span>{money(quote.baseCents)}</span>
           </div>
           {quote.saleActive && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">Sale price</span>
-              <span>{formatEuroCents(quote.saleCents)}</span>
+              <span>{money(quote.saleCents)}</span>
             </div>
           )}
           {quote.userPercent > 0 && (
@@ -125,7 +165,7 @@ const DiscountPricePanel = ({
           )}
           <div className="flex justify-between font-semibold pt-1 border-t">
             <span>Total (excl. VAT)</span>
-            <span>{quote.isFree ? "Free" : formatEuroCents(quote.finalCents)}</span>
+            <span>{quote.isFree ? "Free" : money(quote.finalCents)}</span>
           </div>
         </div>
       )}

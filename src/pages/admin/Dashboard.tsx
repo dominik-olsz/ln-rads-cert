@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, ClipboardCheck, Award, Receipt, Ticket, ScrollText } from 'lucide-react';
+import { Users, BookOpen, ClipboardCheck, Award, Receipt, Ticket, ScrollText, Coins } from 'lucide-react';
 import FaqManager from '@/components/admin/FaqManager';
 
 const AdminDashboard = () => {
@@ -118,6 +118,20 @@ const AdminDashboard = () => {
             </Card>
           </Link>
 
+          <Link to="/admin/pricing">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle>PLN Pricing</CardTitle>
+                <Coins className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Set the commercial EUR/PLN rate and rounding used at checkout
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
           <Link to="/admin/legal">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -131,6 +145,7 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </Link>
+
 
         </div>
 

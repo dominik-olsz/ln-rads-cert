@@ -14,6 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import DiscountPricePanel, { PricingQuote } from "@/components/DiscountPricePanel";
 import { getEffectivePrice } from "@/lib/pricing";
+import { useCommercialFxRate } from "@/lib/fxPricing";
+import type { CheckoutCurrency } from "@/components/DiscountPricePanel";
 
 interface Course {
   id: string;
@@ -64,6 +66,29 @@ const CourseDetail = () => {
   const [quote, setQuote] = useState<PricingQuote | null>(null);
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
   const lang = useLang();
+  const { fx } = useCommercialFxRate();
+  // PLN is the default for Polish buyers (billing country, else site language),
+  // but the choice stays explicit and changeable.
+  const [currency, setCurrency] = useState<CheckoutCurrency>(lang === 'pl' ? 'pln' : 'eur');
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+
+  useEffect(() => {
+    if (currencyTouched || !user) return;
+    supabase
+      .from('profiles')
+      .select('country')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.country) setCurrency(data.country.toUpperCase() === 'PL' ? 'pln' : 'eur');
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, currencyTouched]);
+
+  const handleCurrencyChange = (next: CheckoutCurrency) => {
+    setCurrencyTouched(true);
+    setCurrency(next);
+  };
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -197,7 +222,7 @@ const CourseDetail = () => {
     setPurchasing(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { courseId: id, code: appliedCode },
+        body: { courseId: id, code: appliedCode, currency },
       });
 
       if (error) throw error;
@@ -393,6 +418,9 @@ const CourseDetail = () => {
                         appliedCode={appliedCode}
                         onApplyCode={handleApplyCode}
                         onClearCode={handleClearCode}
+                        currency={currency}
+                        onCurrencyChange={handleCurrencyChange}
+                        fx={fx}
                       />
                     ) : (
                       <div>
@@ -557,6 +585,9 @@ const CourseDetail = () => {
                       appliedCode={appliedCode}
                       onApplyCode={handleApplyCode}
                       onClearCode={handleClearCode}
+                      currency={currency}
+                      onCurrencyChange={handleCurrencyChange}
+                      fx={fx}
                     />
                   ) : (
                     <div>

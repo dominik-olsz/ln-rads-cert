@@ -2,7 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { computePricing, getUserDiscountPercent, lookupDiscountCode } from "../_shared/pricing.ts";
-import { stripeCustomerContext, syncStripeCustomer } from "../_shared/stripe-customer.ts";
+import { syncStripeCustomer } from "../_shared/stripe-customer.ts";
+import { eurCentsToPlnCents, getCommercialFxRate } from "../_shared/pln-pricing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,6 +59,7 @@ serve(async (req) => {
     const purchaseType = body?.type === "certification_retake" ? "certification_retake" : "course";
     const courseId = typeof body?.courseId === "string" ? body.courseId : null;
     const origin = req.headers.get("origin") ?? "";
+    const requestedCurrency = String(body?.currency ?? "eur").toLowerCase() === "pln" ? "pln" : "eur";
 
     // Discounts are always recomputed here — the client never sets a price.
     const { code, row: codeRow, error: codeError } = await lookupDiscountCode(admin, body?.code);
@@ -65,7 +67,6 @@ serve(async (req) => {
     const userPercent = await getUserDiscountPercent(admin, user.id);
 
     const stripeInit = () => new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
-    const isStripeTestMode = stripeKey.includes("_test_");
 
     // Saved invoice details (Account settings) are used to pre-fill Stripe Checkout.
     const { data: profile } = await admin
@@ -76,75 +77,51 @@ serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
-    // Stripe does not infer a reliable geographic location from ordinary test
-    // traffic. Its documented test mechanism is a +location_XX email suffix.
-    // Keep this strictly in test mode and preserve the real account email in
-    // metadata for purchases, invoices, and delivery after the webhook fires.
-    const buildLocationTestEmail = (country?: string | null) => {
-      if (!isStripeTestMode || country?.toUpperCase() !== "PL" || !user.email) {
-        return null;
-      }
-      const at = user.email.lastIndexOf("@");
-      if (at <= 0) return null;
-      const local = user.email.slice(0, at).split("+")[0];
-      const domain = user.email.slice(at + 1);
-      if (!local || !domain) return null;
-      return `${local}+location_PL@${domain}`;
-    };
-    // This project specifically validates EUR→PLN before going live. Before a
-    // buyer fills Checkout there might be no saved country anywhere, so Stripe
-    // test mode defaults to its documented Poland simulation. Live mode never
-    // uses a synthetic email and continues to detect the real buyer location.
-    const profileLocationTestEmail = isStripeTestMode
-      ? buildLocationTestEmail(profile?.country ?? "PL")
-      : null;
+    // The buyer may pay in PLN, derived from the admin-set COMMERCIAL EUR/PLN
+    // rate (never the NBP accounting rate, which is only used by FakturaXL).
+    // Stripe Price objects are immutable, so the PLN amount is always built
+    // inline with price_data and a rate change applies immediately.
+    const fx = requestedCurrency === "pln" ? await getCommercialFxRate(admin) : null;
+    if (requestedCurrency === "pln" && !fx) {
+      return json({ error: "PLN pricing is not available yet. Please pay in EUR." }, 400);
+    }
+    const currency = fx ? "pln" : "eur";
 
-    // A saved Stripe Customer pre-fills Checkout, but once Stripe pins a
-    // currency on it, Adaptive Pricing can no longer offer the buyer's local
-    // currency. In that case we deliberately drop the Customer and go with the
-    // email only — the billing address is collected at Checkout anyway and the
-    // webhook writes it back to /account as before.
-    const buildCustomer = async (
-      stripe: Stripe,
-    ): Promise<{ customerId?: string; customerEmail?: string; testLocation: boolean }> => {
-      if (profileLocationTestEmail) {
-        console.log("[adaptive-pricing] checkout_location=test_PL customer_mode=email");
-        return { customerEmail: profileLocationTestEmail, testLocation: true };
-      }
-      const customerId = await syncStripeCustomer(stripe, admin, {
-        userId: user.id,
-        email: user.email,
-        profile,
-      });
-      const customerContext = await stripeCustomerContext(stripe, customerId);
-      const customerLocationTestEmail = buildLocationTestEmail(customerContext.country);
-      if (customerLocationTestEmail) {
-        console.log("[adaptive-pricing] checkout_location=test_PL customer_mode=email source=stripe_address");
-        return { customerEmail: customerLocationTestEmail, testLocation: true };
-      }
-      if (customerContext.currency) {
-        console.log(
-          `[adaptive-pricing] customer currency is pinned to ${customerContext.currency}; using customer_email`,
-        );
-        return { customerEmail: user.email ?? undefined, testLocation: false };
-      }
-      return { customerId, testLocation: false };
-    };
+    const amountFor = (eurCents: number) => (fx ? eurCentsToPlnCents(eurCents, fx) : eurCents);
 
-    const logSession = (session: any, label: string) => {
-      console.log(
-        `[adaptive-pricing] ${label} session=${session.id} currency=${session.currency} ` +
-          `adaptive_pricing=${JSON.stringify(session.adaptive_pricing ?? null)} ` +
-          `currency_conversion=${JSON.stringify(session.currency_conversion ?? null)} ` +
-          `customer=${typeof session.customer === "string" ? session.customer : session.customer?.id ?? "none"}`,
-      );
-    };
+    const fxMetadata = (eurCents: number) =>
+      fx
+        ? {
+            currency,
+            eur_net_cents: String(eurCents),
+            pln_net_cents: String(amountFor(eurCents)),
+            fx_rate_id: fx.id ?? "",
+            eur_pln_commercial_rate: String(fx.rate),
+            pln_rounding_mode: fx.roundingMode,
+          }
+        : { currency };
 
+    // BLIK and Przelewy24 require PLN. Stripe rejects methods that are not
+    // activated on the account, so the session is retried without the explicit
+    // list if that happens.
+    const createSession = async (stripe: Stripe, params: any) => {
+      if (currency !== "pln") return await stripe.checkout.sessions.create(params);
+      try {
+        return await stripe.checkout.sessions.create({
+          ...params,
+          payment_method_types: ["card", "blik", "p24"],
+        });
+      } catch (e) {
+        console.error("PLN payment methods unavailable, falling back:", (e as Error).message);
+        return await stripe.checkout.sessions.create(params);
+      }
+    };
 
     const customerUpdate = { address: "auto", name: "auto" } as const;
     // Nothing about the buyer type is carried over from the profile: the
     // company name and VAT ID always come from what the buyer enters at
     // Checkout, so both a private and a business purchase stay possible.
+
 
     const redeemCode = async (extra: Record<string, unknown> = {}) => {
       if (!codeRow) return;
@@ -235,14 +212,18 @@ serve(async (req) => {
       }
 
       const stripe = stripeInit();
-      const retakeCustomer = await buildCustomer(stripe);
-      const session = await stripe.checkout.sessions.create({
+      const retakeCustomerId = await syncStripeCustomer(stripe, admin, {
+        userId: user.id,
+        email: user.email,
+        profile,
+      });
+      const session = await createSession(stripe, {
         mode: "payment",
         ...({ ui_mode: "hosted" } as any),
         client_reference_id: user.id,
-        customer: retakeCustomer.customerId,
-        customer_email: retakeCustomer.customerId ? undefined : retakeCustomer.customerEmail,
-        customer_update: retakeCustomer.customerId ? customerUpdate : undefined,
+        customer: retakeCustomerId,
+        customer_email: retakeCustomerId ? undefined : (user.email ?? undefined),
+        customer_update: retakeCustomerId ? customerUpdate : undefined,
         billing_address_collection: "required",
         // Optional: private buyers can continue without a VAT ID, while
         // business buyers can choose to add one for their invoice.
@@ -254,16 +235,13 @@ serve(async (req) => {
         // make Stripe the liable merchant and can incorrectly reverse-charge a
         // Polish buyer with a Polish VAT ID.
         ...({ managed_payments: { enabled: false } } as any),
-        // Buyers outside the eurozone (e.g. Poland) are offered their local
-        // currency; Stripe converts the EUR price and settles in that currency.
-        ...({ adaptive_pricing: { enabled: true } } as any),
         automatic_tax: { enabled: true },
         line_items: [
           {
             quantity: 1,
             price_data: {
-              currency: "eur",
-              unit_amount: pricing.finalCents,
+              currency,
+              unit_amount: amountFor(pricing.finalCents),
               tax_behavior: "exclusive",
               product_data: {
                 name: `Certification exam retake — ${retakeCourse.title}`,
@@ -279,8 +257,7 @@ serve(async (req) => {
           user_id: user.id,
           course_id: retakeCourse.id,
           purchase_type: "certification_retake",
-          original_buyer_email: retakeCustomer.testLocation ? (user.email ?? "") : "",
-          adaptive_pricing_test_location: retakeCustomer.testLocation ? "PL" : "",
+          ...fxMetadata(pricing.finalCents),
           discount_code_id: pricing.codeId ?? "",
           discount_summary: pricing.discountSummary ?? "",
         },
@@ -288,10 +265,10 @@ serve(async (req) => {
         cancel_url: `${origin}/certification-test?courseId=${retakeCourse.id}&payment=cancelled`,
       });
 
-      logSession(session, "retake");
       // The code is marked as redeemed by the webhook once payment succeeds.
       return json({ url: session.url });
     }
+
 
 
     if (!courseId) return json({ error: "courseId is required" }, 400);
@@ -349,15 +326,19 @@ serve(async (req) => {
     }
 
     const stripe = stripeInit();
-    const courseCustomer = await buildCustomer(stripe);
+    const courseCustomerId = await syncStripeCustomer(stripe, admin, {
+      userId: user.id,
+      email: user.email,
+      profile,
+    });
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await createSession(stripe, {
       mode: "payment",
       ...({ ui_mode: "hosted" } as any),
       client_reference_id: user.id,
-      customer: courseCustomer.customerId,
-      customer_email: courseCustomer.customerId ? undefined : courseCustomer.customerEmail,
-      customer_update: courseCustomer.customerId ? customerUpdate : undefined,
+      customer: courseCustomerId,
+      customer_email: courseCustomerId ? undefined : (user.email ?? undefined),
+      customer_update: courseCustomerId ? customerUpdate : undefined,
       billing_address_collection: "required",
       // Optional: private buyers can continue without a VAT ID, while
       // business buyers can choose to add one for their invoice.
@@ -367,16 +348,13 @@ serve(async (req) => {
       // to the account default, Stripe can classify domestic PL B2B sales as
       // cross-border and return reverse-charge 0% VAT.
       ...({ managed_payments: { enabled: false } } as any),
-      // Adaptive Pricing lets Polish buyers pay in PLN, converted from EUR.
-      ...({ adaptive_pricing: { enabled: true } } as any),
       automatic_tax: { enabled: true },
       line_items: [
-
         {
           quantity: 1,
           price_data: {
-            currency: "eur",
-            unit_amount: pricing.finalCents,
+            currency,
+            unit_amount: amountFor(pricing.finalCents),
             tax_behavior: "exclusive",
             product_data: {
               name: course.title,
@@ -392,8 +370,7 @@ serve(async (req) => {
         user_id: user.id,
         course_id: course.id,
         purchase_type: "course",
-        original_buyer_email: courseCustomer.testLocation ? (user.email ?? "") : "",
-        adaptive_pricing_test_location: courseCustomer.testLocation ? "PL" : "",
+        ...fxMetadata(pricing.finalCents),
         discount_code_id: pricing.codeId ?? "",
         discount_summary: pricing.discountSummary ?? "",
       },
@@ -401,9 +378,9 @@ serve(async (req) => {
       cancel_url: `${origin}/course/${course.id}?payment=cancelled`,
     });
 
-    logSession(session, "course");
     // The code is marked as redeemed by the webhook once payment succeeds.
     return json({ url: session.url });
+
   } catch (error) {
     console.error("create-checkout error:", error);
     return json({ error: (error as Error).message }, 500);
