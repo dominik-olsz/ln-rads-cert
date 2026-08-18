@@ -58,6 +58,7 @@ serve(async (req) => {
     const purchaseType = body?.type === "certification_retake" ? "certification_retake" : "course";
     const courseId = typeof body?.courseId === "string" ? body.courseId : null;
     const origin = req.headers.get("origin") ?? "";
+    const requestedCurrency = String(body?.currency ?? "eur").toLowerCase() === "pln" ? "pln" : "eur";
 
     // Discounts are always recomputed here — the client never sets a price.
     const { code, row: codeRow, error: codeError } = await lookupDiscountCode(admin, body?.code);
@@ -65,7 +66,6 @@ serve(async (req) => {
     const userPercent = await getUserDiscountPercent(admin, user.id);
 
     const stripeInit = () => new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
-    const isStripeTestMode = stripeKey.includes("_test_");
 
     // Saved invoice details (Account settings) are used to pre-fill Stripe Checkout.
     const { data: profile } = await admin
@@ -76,75 +76,51 @@ serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
-    // Stripe does not infer a reliable geographic location from ordinary test
-    // traffic. Its documented test mechanism is a +location_XX email suffix.
-    // Keep this strictly in test mode and preserve the real account email in
-    // metadata for purchases, invoices, and delivery after the webhook fires.
-    const buildLocationTestEmail = (country?: string | null) => {
-      if (!isStripeTestMode || country?.toUpperCase() !== "PL" || !user.email) {
-        return null;
-      }
-      const at = user.email.lastIndexOf("@");
-      if (at <= 0) return null;
-      const local = user.email.slice(0, at).split("+")[0];
-      const domain = user.email.slice(at + 1);
-      if (!local || !domain) return null;
-      return `${local}+location_PL@${domain}`;
-    };
-    // This project specifically validates EUR→PLN before going live. Before a
-    // buyer fills Checkout there might be no saved country anywhere, so Stripe
-    // test mode defaults to its documented Poland simulation. Live mode never
-    // uses a synthetic email and continues to detect the real buyer location.
-    const profileLocationTestEmail = isStripeTestMode
-      ? buildLocationTestEmail(profile?.country ?? "PL")
-      : null;
+    // The buyer may pay in PLN, derived from the admin-set COMMERCIAL EUR/PLN
+    // rate (never the NBP accounting rate, which is only used by FakturaXL).
+    // Stripe Price objects are immutable, so the PLN amount is always built
+    // inline with price_data and a rate change applies immediately.
+    const fx = requestedCurrency === "pln" ? await getCommercialFxRate(admin) : null;
+    if (requestedCurrency === "pln" && !fx) {
+      return json({ error: "PLN pricing is not available yet. Please pay in EUR." }, 400);
+    }
+    const currency = fx ? "pln" : "eur";
 
-    // A saved Stripe Customer pre-fills Checkout, but once Stripe pins a
-    // currency on it, Adaptive Pricing can no longer offer the buyer's local
-    // currency. In that case we deliberately drop the Customer and go with the
-    // email only — the billing address is collected at Checkout anyway and the
-    // webhook writes it back to /account as before.
-    const buildCustomer = async (
-      stripe: Stripe,
-    ): Promise<{ customerId?: string; customerEmail?: string; testLocation: boolean }> => {
-      if (profileLocationTestEmail) {
-        console.log("[adaptive-pricing] checkout_location=test_PL customer_mode=email");
-        return { customerEmail: profileLocationTestEmail, testLocation: true };
-      }
-      const customerId = await syncStripeCustomer(stripe, admin, {
-        userId: user.id,
-        email: user.email,
-        profile,
-      });
-      const customerContext = await stripeCustomerContext(stripe, customerId);
-      const customerLocationTestEmail = buildLocationTestEmail(customerContext.country);
-      if (customerLocationTestEmail) {
-        console.log("[adaptive-pricing] checkout_location=test_PL customer_mode=email source=stripe_address");
-        return { customerEmail: customerLocationTestEmail, testLocation: true };
-      }
-      if (customerContext.currency) {
-        console.log(
-          `[adaptive-pricing] customer currency is pinned to ${customerContext.currency}; using customer_email`,
-        );
-        return { customerEmail: user.email ?? undefined, testLocation: false };
-      }
-      return { customerId, testLocation: false };
-    };
+    const amountFor = (eurCents: number) => (fx ? eurCentsToPlnCents(eurCents, fx) : eurCents);
 
-    const logSession = (session: any, label: string) => {
-      console.log(
-        `[adaptive-pricing] ${label} session=${session.id} currency=${session.currency} ` +
-          `adaptive_pricing=${JSON.stringify(session.adaptive_pricing ?? null)} ` +
-          `currency_conversion=${JSON.stringify(session.currency_conversion ?? null)} ` +
-          `customer=${typeof session.customer === "string" ? session.customer : session.customer?.id ?? "none"}`,
-      );
-    };
+    const fxMetadata = (eurCents: number) =>
+      fx
+        ? {
+            currency,
+            eur_net_cents: String(eurCents),
+            pln_net_cents: String(amountFor(eurCents)),
+            fx_rate_id: fx.id ?? "",
+            eur_pln_commercial_rate: String(fx.rate),
+            pln_rounding_mode: fx.roundingMode,
+          }
+        : { currency };
 
+    // BLIK and Przelewy24 require PLN. Stripe rejects methods that are not
+    // activated on the account, so the session is retried without the explicit
+    // list if that happens.
+    const createSession = async (stripe: Stripe, params: any) => {
+      if (currency !== "pln") return await stripe.checkout.sessions.create(params);
+      try {
+        return await stripe.checkout.sessions.create({
+          ...params,
+          payment_method_types: ["card", "blik", "p24"],
+        });
+      } catch (e) {
+        console.error("PLN payment methods unavailable, falling back:", (e as Error).message);
+        return await stripe.checkout.sessions.create(params);
+      }
+    };
 
     const customerUpdate = { address: "auto", name: "auto" } as const;
     // Nothing about the buyer type is carried over from the profile: the
     // company name and VAT ID always come from what the buyer enters at
     // Checkout, so both a private and a business purchase stay possible.
+
 
     const redeemCode = async (extra: Record<string, unknown> = {}) => {
       if (!codeRow) return;
