@@ -211,14 +211,18 @@ serve(async (req) => {
       }
 
       const stripe = stripeInit();
-      const retakeCustomer = await buildCustomer(stripe);
-      const session = await stripe.checkout.sessions.create({
+      const retakeCustomerId = await syncStripeCustomer(stripe, admin, {
+        userId: user.id,
+        email: user.email,
+        profile,
+      });
+      const session = await createSession(stripe, {
         mode: "payment",
         ...({ ui_mode: "hosted" } as any),
         client_reference_id: user.id,
-        customer: retakeCustomer.customerId,
-        customer_email: retakeCustomer.customerId ? undefined : retakeCustomer.customerEmail,
-        customer_update: retakeCustomer.customerId ? customerUpdate : undefined,
+        customer: retakeCustomerId,
+        customer_email: retakeCustomerId ? undefined : (user.email ?? undefined),
+        customer_update: retakeCustomerId ? customerUpdate : undefined,
         billing_address_collection: "required",
         // Optional: private buyers can continue without a VAT ID, while
         // business buyers can choose to add one for their invoice.
@@ -230,16 +234,13 @@ serve(async (req) => {
         // make Stripe the liable merchant and can incorrectly reverse-charge a
         // Polish buyer with a Polish VAT ID.
         ...({ managed_payments: { enabled: false } } as any),
-        // Buyers outside the eurozone (e.g. Poland) are offered their local
-        // currency; Stripe converts the EUR price and settles in that currency.
-        ...({ adaptive_pricing: { enabled: true } } as any),
         automatic_tax: { enabled: true },
         line_items: [
           {
             quantity: 1,
             price_data: {
-              currency: "eur",
-              unit_amount: pricing.finalCents,
+              currency,
+              unit_amount: amountFor(pricing.finalCents),
               tax_behavior: "exclusive",
               product_data: {
                 name: `Certification exam retake — ${retakeCourse.title}`,
@@ -255,8 +256,7 @@ serve(async (req) => {
           user_id: user.id,
           course_id: retakeCourse.id,
           purchase_type: "certification_retake",
-          original_buyer_email: retakeCustomer.testLocation ? (user.email ?? "") : "",
-          adaptive_pricing_test_location: retakeCustomer.testLocation ? "PL" : "",
+          ...fxMetadata(pricing.finalCents),
           discount_code_id: pricing.codeId ?? "",
           discount_summary: pricing.discountSummary ?? "",
         },
@@ -264,10 +264,10 @@ serve(async (req) => {
         cancel_url: `${origin}/certification-test?courseId=${retakeCourse.id}&payment=cancelled`,
       });
 
-      logSession(session, "retake");
       // The code is marked as redeemed by the webhook once payment succeeds.
       return json({ url: session.url });
     }
+
 
 
     if (!courseId) return json({ error: "courseId is required" }, 400);
