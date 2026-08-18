@@ -71,6 +71,8 @@ const CertificationTest = () => {
 
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [retakePrice, setRetakePrice] = useState<number>(6900);
+  const { fx } = useCommercialFxRate();
+  const [retakeCurrency, setRetakeCurrency] = useState<'eur' | 'pln'>('eur');
   const [payLoading, setPayLoading] = useState(false);
   const [retakeCode, setRetakeCode] = useState('');
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
@@ -585,6 +587,7 @@ const CertificationTest = () => {
           type: 'certification_retake',
           ...(courseId ? { courseId } : {}),
           ...(retakeCode.trim() ? { code: retakeCode.trim() } : {}),
+          currency: retakeCurrency,
         },
       });
 
@@ -629,6 +632,11 @@ const CertificationTest = () => {
   };
 
   const retakeAmountCents = retakeQuote ? retakeQuote.finalCents : retakePrice;
+  const usePlnRetake = retakeCurrency === 'pln' && !!fx;
+  const retakeMoney = (eurCents: number) =>
+    usePlnRetake
+      ? formatPlnCents(eurCentsToPlnCents(eurCents, fx!.rate, fx!.roundingMode))
+      : `€${(eurCents / 100).toFixed(2)}`;
 
   const handleStartTest = async () => {
     // Create (or reuse) the progress record for this course
@@ -847,10 +855,26 @@ const CertificationTest = () => {
                       was included with your course. You have {attemptsLeft} of {maxAttempts}{' '}
                       attempts left, and each retake costs{' '}
                       <span className="font-semibold text-foreground">
-                        €{(retakePrice / 100).toFixed(2)}
+                        {retakeMoney(retakePrice)}
                       </span>
                       .
                     </p>
+                    {fx && (
+                      <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="Payment currency">
+                        {(['eur', 'pln'] as const).map((c) => (
+                          <Button
+                            key={c}
+                            type="button"
+                            size="sm"
+                            variant={retakeCurrency === c ? 'default' : 'ghost'}
+                            className="h-7 px-3 text-xs"
+                            onClick={() => setRetakeCurrency(c)}
+                          >
+                            {c === 'eur' ? 'EUR €' : 'PLN zł'}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <Input
                         placeholder="Discount code (optional)"
@@ -871,7 +895,7 @@ const CertificationTest = () => {
                         {retakeQuote.codePercent > 0 && `Code −${retakeQuote.codePercent}%. `}
                         New price:{' '}
                         <span className="font-semibold text-foreground">
-                          €{(retakeQuote.finalCents / 100).toFixed(2)}
+                          {retakeMoney(retakeQuote.finalCents)}
                         </span>
                       </p>
                     )}
@@ -880,7 +904,7 @@ const CertificationTest = () => {
                         ? 'Redirecting to checkout…'
                         : retakeAmountCents === 0
                           ? 'Unlock retake for free'
-                          : `Pay €${(retakeAmountCents / 100).toFixed(2)} & retake`}
+                          : `Pay ${retakeMoney(retakeAmountCents)} & retake`}
                     </Button>
                   </>
                 )}
