@@ -17,6 +17,7 @@ import ImageLightbox from "@/components/ImageLightbox";
 import QuestionImages from "@/components/QuestionImages";
 import { fetchAttemptResetAt } from "@/lib/certificationReset";
 import { useLang } from "@/i18n";
+import { useCommercialFxRate, eurCentsToPlnCents, formatPlnCents } from "@/lib/fxPricing";
 
 
 interface TestQuestion {
