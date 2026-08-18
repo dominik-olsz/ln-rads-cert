@@ -115,14 +115,19 @@ export type Database = {
       certification_retake_purchases: {
         Row: {
           amount_paid: number
+          amount_paid_pln: number | null
           buyer_email: string | null
           buyer_name: string | null
           consumed_at: string | null
           course_id: string | null
           created_at: string
+          currency: string
           discount_code_id: string | null
           discount_summary: string | null
+          eur_pln_commercial_rate_used: number | null
+          fx_rate_id: string | null
           id: string
+          pln_rounding_mode: string | null
           refunded_amount: number
           refunded_at: string | null
           stripe_payment_intent_id: string | null
@@ -132,14 +137,19 @@ export type Database = {
         }
         Insert: {
           amount_paid?: number
+          amount_paid_pln?: number | null
           buyer_email?: string | null
           buyer_name?: string | null
           consumed_at?: string | null
           course_id?: string | null
           created_at?: string
+          currency?: string
           discount_code_id?: string | null
           discount_summary?: string | null
+          eur_pln_commercial_rate_used?: number | null
+          fx_rate_id?: string | null
           id?: string
+          pln_rounding_mode?: string | null
           refunded_amount?: number
           refunded_at?: string | null
           stripe_payment_intent_id?: string | null
@@ -149,14 +159,19 @@ export type Database = {
         }
         Update: {
           amount_paid?: number
+          amount_paid_pln?: number | null
           buyer_email?: string | null
           buyer_name?: string | null
           consumed_at?: string | null
           course_id?: string | null
           created_at?: string
+          currency?: string
           discount_code_id?: string | null
           discount_summary?: string | null
+          eur_pln_commercial_rate_used?: number | null
+          fx_rate_id?: string | null
           id?: string
+          pln_rounding_mode?: string | null
           refunded_amount?: number
           refunded_at?: string | null
           stripe_payment_intent_id?: string | null
@@ -177,6 +192,13 @@ export type Database = {
             columns: ["discount_code_id"]
             isOneToOne: false
             referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certification_retake_purchases_fx_rate_id_fkey"
+            columns: ["fx_rate_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_fx_rates"
             referencedColumns: ["id"]
           },
         ]
@@ -365,15 +387,20 @@ export type Database = {
       course_purchases: {
         Row: {
           amount_paid: number
+          amount_paid_pln: number | null
           buyer_email: string | null
           buyer_name: string | null
           course_id: string
+          currency: string
           discount_code_id: string | null
           discount_summary: string | null
+          eur_pln_commercial_rate_used: number | null
+          fx_rate_id: string | null
           granted_by: string | null
           granted_by_admin: boolean
           id: string
           payment_status: string
+          pln_rounding_mode: string | null
           purchased_at: string
           refunded_amount: number
           refunded_at: string | null
@@ -383,15 +410,20 @@ export type Database = {
         }
         Insert: {
           amount_paid?: number
+          amount_paid_pln?: number | null
           buyer_email?: string | null
           buyer_name?: string | null
           course_id: string
+          currency?: string
           discount_code_id?: string | null
           discount_summary?: string | null
+          eur_pln_commercial_rate_used?: number | null
+          fx_rate_id?: string | null
           granted_by?: string | null
           granted_by_admin?: boolean
           id?: string
           payment_status?: string
+          pln_rounding_mode?: string | null
           purchased_at?: string
           refunded_amount?: number
           refunded_at?: string | null
@@ -401,15 +433,20 @@ export type Database = {
         }
         Update: {
           amount_paid?: number
+          amount_paid_pln?: number | null
           buyer_email?: string | null
           buyer_name?: string | null
           course_id?: string
+          currency?: string
           discount_code_id?: string | null
           discount_summary?: string | null
+          eur_pln_commercial_rate_used?: number | null
+          fx_rate_id?: string | null
           granted_by?: string | null
           granted_by_admin?: boolean
           id?: string
           payment_status?: string
+          pln_rounding_mode?: string | null
           purchased_at?: string
           refunded_amount?: number
           refunded_at?: string | null
@@ -430,6 +467,13 @@ export type Database = {
             columns: ["discount_code_id"]
             isOneToOne: false
             referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_purchases_fx_rate_id_fkey"
+            columns: ["fx_rate_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_fx_rates"
             referencedColumns: ["id"]
           },
         ]
@@ -1078,6 +1122,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_fx_rates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          eur_pln_commercial_rate: number
+          id: string
+          rounding_mode: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          eur_pln_commercial_rate: number
+          id?: string
+          rounding_mode?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          eur_pln_commercial_rate?: number
+          id?: string
+          rounding_mode?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address_line1: string | null
@@ -1388,6 +1459,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_pricing_fx_rate: {
+        Args: never
+        Returns: {
+          effective_from: string
+          eur_pln_commercial_rate: number
+          rounding_mode: string
+        }[]
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
